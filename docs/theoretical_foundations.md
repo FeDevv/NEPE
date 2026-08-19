@@ -78,6 +78,32 @@ $$\tau(x, y) = \begin{cases}
 
 * **$\rho$ (Rho):** Coefficiente di dipendenza inter-squadra specificato per il campionato (valore di default $-0.12$). Un $\rho < 0$ incrementa la probabilità dello 0-0 e dell'1-1 e riduce quella dell'1-0 e 0-1.
 
+### 3.3 Come Approssimare o Calcolare il Valore di $\rho$ (Rho)
+
+Esistono tre metodi per ottenere il parametro $\rho$:
+
+#### 1. Valori Benchmark da Letteratura Accademica
+Nel paper fondamentale di Dixon & Coles (1997), la stima calcolata sui dati storici dei campionati inglesi risultava $\rho \approx -0.13$ (nello specifico $-0.128 \pm 0.038$). 
+Studi empirici successivi sui principali campionati europei (Serie A, Premier League, La Liga, Bundesliga) confermano che per i massimi campionati continentali $\rho$ ricade stabilmente nell'intervallo:
+$$\rho \in [-0.15, -0.09]$$
+Il valore di default globale impostato in NEPE 2.0 (**$-0.1200$**) rappresenta un ottimo stimatore *off-the-shelf* applicabile a qualsiasi competizione prima di aver calibrato i dati.
+
+#### 2. Calcolo Esatto tramite Maximum Likelihood Estimation (MLE)
+Disponendo nel database dello storico dei risultati $(x_k, y_k)$ di una competizione (ad esempio l'intera stagione precedente composta da 380 partite) e dei relativi tassi $(\lambda_k, \mu_k)$, $\rho$ si ottiene massimizzando la funzione di log-verosimiglianza:
+
+$$\ln L(\rho) = \sum_{k=1}^K \ln \tau(x_k, y_k; \lambda_k, \mu_k, \rho)$$
+
+Poiché per tutti i match con punteggi superiori a 1 $\tau(x, y) = 1$ (e quindi $\ln 1 = 0$), la sommatoria si riduce **esclusivamente alle partite finite con punteggio basso (0-0, 1-0, 0-1, 1-1)**:
+
+$$\ln L(\rho) = \sum_{k \in (0,0)} \ln(1 - \lambda_k \mu_k \rho) + \sum_{k \in (1,0)} \ln(1 + \mu_k \rho) + \sum_{k \in (0,1)} \ln(1 + \lambda_k \rho) + \sum_{k \in (1,1)} \ln(1 - \rho)$$
+
+Trattandosi di una funzione concava mono-dimensionale definita per $\rho \in (-1, 1)$, il valore ottimo $\rho^*$ si calcola in frazioni di secondo in Java tramite una semplice ricerca monodimensionale (es. metodo di Brent, Newton-Raphson o bisezione sulla derivata prima $\frac{d \ln L}{d\rho} = 0$).
+
+#### 3. Approssimazione Empirica Rapida (Metodo dei Momenti)
+Se $f_{\text{oss}}(0,0)$ è la frequenza reale di 0-0 osservata nella stagione passata e $f_{\text{pois}}(0,0) = \frac{1}{K}\sum e^{-\lambda_k - \mu_k}$ è la frequenza attesa da Poisson puro:
+$$\rho \approx \frac{1 - \frac{f_{\text{oss}}(0,0)}{f_{\text{pois}}(0,0)}}{\bar{\lambda} \cdot \bar{\mu}}$$
+Questa formula offre una stima rapida ed intuitiva senza richiedere algoritmi iterativi.
+
 ---
 
 ## 4. Teoria del Valore Atteso (Expected Value - EV) nel Betting Exchange
