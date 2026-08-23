@@ -1,6 +1,6 @@
 package org.nepe.settings.domain;
 
-import org.nepe.shared.domain.exception.DomainValidationException;
+import org.nepe.shared.exception.DomainValidationException;
 
 import java.util.Collections;
 import java.util.HashMap;

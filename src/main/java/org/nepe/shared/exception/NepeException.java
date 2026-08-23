@@ -1,4 +1,4 @@
-package org.nepe.shared.domain.exception;
+package org.nepe.shared.exception;
 
 /**
  * Base abstract unchecked exception for all application and domain exceptions in NEPE 2.0.

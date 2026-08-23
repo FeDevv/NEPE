@@ -1,4 +1,4 @@
-package org.nepe.shared.domain.exception;
+package org.nepe.shared.exception;
 
 /**
  * Thrown when an invalid or illegal operation is performed during live match trading

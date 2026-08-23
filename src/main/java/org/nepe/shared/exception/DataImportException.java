@@ -1,4 +1,4 @@
-package org.nepe.shared.domain.exception;
+package org.nepe.shared.exception;
 
 /**
  * Thrown when an error occurs during CSV parsing or data ingestion (e.g., missing headers, malformed date/time, corrupt rows).

@@ -1,6 +1,6 @@
 package org.nepe.competition.domain;
 
-import org.nepe.shared.domain.exception.DomainValidationException;
+import org.nepe.shared.exception.DomainValidationException;
 
 import java.util.Objects;
 import java.util.regex.Matcher;

@@ -1,4 +1,4 @@
-package org.nepe.shared.domain.exception;
+package org.nepe.shared.exception;
 
 /**
  * Thrown during CSV ingestion when an unmapped team name is encountered.

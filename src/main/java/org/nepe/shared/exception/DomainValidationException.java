@@ -1,4 +1,4 @@
-package org.nepe.shared.domain.exception;
+package org.nepe.shared.exception;
 
 /**
  * Thrown when a business rule, invariant, or mathematical constraint is violated within the domain.

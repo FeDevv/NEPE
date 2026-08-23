@@ -1,4 +1,4 @@
-package org.nepe.shared.domain.exception;
+package org.nepe.shared.exception;
 
 /**
  * Thrown when a requested domain entity (e.g., Competition, Team, Match, Alias) cannot be found.
