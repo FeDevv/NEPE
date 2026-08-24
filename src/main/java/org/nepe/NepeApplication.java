@@ -24,11 +24,10 @@ public class NepeApplication {
 * ports development order:
 * 1. settings ❎
 * 2. competition ❎
-* 3. inference
+* 3. inference ❎
 * 4. match
-* partire dai moduli a dipendenza foglia (senza prerequisiti) per poi risalire verso i moduli più articolati.
 * */
 
 // analisi e studio della test suite
-
-// far fare un sanity check e un mvnw compile per verificare che tutte le classi create compilino senza problemi. (sia per modulo settings che per modulo competition).
+// effettuare mvn compile per verificare che tutto compili (da fare per l'inference e poi per match)
+// agy --conversation=e6a812d6-cd19-4b9f-9f50-3694b9506fa2
