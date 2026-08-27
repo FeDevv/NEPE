@@ -16,10 +16,14 @@ public class NepeApplication {
 * Development order:
 * 1. domain core ✅
 * 2. porte in & out ✅
-* 3. outbound adapters
+* 3. outbound adapters ✅
 * 4. application services
 * 5. inbound adapters
 * */
 
-// analisi e studio della test suite
 // agy --conversation=2bf7b2c1-dc2c-47b4-abbb-397eb041500d
+
+/*
+* todo : test suite for outbound adapters
+*  study the whole project, do not believe blindly what's being written.
+* */
