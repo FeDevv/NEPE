@@ -18,12 +18,10 @@ public class NepeApplication {
 * 2. porte in & out ✅
 * 3. outbound adapters ✅
 * 4. application services
+* 4.5 test suite
 * 5. inbound adapters
 * */
 
-// agy --conversation=2bf7b2c1-dc2c-47b4-abbb-397eb041500d
-
 /*
-* todo : test suite for outbound adapters
 *  study the whole project, do not believe blindly what's being written.
 * */

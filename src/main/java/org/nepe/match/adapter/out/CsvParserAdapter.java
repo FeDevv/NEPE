@@ -82,6 +82,11 @@ public class CsvParserAdapter implements CsvParserPort {
             throw new DataImportException("CSV file is empty or does not contain a header row.");
         }
 
+        // Strip UTF-8 Byte Order Mark (BOM) if present from web/Excel export
+        if (headerLine.startsWith("\uFEFF")) {
+            headerLine = headerLine.substring(1);
+        }
+
         Map<String, Integer> headerIndexMap = parseHeaders(headerLine);
         validateMandatoryHeaders(headerIndexMap);
 
