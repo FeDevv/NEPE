@@ -25,3 +25,7 @@ public class NepeApplication {
 /*
 *  study the whole project, do not believe blindly what's being written.
 * */
+
+// study LiveInferenceService
+
+// agy --conversation=078e2eba-0428-4e1d-9d8e-d12a5cb9d49d
