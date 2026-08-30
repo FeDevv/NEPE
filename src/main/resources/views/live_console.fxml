@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/26"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.nepe.match.adapter.in.LiveConsoleController"
+            styleClass="app-container"
+            prefHeight="800.0" prefWidth="1200.0">
+
+    <!-- Top Header Navigation & Controls -->
+    <top>
+        <HBox styleClass="header-bar" spacing="16.0" alignment="CENTER_LEFT">
+            <Button fx:id="btnBackToDashboard" text="⬅ Palinsesto" styleClass="button" onAction="#handleBackToDashboard"/>
+
+            <Separator orientation="VERTICAL"/>
+
+            <Label text="Partita Live:" styleClass="section-header"/>
+            <ComboBox fx:id="comboLiveMatchSelector" prefWidth="300.0" promptText="Seleziona partita live..."/>
+
+            <VBox spacing="2.0">
+                <Label fx:id="lblMatchHeader" text="Console Trading Live" styleClass="card-title"/>
+                <Label fx:id="lblMatchInfo" text="" styleClass="label-muted"/>
+            </VBox>
+
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <Button fx:id="btnStartLive" text="▶ Avvia Live" styleClass="button, btn-primary" onAction="#handleStartLive"/>
+            <Button fx:id="btnFinishMatch" text="🏁 Concludi Match" styleClass="button, btn-danger" onAction="#handleFinishMatch"/>
+        </HBox>
+    </top>
+
+    <!-- Main Live Console Body -->
+    <center>
+        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent;">
+            <VBox spacing="16.0">
+                <padding>
+                    <Insets top="16.0" right="20.0" bottom="20.0" left="20.0"/>
+                </padding>
+
+                <!-- Section 1: Big Scoreboard & Minute Stepper -->
+                <VBox styleClass="card" spacing="14.0">
+                    <HBox alignment="CENTER" spacing="30.0">
+                        <Label fx:id="lblHomeTeamName" text="Squadra Casa" styleClass="label-strong" style="-fx-font-size: 20px;"/>
+                        <Label fx:id="lblScore" text="0 - 0" styleClass="live-score-display"/>
+                        <Label fx:id="lblAwayTeamName" text="Squadra Ospite" styleClass="label-strong" style="-fx-font-size: 20px;"/>
+                    </HBox>
+
+                    <Separator opacity="0.3"/>
+
+                    <!-- Minute Progression & Red Cards Row -->
+                    <HBox alignment="CENTER" spacing="24.0">
+                        <!-- Minute Stepper -->
+                        <HBox alignment="CENTER" spacing="8.0">
+                            <Label text="Minuto:" styleClass="section-header"/>
+                            <Button fx:id="btnMinus1Min" text="-1m" styleClass="button, btn-sm" onAction="#handleMinus1Min"/>
+                            <TextField fx:id="txtCurrentMinute" text="0" prefWidth="55.0" style="-fx-alignment: CENTER; -fx-font-weight: bold;"/>
+                            <Button fx:id="btnPlus1Min" text="+1m" styleClass="button, btn-sm" onAction="#handlePlus1Min"/>
+                            <Button fx:id="btnPlus5Min" text="+5m" styleClass="button, btn-sm, btn-primary" onAction="#handlePlus5Min"/>
+                        </HBox>
+
+                        <Separator orientation="VERTICAL"/>
+
+                        <!-- Red Cards Info -->
+                        <HBox alignment="CENTER" spacing="16.0">
+                            <Label fx:id="lblHomeRedCards" text="🟥 Rossi Casa: 0" styleClass="label-muted"/>
+                            <Label fx:id="lblAwayRedCards" text="🟥 Rossi Ospite: 0" styleClass="label-muted"/>
+                        </HBox>
+                    </HBox>
+                </VBox>
+
+                <!-- Section 2: Quick Event Action Buttons -->
+                <VBox styleClass="card" spacing="10.0">
+                    <Label text="⚡ Registrazione Eventi in Tempo Reale" styleClass="card-title"/>
+                    <HBox spacing="12.0" alignment="CENTER_LEFT">
+                        <Button fx:id="btnGoalHome" text="⚽ Gol Casa" styleClass="button, btn-success" onAction="#handleGoalHome"/>
+                        <Button fx:id="btnGoalAway" text="⚽ Gol Ospite" styleClass="button, btn-success" onAction="#handleGoalAway"/>
+
+                        <Separator orientation="VERTICAL"/>
+
+                        <Button fx:id="btnRedCardHome" text="🟥 Rosso Casa" styleClass="button, btn-danger" onAction="#handleRedCardHome"/>
+                        <Button fx:id="btnRedCardAway" text="🟥 Rosso Ospite" styleClass="button, btn-danger" onAction="#handleRedCardAway"/>
+
+                        <Region HBox.hgrow="ALWAYS"/>
+
+                        <Button fx:id="btnUndoLastEvent" text="↩ Annulla Ultimo Evento" styleClass="button" onAction="#handleUndoLastEvent"/>
+                    </HBox>
+                </VBox>
+
+                <!-- Section 3: Dynamic Green-Up Profit Target Banner -->
+                <HBox fx:id="boxGreenUpBanner" styleClass="live-green-up-alert" spacing="10.0" alignment="CENTER_LEFT" visible="false" managed="false">
+                    <Label text="💰" style="-fx-font-size: 18px;"/>
+                    <Label fx:id="lblGreenUpText" text="Target di Green Up (Cash Out) Raggiunto! Chiudi la posizione per bloccare il profitto." styleClass="live-green-up-text"/>
+                </HBox>
+
+                <!-- Section 4: Residual Real-Time Probabilities Grid -->
+                <VBox styleClass="card" spacing="12.0">
+                    <HBox alignment="CENTER_LEFT">
+                        <Label text="📈 Probabilità Finali Ricalcolate (Time-Decay &amp; Live Modifiers)" styleClass="card-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="lblResidualRates" text="λ residuo: 0.00 | μ residuo: 0.00" styleClass="label-muted"/>
+                    </HBox>
+
+                    <!-- Real-Time Probability Grid -->
+                    <GridPane hgap="16.0" vgap="10.0">
+                        <columnConstraints>
+                            <ColumnConstraints prefWidth="180.0"/>
+                            <ColumnConstraints prefWidth="180.0"/>
+                            <ColumnConstraints prefWidth="180.0"/>
+                            <ColumnConstraints prefWidth="180.0"/>
+                            <ColumnConstraints prefWidth="180.0"/>
+                            <ColumnConstraints prefWidth="180.0"/>
+                        </columnConstraints>
+
+                        <!-- Headers -->
+                        <Label text="1 (Vittoria Casa)" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                        <Label text="X (Pareggio)" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                        <Label text="2 (Vittoria Ospite)" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+                        <Label text="Under 2.5 Gol" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+                        <Label text="Over 2.5 Gol" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="4"/>
+                        <Label text="BTTS (Goal)" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="5"/>
+
+                        <!-- Probabilities -->
+                        <Label fx:id="lblLiveProb1" text="-" styleClass="prob-text" style="-fx-font-size: 16px;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                        <Label fx:id="lblLiveProbX" text="-" styleClass="prob-text" style="-fx-font-size: 16px;" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                        <Label fx:id="lblLiveProb2" text="-" styleClass="prob-text" style="-fx-font-size: 16px;" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                        <Label fx:id="lblLiveProbUnder25" text="-" styleClass="prob-text" style="-fx-font-size: 16px;" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+                        <Label fx:id="lblLiveProbOver25" text="-" styleClass="prob-text" style="-fx-font-size: 16px;" GridPane.rowIndex="1" GridPane.columnIndex="4"/>
+                        <Label fx:id="lblLiveProbBtts" text="-" styleClass="prob-text" style="-fx-font-size: 16px;" GridPane.rowIndex="1" GridPane.columnIndex="5"/>
+
+                        <!-- Fair Odds -->
+                        <Label fx:id="lblLiveFairOdds1" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                        <Label fx:id="lblLiveFairOddsX" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                        <Label fx:id="lblLiveFairOdds2" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+                        <Label fx:id="lblLiveFairOddsUnder25" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
+                        <Label fx:id="lblLiveFairOddsOver25" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="4"/>
+                        <Label fx:id="lblLiveFairOddsBtts" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="5"/>
+                    </GridPane>
+                </VBox>
+
+                <!-- Section 5: Match Events Chronology Log -->
+                <VBox styleClass="card" spacing="8.0">
+                    <Label text="📜 Cronologia Eventi Registrati" styleClass="card-title"/>
+                    <ListView fx:id="lstEventsLog" prefHeight="140.0"/>
+                </VBox>
+
+                <!-- Status Message -->
+                <Label fx:id="lblStatus" text="" styleClass="label-muted"/>
+
+            </VBox>
+        </ScrollPane>
+    </center>
+
+</BorderPane>

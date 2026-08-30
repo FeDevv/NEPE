@@ -57,19 +57,19 @@ public class MatchDetailsJpaEntity {
     @Column(name = "away_red_cards", nullable = false)
     private int awayRedCards;
 
-    @Column(name = "manual_home_xg", precision = 5, scale = 3)
+    @Column(name = "manual_home_xg")
     private Double manualHomeXg;
 
-    @Column(name = "manual_away_xg", precision = 5, scale = 3)
+    @Column(name = "manual_away_xg")
     private Double manualAwayXg;
 
-    @Column(name = "odds_home", precision = 6, scale = 3)
+    @Column(name = "odds_home")
     private Double oddsHome;
 
-    @Column(name = "odds_draw", precision = 6, scale = 3)
+    @Column(name = "odds_draw")
     private Double oddsDraw;
 
-    @Column(name = "odds_away", precision = 6, scale = 3)
+    @Column(name = "odds_away")
     private Double oddsAway;
 
     @Column(name = "is_neutral_venue", nullable = false)
@@ -87,16 +87,16 @@ public class MatchDetailsJpaEntity {
     @Column(name = "low_urgency_away", nullable = false)
     private boolean lowUrgencyAway;
 
-    @Column(name = "mod_att_home", nullable = false, precision = 3, scale = 2)
+    @Column(name = "mod_att_home", nullable = false)
     private double modAttHome;
 
-    @Column(name = "mod_def_home", nullable = false, precision = 3, scale = 2)
+    @Column(name = "mod_def_home", nullable = false)
     private double modDefHome;
 
-    @Column(name = "mod_att_away", nullable = false, precision = 3, scale = 2)
+    @Column(name = "mod_att_away", nullable = false)
     private double modAttAway;
 
-    @Column(name = "mod_def_away", nullable = false, precision = 3, scale = 2)
+    @Column(name = "mod_def_away", nullable = false)
     private double modDefAway;
 
     @Column(name = "current_minute", nullable = false)
@@ -114,7 +114,7 @@ public class MatchDetailsJpaEntity {
     @Column(name = "competition_country", nullable = false, length = 50)
     private String competitionCountry;
 
-    @Column(name = "dixon_coles_rho", nullable = false, precision = 5, scale = 4)
+    @Column(name = "dixon_coles_rho", nullable = false)
     private double dixonColesRho;
 
     @Column(name = "season_id", nullable = false)

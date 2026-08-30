@@ -32,10 +32,10 @@ public class MarketOddsJpaEntity {
     @Column(name = "outcome", nullable = false, length = 10)
     private String outcome;
 
-    @Column(name = "back_odds", precision = 6, scale = 3)
+    @Column(name = "back_odds")
     private Double backOdds;
 
-    @Column(name = "lay_odds", precision = 6, scale = 3)
+    @Column(name = "lay_odds")
     private Double layOdds;
 
     /**

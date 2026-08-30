@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/26"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.nepe.competition.adapter.in.CompetitionViewController"
+            styleClass="app-container"
+            prefHeight="760.0" prefWidth="1180.0">
+
+    <!-- Top Header Bar -->
+    <top>
+        <HBox styleClass="header-bar" spacing="16.0" alignment="CENTER_LEFT">
+            <Button fx:id="btnBackToDashboard" text="⬅ Palinsesto" styleClass="button" onAction="#handleBackToDashboard"/>
+
+            <Separator orientation="VERTICAL"/>
+
+            <Label text="🏆 Gestione Anagrafiche &amp; Campionati" styleClass="card-title"/>
+
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <Button fx:id="btnRefreshAll" text="🔄 Aggiorna Anagrafiche" styleClass="button" onAction="#handleRefreshAll"/>
+        </HBox>
+    </top>
+
+    <!-- Main Tabbed Content Area -->
+    <center>
+        <TabPane fx:id="tabPaneManager" tabClosingPolicy="UNAVAILABLE" style="-fx-padding: 12 20 12 20;">
+
+            <!-- Tab 1: Competitions Management & Rho Calibration -->
+            <Tab text="🏆 Competizioni &amp; Parametro ρ">
+                <HBox spacing="16.0" style="-fx-padding: 16 0 0 0;">
+                    <!-- Competitions Table (Left, expands) -->
+                    <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                        <TableView fx:id="tblCompetitions" VBox.vgrow="ALWAYS">
+                            <columns>
+                                <TableColumn fx:id="colCompCode" text="Codice Div" prefWidth="100.0"/>
+                                <TableColumn fx:id="colCompName" text="Nome Campionato" prefWidth="200.0"/>
+                                <TableColumn fx:id="colCompCountry" text="Nazione" prefWidth="140.0"/>
+                                <TableColumn fx:id="colCompRho" text="ρ Dixon-Coles" prefWidth="130.0"/>
+                            </columns>
+                            <placeholder>
+                                <Label text="Nessuna competizione memorizzata." styleClass="label-muted"/>
+                            </placeholder>
+                        </TableView>
+                    </VBox>
+
+                    <!-- Competition Edit Form Card (Right, 360px) -->
+                    <VBox styleClass="card" prefWidth="360.0" spacing="12.0">
+                        <Label text="✏️ Dettagli / Modifica Campionato" styleClass="card-title"/>
+
+                        <VBox spacing="6.0">
+                            <Label text="Codice Divisione Football-Data (es. I1, E0):" styleClass="label-muted"/>
+                            <TextField fx:id="txtCompCode" promptText="es. I1"/>
+                        </VBox>
+
+                        <VBox spacing="6.0">
+                            <Label text="Nome Ufficiale Campionato:" styleClass="label-muted"/>
+                            <TextField fx:id="txtCompName" promptText="es. Serie A"/>
+                        </VBox>
+
+                        <VBox spacing="6.0">
+                            <Label text="Nazione:" styleClass="label-muted"/>
+                            <TextField fx:id="txtCompCountry" promptText="es. Italy"/>
+                        </VBox>
+
+                        <VBox spacing="6.0">
+                            <Label text="Coefficiente Dixon-Coles (ρ):" styleClass="label-muted"/>
+                            <TextField fx:id="txtCompRho" promptText="es. -0.1200"/>
+                            <Label text="Default standard: -0.1200 (corregge punteggi bassi 0-0, 1-1)" styleClass="label-muted" style="-fx-font-size: 11px;"/>
+                        </VBox>
+
+                        <Separator opacity="0.3"/>
+
+                        <HBox spacing="10.0" alignment="CENTER_RIGHT">
+                            <Button fx:id="btnClearCompForm" text="Pulisci" styleClass="button" onAction="#handleClearCompForm"/>
+                            <Button fx:id="btnSaveComp" text="💾 Salva / Aggiorna" styleClass="button, btn-primary" onAction="#handleSaveCompetition"/>
+                        </HBox>
+                    </VBox>
+                </HBox>
+            </Tab>
+
+            <!-- Tab 2: Teams Master Directory -->
+            <Tab text="⚽ Squadre">
+                <HBox spacing="16.0" style="-fx-padding: 16 0 0 0;">
+                    <!-- Teams Table (Left, expands) -->
+                    <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                        <!-- Search Bar -->
+                        <HBox spacing="10.0" alignment="CENTER_LEFT">
+                            <TextField fx:id="txtTeamSearch" promptText="🔍 Cerca squadra per nome..." prefWidth="300.0"/>
+                            <Button fx:id="btnClearTeamSearch" text="Annulla Filtro" styleClass="button" onAction="#handleClearTeamSearch"/>
+                        </HBox>
+
+                        <TableView fx:id="tblTeams" VBox.vgrow="ALWAYS">
+                            <columns>
+                                <TableColumn fx:id="colTeamId" text="ID" prefWidth="70.0"/>
+                                <TableColumn fx:id="colTeamName" text="Nome Squadra Ufficiale" prefWidth="320.0"/>
+                            </columns>
+                            <placeholder>
+                                <Label text="Nessuna squadra trovata." styleClass="label-muted"/>
+                            </placeholder>
+                        </TableView>
+                    </VBox>
+
+                    <!-- Team Management Card (Right, 360px) -->
+                    <VBox styleClass="card" prefWidth="360.0" spacing="12.0">
+                        <Label text="⚽ Gestione Squadra" styleClass="card-title"/>
+
+                        <VBox spacing="6.0">
+                            <Label text="Nome Squadra:" styleClass="label-muted"/>
+                            <TextField fx:id="txtTeamName" promptText="es. Inter"/>
+                        </VBox>
+
+                        <Separator opacity="0.3"/>
+
+                        <VBox spacing="8.0">
+                            <Button fx:id="btnAddTeam" text="➕ Crea Nuova Squadra" styleClass="button, btn-primary" maxWidth="Infinity" onAction="#handleAddTeam"/>
+                            <Button fx:id="btnRenameTeam" text="✏️ Rinomina Squadra Selezionata" styleClass="button" maxWidth="Infinity" onAction="#handleRenameTeam"/>
+                        </VBox>
+                    </VBox>
+                </HBox>
+            </Tab>
+
+            <!-- Tab 3: Team Aliases Management -->
+            <Tab text="🔗 Mappatura Alias">
+                <HBox spacing="16.0" style="-fx-padding: 16 0 0 0;">
+                    <!-- Aliases Table (Left, expands) -->
+                    <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                        <TableView fx:id="tblAliases" VBox.vgrow="ALWAYS">
+                            <columns>
+                                <TableColumn fx:id="colAliasId" text="ID" prefWidth="70.0"/>
+                                <TableColumn fx:id="colAliasName" text="Nome Alias / CSV Grezzo" prefWidth="250.0"/>
+                                <TableColumn fx:id="colAliasTeamId" text="ID Squadra Destinazione" prefWidth="160.0"/>
+                            </columns>
+                            <placeholder>
+                                <Label text="Nessun alias memorizzato." styleClass="label-muted"/>
+                            </placeholder>
+                        </TableView>
+                    </VBox>
+
+                    <!-- Alias Management Card (Right, 360px) -->
+                    <VBox styleClass="card" prefWidth="360.0" spacing="12.0">
+                        <Label text="🔗 Associa Nuovo Alias" styleClass="card-title"/>
+
+                        <VBox spacing="6.0">
+                            <Label text="Nome Alias Grezzo (come nel CSV):" styleClass="label-muted"/>
+                            <TextField fx:id="txtAliasName" promptText="es. Man Utd"/>
+                        </VBox>
+
+                        <VBox spacing="6.0">
+                            <Label text="Squadra Ufficiale nel Database:" styleClass="label-muted"/>
+                            <ComboBox fx:id="comboAliasTargetTeam" prefWidth="320.0" promptText="Seleziona squadra ufficiale..."/>
+                        </VBox>
+
+                        <Separator opacity="0.3"/>
+
+                        <VBox spacing="8.0">
+                            <Button fx:id="btnMapAlias" text="🔗 Salva Associazione Alias" styleClass="button, btn-primary" maxWidth="Infinity" onAction="#handleMapAlias"/>
+                            <Button fx:id="btnDeleteAlias" text="🗑️ Elimina Alias Selezionato" styleClass="button, btn-danger" maxWidth="Infinity" onAction="#handleDeleteAlias"/>
+                        </VBox>
+                    </VBox>
+                </HBox>
+            </Tab>
+
+        </TabPane>
+    </center>
+
+    <!-- Bottom Status Bar -->
+    <bottom>
+        <HBox styleClass="header-bar" style="-fx-padding: 8 20 8 20;">
+            <Label fx:id="lblStatus" text="" styleClass="label-muted"/>
+        </HBox>
+    </bottom>
+
+</BorderPane>

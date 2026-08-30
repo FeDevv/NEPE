@@ -1,26 +1,19 @@
 package org.nepe;
 
-import org.springframework.boot.SpringApplication;
+import javafx.application.Application;
+import org.nepe.bootstrap.JavaFxApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+/**
+ * Main entry point for NEPE 2.0 (Nexus Exchange Prediction Engine).
+ * <p>
+ * Configures the Spring Boot application context and delegates lifecycle orchestration
+ * to {@link JavaFxApplication} for desktop GUI presentation.
+ */
 @SpringBootApplication
 public class NepeApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(NepeApplication.class, args);
+        Application.launch(JavaFxApplication.class, args);
     }
-
 }
-
-/*
-* Development order:
-* 1. domain core ✅
-* 2. porte in & out ✅
-* 3. outbound adapters ✅
-* 4. application services ✅
-* 5. inbound adapters
-* */
-
-/*
-*  study the whole project, do not believe blindly what's being written.
-* */

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/26"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.nepe.match.adapter.in.DashboardController"
+            styleClass="app-container"
+            prefHeight="750.0" prefWidth="1180.0">
+
+    <!-- Left Navigation Sidebar -->
+    <left>
+        <VBox styleClass="sidebar" prefWidth="220.0" spacing="10.0">
+            <padding>
+                <Insets top="20.0" right="12.0" bottom="20.0" left="12.0"/>
+            </padding>
+
+            <!-- App Title -->
+            <VBox spacing="2.0">
+                <Label text="NEPE 2.0" styleClass="app-title"/>
+                <Label text="Nexus Exchange Prediction" styleClass="label-muted"/>
+            </VBox>
+
+            <Separator opacity="0.2"/>
+
+            <!-- Navigation Buttons -->
+            <Button fx:id="btnNavDashboard" text="📊 Palinsesto" styleClass="nav-button, nav-button-active" maxWidth="Infinity" onAction="#handleNavDashboard"/>
+            <Button fx:id="btnNavPreMatch" text="🎯 Analisi Pre-Match" styleClass="nav-button" maxWidth="Infinity" onAction="#handleNavPreMatch"/>
+            <Button fx:id="btnNavLive" text="⚡ Console Live" styleClass="nav-button" maxWidth="Infinity" onAction="#handleNavLive"/>
+            <Button fx:id="btnNavCompetition" text="🏆 Anagrafiche" styleClass="nav-button" maxWidth="Infinity" onAction="#handleNavCompetition"/>
+            <Button fx:id="btnNavSettings" text="⚙️ Impostazioni" styleClass="nav-button" maxWidth="Infinity" onAction="#handleNavSettings"/>
+
+            <Region VBox.vgrow="ALWAYS"/>
+
+            <Label fx:id="lblDbStatus" text="🟢 MariaDB Connesso" styleClass="label-muted"/>
+        </VBox>
+    </left>
+
+    <!-- Main Content Area -->
+    <center>
+        <VBox styleClass="content-pane" spacing="16.0">
+            <padding>
+                <Insets top="16.0" right="20.0" bottom="16.0" left="20.0"/>
+            </padding>
+
+            <!-- Top Header & Action Controls Bar -->
+            <HBox spacing="12.0" alignment="CENTER_LEFT">
+                <Label text="Competizione:" styleClass="section-header"/>
+                <ComboBox fx:id="comboCompetition" prefWidth="200.0" promptText="Seleziona Campionato..."/>
+
+                <Separator orientation="VERTICAL"/>
+
+                <!-- Match State Filter Buttons -->
+                <HBox spacing="6.0" alignment="CENTER_LEFT">
+                    <Button fx:id="btnFilterAll" text="Tutte" styleClass="button, btn-primary" onAction="#handleFilterAll"/>
+                    <Button fx:id="btnFilterScheduled" text="Programmate" styleClass="button" onAction="#handleFilterScheduled"/>
+                    <Button fx:id="btnFilterLive" text="Live" styleClass="button" onAction="#handleFilterLive"/>
+                    <Button fx:id="btnFilterFinished" text="Terminate" styleClass="button" onAction="#handleFilterFinished"/>
+                </HBox>
+
+                <Region HBox.hgrow="ALWAYS"/>
+
+                <!-- Primary Action Buttons -->
+                <Button fx:id="btnImportCsv" text="📂 Importa CSV" styleClass="button, btn-primary" onAction="#handleImportCsv"/>
+                <Button fx:id="btnAddMatch" text="➕ Aggiungi Match" styleClass="button" onAction="#handleAddMatch"/>
+                <Button fx:id="btnRefresh" text="🔄 Aggiorna" styleClass="button" onAction="#handleRefresh"/>
+            </HBox>
+
+            <!-- Matches Table -->
+            <VBox VBox.vgrow="ALWAYS" spacing="8.0">
+                <TableView fx:id="tblMatches" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="colDateTime" text="Data / Ora (CET)" prefWidth="130.0"/>
+                        <TableColumn fx:id="colHomeTeam" text="Squadra Casa" prefWidth="180.0"/>
+                        <TableColumn fx:id="colAwayTeam" text="Squadra Ospite" prefWidth="180.0"/>
+                        <TableColumn fx:id="colState" text="Stato" prefWidth="100.0"/>
+                        <TableColumn fx:id="colScore" text="Risultato" prefWidth="80.0"/>
+                        <TableColumn fx:id="colOdds" text="Quote 1X2 Riferimento" prefWidth="160.0"/>
+                        <TableColumn fx:id="colEvBadge" text="Segnale EV+" prefWidth="160.0"/>
+                        <TableColumn fx:id="colActions" text="Azioni" prefWidth="160.0"/>
+                    </columns>
+                    <placeholder>
+                        <Label text="Nessuna partita disponibile per la competizione e i filtri selezionati." styleClass="label-muted"/>
+                    </placeholder>
+                </TableView>
+            </VBox>
+
+            <!-- Bottom Status Footer -->
+            <HBox spacing="16.0" alignment="CENTER_LEFT">
+                <Label fx:id="lblSummary" text="Partite caricate: 0" styleClass="label-muted"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="lblMessage" text="" styleClass="label-muted"/>
+            </HBox>
+        </VBox>
+    </center>
+
+</BorderPane>

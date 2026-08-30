@@ -34,7 +34,7 @@ public class CompetitionJpaEntity {
     @Column(name = "country", nullable = false, length = 50)
     private String country;
 
-    @Column(name = "dixon_coles_rho", nullable = false, precision = 5, scale = 4)
+    @Column(name = "dixon_coles_rho", nullable = false)
     private double dixonColesRho;
 
     /**

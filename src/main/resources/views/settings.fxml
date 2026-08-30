@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/26"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.nepe.settings.adapter.in.SettingsViewController"
+            styleClass="app-container"
+            prefHeight="720.0" prefWidth="1100.0">
+
+    <!-- Top Header Bar -->
+    <top>
+        <HBox styleClass="header-bar" spacing="16.0" alignment="CENTER_LEFT">
+            <Button fx:id="btnBackToDashboard" text="⬅ Palinsesto" styleClass="button" onAction="#handleBackToDashboard"/>
+
+            <Separator orientation="VERTICAL"/>
+
+            <Label text="⚙️ Impostazioni &amp; Parametri Globali" styleClass="card-title"/>
+        </HBox>
+    </top>
+
+    <!-- Center Content Form -->
+    <center>
+        <VBox alignment="TOP_CENTER" style="-fx-padding: 30 20 20 20;">
+            <VBox styleClass="card" maxWidth="680.0" spacing="18.0">
+                <padding>
+                    <Insets top="24.0" right="28.0" bottom="24.0" left="28.0"/>
+                </padding>
+
+                <VBox spacing="4.0">
+                    <Label text="Parametri Quantitativi &amp; Betting Exchange" styleClass="card-title"/>
+                    <Label text="Questi parametri influenzano il calcolo dell'EV, la selezione del campione e i target live." styleClass="label-muted"/>
+                </VBox>
+
+                <Separator opacity="0.3"/>
+
+                <!-- Field 1: Commission Rate -->
+                <VBox spacing="6.0">
+                    <Label text="Tasso di Commissione Exchange (Betfair Standard):" styleClass="label-strong"/>
+                    <TextField fx:id="txtCommissionRate" promptText="0.05"/>
+                    <Label text="Valore compreso tra 0.0 e 0.99 (es. 0.05 corrisponde al 5% di commissione sulle vincite nette)." styleClass="label-muted" style="-fx-font-size: 11px;"/>
+                </VBox>
+
+                <!-- Field 2: Sample Size N -->
+                <VBox spacing="6.0">
+                    <Label text="Dimensione Minima Campione Partite (N):" styleClass="label-strong"/>
+                    <TextField fx:id="txtDefaultNMatches" promptText="10"/>
+                    <Label text="Numero minimo di partite storiche analizzate per stimare le forze offensive e difensive (default: 10)." styleClass="label-muted" style="-fx-font-size: 11px;"/>
+                </VBox>
+
+                <!-- Field 3: Seasonal Decay Gamma -->
+                <VBox spacing="6.0">
+                    <Label text="Fattore di Decadimento Stagionale (γ):" styleClass="label-strong"/>
+                    <TextField fx:id="txtSeasonalDecayGamma" promptText="0.70"/>
+                    <Label text="Sconto applicato agli xG delle partite della stagione precedente quando la stagione attiva ha meno di N gare (default: 0.70)." styleClass="label-muted" style="-fx-font-size: 11px;"/>
+                </VBox>
+
+                <!-- Field 4: Green-Up Target -->
+                <VBox spacing="6.0">
+                    <Label text="Soglia Target di Profitto per Green-Up (Cash Out):" styleClass="label-strong"/>
+                    <TextField fx:id="txtGreenUpProfitTarget" promptText="0.10"/>
+                    <Label text="Rendimento percentuale minimo per attivare il segnale visivo di uscita in vincita nella Console Live (es. 0.10 = 10%)." styleClass="label-muted" style="-fx-font-size: 11px;"/>
+                </VBox>
+
+                <Separator opacity="0.3"/>
+
+                <!-- Status Feedback -->
+                <Label fx:id="lblStatus" text="" styleClass="label-muted"/>
+
+                <!-- Action Buttons -->
+                <HBox spacing="14.0" alignment="CENTER_RIGHT">
+                    <Button fx:id="btnResetDefaults" text="🔄 Ripristina Default" styleClass="button" onAction="#handleResetDefaults"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button fx:id="btnSaveSettings" text="💾 Salva Impostazioni" styleClass="button, btn-primary" onAction="#handleSaveSettings"/>
+                </HBox>
+            </VBox>
+        </VBox>
+    </center>
+
+</BorderPane>

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/26"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.nepe.competition.adapter.in.AliasMappingController"
+      styleClass="card"
+      spacing="16.0"
+      prefWidth="520.0" prefHeight="400.0">
+
+    <padding>
+        <Insets top="20.0" right="24.0" bottom="20.0" left="24.0"/>
+    </padding>
+
+    <!-- Header Section -->
+    <VBox spacing="6.0">
+        <Label text="⚠️ Squadra Sconosciuta Rilevata" styleClass="card-title"/>
+        <Label text="Il dataset CSV contiene un nome squadra non presente nel database." styleClass="label-muted"/>
+        
+        <HBox spacing="8.0" alignment="CENTER_LEFT" style="-fx-padding: 8 0 4 0;">
+            <Label text="Nome squadra nel CSV:" styleClass="section-header"/>
+            <Label fx:id="lblRawTeamName" text="-" styleClass="label-strong" style="-fx-font-size: 14px; -fx-text-fill: #38bdf8;"/>
+        </HBox>
+    </VBox>
+
+    <Separator opacity="0.3"/>
+
+    <!-- Resolution Options Section -->
+    <VBox spacing="14.0" VBox.vgrow="ALWAYS">
+        <!-- Option 1: Map to Existing Team -->
+        <VBox spacing="8.0">
+            <RadioButton fx:id="rbMapExisting" text="Associa come alias a una squadra esistente:" selected="true">
+                <toggleGroup>
+                    <ToggleGroup fx:id="grpResolutionMode"/>
+                </toggleGroup>
+            </RadioButton>
+            <HBox spacing="8.0" alignment="CENTER_LEFT">
+                <ComboBox fx:id="comboExistingTeams" prefWidth="380.0" promptText="Seleziona squadra dal database..."/>
+            </HBox>
+        </VBox>
+
+        <!-- Option 2: Create New Team -->
+        <VBox spacing="8.0">
+            <RadioButton fx:id="rbCreateNew" text="Crea una nuova squadra nel database:" toggleGroup="$grpResolutionMode"/>
+            <HBox spacing="8.0" alignment="CENTER_LEFT">
+                <TextField fx:id="txtNewTeamName" prefWidth="380.0" promptText="Nome ufficiale squadra..."/>
+            </HBox>
+        </VBox>
+    </VBox>
+
+    <!-- Feedback Message Label -->
+    <Label fx:id="lblError" text="" styleClass="label-muted" style="-fx-text-fill: #f87171;"/>
+
+    <Separator opacity="0.3"/>
+
+    <!-- Action Buttons Bar -->
+    <HBox spacing="12.0" alignment="CENTER_RIGHT">
+        <Button fx:id="btnCancel" text="Annulla" styleClass="button" onAction="#handleCancel"/>
+        <Button fx:id="btnConfirm" text="Conferma Associazione" styleClass="button, btn-primary" onAction="#handleConfirm"/>
+    </HBox>
+
+</VBox>

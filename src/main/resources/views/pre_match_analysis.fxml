@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/26"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.nepe.inference.adapter.in.PreMatchAnalysisController"
+            styleClass="app-container"
+            prefHeight="780.0" prefWidth="1220.0">
+
+    <!-- Top Header Navigation & Match Context Bar -->
+    <top>
+        <HBox styleClass="header-bar" spacing="16.0" alignment="CENTER_LEFT">
+            <Button fx:id="btnBackToDashboard" text="⬅ Palinsesto" styleClass="button" onAction="#handleBackToDashboard"/>
+
+            <Separator orientation="VERTICAL"/>
+
+            <Label text="Partita:" styleClass="section-header"/>
+            <ComboBox fx:id="comboMatchSelector" prefWidth="300.0" promptText="Seleziona partita..."/>
+
+            <VBox spacing="2.0">
+                <Label fx:id="lblMatchHeader" text="Seleziona una partita per avviare l'analisi" styleClass="card-title"/>
+                <Label fx:id="lblMatchInfo" text="" styleClass="label-muted"/>
+            </VBox>
+
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <Button fx:id="btnSaveOdds" text="💾 Salva Quote Exchange" styleClass="button, btn-primary" onAction="#handleSaveMarketOdds"/>
+        </HBox>
+    </top>
+
+    <!-- Main Content Area: Left Modifiers, Right Markets Grid -->
+    <center>
+        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent;">
+            <HBox spacing="16.0">
+                <padding>
+                    <Insets top="16.0" right="20.0" bottom="20.0" left="20.0"/>
+                </padding>
+
+                <!-- Left Column: Pre-Match Modifiers & Estimated Goal Rates (Width: 360px) -->
+                <VBox spacing="14.0" prefWidth="360.0" minWidth="340.0">
+
+                    <!-- Calculated Expected Goal Rates Box -->
+                    <VBox styleClass="card" spacing="10.0">
+                        <Label text="📊 Tassi di Gol Attesi (λ / μ)" styleClass="card-title"/>
+                        <GridPane hgap="12.0" vgap="8.0">
+                            <Label text="λ Casa (Home Goals):" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="label-muted"/>
+                            <Label fx:id="lblLambdaHome" text="-" GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="label-strong"/>
+
+                            <Label text="μ Ospite (Away Goals):" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="label-muted"/>
+                            <Label fx:id="lblMuAway" text="-" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="label-strong"/>
+
+                            <Label text="Correzione ρ Dixon-Coles:" GridPane.rowIndex="2" GridPane.columnIndex="0" styleClass="label-muted"/>
+                            <Label fx:id="lblDixonColesRho" text="-0.1200" GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="label-strong"/>
+                        </GridPane>
+                    </VBox>
+
+                    <!-- Tactical Modifiers Card -->
+                    <VBox styleClass="card" spacing="12.0">
+                        <Label text="🛠️ Modificatori Tattici &amp; Forze" styleClass="card-title"/>
+
+                        <!-- Sliders for Strength Multipliers -->
+                        <VBox spacing="8.0">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Attacco Casa (x" styleClass="label-muted"/>
+                                <Label fx:id="lblModAttHomeVal" text="1.00" styleClass="label-strong"/>
+                                <Label text=")" styleClass="label-muted"/>
+                            </HBox>
+                            <Slider fx:id="sliderModAttHome" min="0.5" max="1.5" value="1.0" blockIncrement="0.05"/>
+
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Difesa Casa (x" styleClass="label-muted"/>
+                                <Label fx:id="lblModDefHomeVal" text="1.00" styleClass="label-strong"/>
+                                <Label text=")" styleClass="label-muted"/>
+                            </HBox>
+                            <Slider fx:id="sliderModDefHome" min="0.5" max="1.5" value="1.0" blockIncrement="0.05"/>
+
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Attacco Ospite (x" styleClass="label-muted"/>
+                                <Label fx:id="lblModAttAwayVal" text="1.00" styleClass="label-strong"/>
+                                <Label text=")" styleClass="label-muted"/>
+                            </HBox>
+                            <Slider fx:id="sliderModAttAway" min="0.5" max="1.5" value="1.0" blockIncrement="0.05"/>
+
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Difesa Ospite (x" styleClass="label-muted"/>
+                                <Label fx:id="lblModDefAwayVal" text="1.00" styleClass="label-strong"/>
+                                <Label text=")" styleClass="label-muted"/>
+                            </HBox>
+                            <Slider fx:id="sliderModDefAway" min="0.5" max="1.5" value="1.0" blockIncrement="0.05"/>
+                        </VBox>
+
+                        <Separator opacity="0.3"/>
+
+                        <!-- Tactical Checkboxes -->
+                        <VBox spacing="8.0">
+                            <CheckBox fx:id="chkMustWinHome" text="Must-Win Casa"/>
+                            <CheckBox fx:id="chkMustWinAway" text="Must-Win Ospite"/>
+                            <CheckBox fx:id="chkLowUrgencyHome" text="Low-Urgency Casa"/>
+                            <CheckBox fx:id="chkLowUrgencyAway" text="Low-Urgency Ospite"/>
+                            <CheckBox fx:id="chkNeutralVenue" text="Campo Neutro (No Vantaggio Casa)"/>
+                        </VBox>
+
+                        <Button fx:id="btnResetModifiers" text="🔄 Ripristina Modificatori Default" styleClass="button" maxWidth="Infinity" onAction="#handleResetModifiers"/>
+                    </VBox>
+                </VBox>
+
+                <!-- Right Column: Markets Probability & EV Cards (Width: expands) -->
+                <VBox spacing="14.0" HBox.hgrow="ALWAYS">
+
+                    <!-- Market 1: Match Odds (1X2) -->
+                    <VBox styleClass="card" spacing="10.0">
+                        <Label text="🎯 Esito Finale (Match Odds 1X2)" styleClass="card-title"/>
+                        <GridPane fx:id="gridMatchOdds" hgap="10.0" vgap="8.0">
+                            <columnConstraints>
+                                <ColumnConstraints prefWidth="60.0"/>
+                                <ColumnConstraints prefWidth="110.0"/>
+                                <ColumnConstraints prefWidth="90.0"/>
+                                <ColumnConstraints prefWidth="100.0"/>
+                                <ColumnConstraints prefWidth="100.0"/>
+                                <ColumnConstraints prefWidth="130.0"/>
+                                <ColumnConstraints prefWidth="140.0"/>
+                            </columnConstraints>
+                            <!-- Headers -->
+                            <Label text="Esito" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                            <Label text="Prob. Reale" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                            <Label text="Quota Equa" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+                            <Label text="Quota Punta" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+                            <Label text="Quota Banca" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="4"/>
+                            <Label text="EV Punta Netto" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="5"/>
+                            <Label text="EV Banca (Rischio)" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="6"/>
+
+                            <!-- Outcome 1 -->
+                            <Label text="1 (Casa)" styleClass="label-strong" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProb1" text="-" styleClass="prob-text" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOdds1" text="-" styleClass="odds-text" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBack1" promptText="es. 1.95" prefWidth="90.0" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLay1" promptText="es. 1.98" prefWidth="90.0" GridPane.rowIndex="1" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBack1" text="-" GridPane.rowIndex="1" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLay1" text="-" GridPane.rowIndex="1" GridPane.columnIndex="6"/>
+
+                            <!-- Outcome X -->
+                            <Label text="X (Pareggio)" styleClass="label-strong" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProbX" text="-" styleClass="prob-text" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOddsX" text="-" styleClass="odds-text" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBackX" promptText="es. 3.40" prefWidth="90.0" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLayX" promptText="es. 3.50" prefWidth="90.0" GridPane.rowIndex="2" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBackX" text="-" GridPane.rowIndex="2" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLayX" text="-" GridPane.rowIndex="2" GridPane.columnIndex="6"/>
+
+                            <!-- Outcome 2 -->
+                            <Label text="2 (Ospite)" styleClass="label-strong" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProb2" text="-" styleClass="prob-text" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOdds2" text="-" styleClass="odds-text" GridPane.rowIndex="3" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBack2" promptText="es. 4.20" prefWidth="90.0" GridPane.rowIndex="3" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLay2" promptText="es. 4.30" prefWidth="90.0" GridPane.rowIndex="3" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBack2" text="-" GridPane.rowIndex="3" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLay2" text="-" GridPane.rowIndex="3" GridPane.columnIndex="6"/>
+                        </GridPane>
+                    </VBox>
+
+                    <!-- Market 2: Under / Over 2.5 Goals -->
+                    <VBox styleClass="card" spacing="10.0">
+                        <Label text="⚽ Under / Over 2.5 Gol" styleClass="card-title"/>
+                        <GridPane fx:id="gridUnderOver" hgap="10.0" vgap="8.0">
+                            <columnConstraints>
+                                <ColumnConstraints prefWidth="80.0"/>
+                                <ColumnConstraints prefWidth="110.0"/>
+                                <ColumnConstraints prefWidth="90.0"/>
+                                <ColumnConstraints prefWidth="100.0"/>
+                                <ColumnConstraints prefWidth="100.0"/>
+                                <ColumnConstraints prefWidth="130.0"/>
+                                <ColumnConstraints prefWidth="140.0"/>
+                            </columnConstraints>
+
+                            <!-- Under 2.5 -->
+                            <Label text="Under 2.5" styleClass="label-strong" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProbUnder25" text="-" styleClass="prob-text" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOddsUnder25" text="-" styleClass="odds-text" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBackUnder25" promptText="es. 1.85" prefWidth="90.0" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLayUnder25" promptText="es. 1.88" prefWidth="90.0" GridPane.rowIndex="0" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBackUnder25" text="-" GridPane.rowIndex="0" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLayUnder25" text="-" GridPane.rowIndex="0" GridPane.columnIndex="6"/>
+
+                            <!-- Over 2.5 -->
+                            <Label text="Over 2.5" styleClass="label-strong" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProbOver25" text="-" styleClass="prob-text" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOddsOver25" text="-" styleClass="odds-text" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBackOver25" promptText="es. 2.05" prefWidth="90.0" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLayOver25" promptText="es. 2.10" prefWidth="90.0" GridPane.rowIndex="1" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBackOver25" text="-" GridPane.rowIndex="1" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLayOver25" text="-" GridPane.rowIndex="1" GridPane.columnIndex="6"/>
+                        </GridPane>
+                    </VBox>
+
+                    <!-- Market 3: Both Teams to Score (BTTS) -->
+                    <VBox styleClass="card" spacing="10.0">
+                        <Label text="🥅 Both Teams to Score (Goal / No Goal)" styleClass="card-title"/>
+                        <GridPane fx:id="gridBtts" hgap="10.0" vgap="8.0">
+                            <columnConstraints>
+                                <ColumnConstraints prefWidth="80.0"/>
+                                <ColumnConstraints prefWidth="110.0"/>
+                                <ColumnConstraints prefWidth="90.0"/>
+                                <ColumnConstraints prefWidth="100.0"/>
+                                <ColumnConstraints prefWidth="100.0"/>
+                                <ColumnConstraints prefWidth="130.0"/>
+                                <ColumnConstraints prefWidth="140.0"/>
+                            </columnConstraints>
+
+                            <!-- Goal (BTTS YES) -->
+                            <Label text="Goal (Sì)" styleClass="label-strong" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProbBttsYes" text="-" styleClass="prob-text" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOddsBttsYes" text="-" styleClass="odds-text" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBackBttsYes" promptText="es. 1.80" prefWidth="90.0" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLayBttsYes" promptText="es. 1.84" prefWidth="90.0" GridPane.rowIndex="0" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBackBttsYes" text="-" GridPane.rowIndex="0" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLayBttsYes" text="-" GridPane.rowIndex="0" GridPane.columnIndex="6"/>
+
+                            <!-- No Goal (BTTS NO) -->
+                            <Label text="No Goal (No)" styleClass="label-strong" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProbBttsNo" text="-" styleClass="prob-text" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOddsBttsNo" text="-" styleClass="odds-text" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBackBttsNo" promptText="es. 2.10" prefWidth="90.0" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLayBttsNo" promptText="es. 2.15" prefWidth="90.0" GridPane.rowIndex="1" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBackBttsNo" text="-" GridPane.rowIndex="1" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLayBttsNo" text="-" GridPane.rowIndex="1" GridPane.columnIndex="6"/>
+                        </GridPane>
+                    </VBox>
+
+                    <!-- Status Notification Label -->
+                    <Label fx:id="lblStatus" text="" styleClass="label-muted"/>
+
+                </VBox>
+            </HBox>
+        </ScrollPane>
+    </center>
+
+</BorderPane>

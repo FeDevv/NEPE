@@ -74,21 +74,21 @@ public class MatchJpaEntity {
 
     // --- Expected Goals (xG) Manual Override ---
 
-    @Column(name = "manual_home_xg", precision = 5, scale = 3)
+    @Column(name = "manual_home_xg")
     private Double manualHomeXg;
 
-    @Column(name = "manual_away_xg", precision = 5, scale = 3)
+    @Column(name = "manual_away_xg")
     private Double manualAwayXg;
 
     // --- Reference Pre-Match Odds (1X2) ---
 
-    @Column(name = "odds_home", precision = 6, scale = 3)
+    @Column(name = "odds_home")
     private Double oddsHome;
 
-    @Column(name = "odds_draw", precision = 6, scale = 3)
+    @Column(name = "odds_draw")
     private Double oddsDraw;
 
-    @Column(name = "odds_away", precision = 6, scale = 3)
+    @Column(name = "odds_away")
     private Double oddsAway;
 
     // --- Pre-Match Tactical Context & Modifiers ---
@@ -108,16 +108,16 @@ public class MatchJpaEntity {
     @Column(name = "low_urgency_away", nullable = false)
     private boolean lowUrgencyAway;
 
-    @Column(name = "mod_att_home", nullable = false, precision = 3, scale = 2)
+    @Column(name = "mod_att_home", nullable = false)
     private double modAttHome;
 
-    @Column(name = "mod_def_home", nullable = false, precision = 3, scale = 2)
+    @Column(name = "mod_def_home", nullable = false)
     private double modDefHome;
 
-    @Column(name = "mod_att_away", nullable = false, precision = 3, scale = 2)
+    @Column(name = "mod_att_away", nullable = false)
     private double modAttAway;
 
-    @Column(name = "mod_def_away", nullable = false, precision = 3, scale = 2)
+    @Column(name = "mod_def_away", nullable = false)
     private double modDefAway;
 
     // --- Live Game Tracking ---

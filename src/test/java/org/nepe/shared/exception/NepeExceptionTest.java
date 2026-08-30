@@ -57,4 +57,19 @@ class NepeExceptionTest {
         assertThat(ex).isInstanceOf(NepeException.class);
         assertThat(ex.getMessage()).isEqualTo("Match already completed");
     }
+
+    @Test
+    @DisplayName("GuiException should extend NepeException and hold message and cause")
+    void shouldVerifyGuiException() {
+        RuntimeException cause = new RuntimeException("FXML parse error");
+        GuiException ex = new GuiException("View load failed", cause);
+
+        assertThat(ex).isInstanceOf(NepeException.class);
+        assertThat(ex.getMessage()).isEqualTo("View load failed");
+        assertThat(ex.getCause()).isSameAs(cause);
+
+        GuiException exSimple = new GuiException("Simple view error");
+        assertThat(exSimple).isInstanceOf(NepeException.class);
+        assertThat(exSimple.getMessage()).isEqualTo("Simple view error");
+    }
 }
