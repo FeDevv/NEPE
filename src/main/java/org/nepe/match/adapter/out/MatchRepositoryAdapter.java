@@ -89,6 +89,15 @@ public class MatchRepositoryAdapter implements MatchRepositoryPort {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Match> findFinishedMatchesByCompetitionAndSeason(int competitionId, int seasonId) {
+        List<MatchJpaEntity> entities = springDataRepository.findFinishedMatchesByCompetitionAndSeason(
+                competitionId, seasonId
+        );
+        return mapper.toDomainList(entities);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Match> findFinishedMatchesForTeamInSeason(int teamId, int competitionId, int seasonId) {
         List<MatchJpaEntity> entities = springDataRepository.findFinishedMatchesForTeamInSeason(
                 teamId, competitionId, seasonId

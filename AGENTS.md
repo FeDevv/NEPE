@@ -1,12 +1,12 @@
 # AGENTS.md - Multi-Agent System Playbook & Review Directives
 
-Welcome to **NEPE 2.0 (Nexus Exchange Prediction Engine)**. This document serves as the master specification, architectural ground truth, and operational playbook for autonomous and specialized AI agents tasked with inspecting, auditing, verifying, and maintaining this codebase.
+Welcome to **NEPE (Nexus Exchange Prediction Engine)**. This document serves as the master specification, architectural ground truth, and operational playbook for autonomous and specialized AI agents tasked with inspecting, auditing, verifying, and maintaining this codebase.
 
 ---
 
 ## 1. System Overview & Core Philosophy
 
-**NEPE 2.0** is an analytical desktop platform engineered to estimate true probabilities in association football betting exchange markets (Back/Lay) and identify positive Expected Value ($\text{EV} > 0$) trading opportunities pre-match and in real-time.
+**NEPE** is an analytical desktop platform engineered to estimate true probabilities in association football betting exchange markets (Back/Lay) and identify positive Expected Value ($\text{EV} > 0$) trading opportunities pre-match and in real-time.
 
 ### Key Architectural Pillars
 * **Human-in-the-Loop:** Total manual CRUD and edit override capabilities across all entities (competitions, teams, matches, live events, manual xG).

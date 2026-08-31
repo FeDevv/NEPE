@@ -101,6 +101,13 @@ public interface ManageMatchUseCase {
     List<MatchDetailsDTO> getMatchDetailsByState(int competitionId, int seasonId, MatchState state);
 
     /**
+     * Retrieves all match details across all competitions and seasons, ordered chronologically.
+     *
+     * @return list of all {@link MatchDetailsDTO} projections
+     */
+    List<MatchDetailsDTO> getAllMatchDetails();
+
+    /**
      * Retrieves historical match performances for a specific team in a competition,
      * enforcing the scientific N_min = 10 sample size rule with inter-season gamma decay.
      *

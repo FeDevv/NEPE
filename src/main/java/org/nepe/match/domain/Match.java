@@ -8,7 +8,7 @@ import java.util.Objects;
 import java.util.OptionalDouble;
 
 /**
- * Aggregate Root representing a football match in NEPE 2.0.
+ * Aggregate Root representing a football match in NEPE.
  * <p>
  * Unifies scheduling, relational team/competition context, live minute tracking,
  * statistical aggregation, tactical modifiers, and Betting Exchange reference odds.

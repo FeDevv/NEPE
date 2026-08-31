@@ -185,9 +185,14 @@ public class LiveConsoleController {
 
     private void loadAvailableLiveMatches() {
         try {
-            List<MatchDetailsDTO> matches = manageMatchUseCase.getMatchDetailsByState(1, 1, MatchState.LIVE);
+            List<MatchDetailsDTO> allMatches = manageMatchUseCase.getAllMatchDetails();
+            List<MatchDetailsDTO> matches = allMatches.stream()
+                    .filter(m -> m.matchState() == MatchState.LIVE)
+                    .toList();
             if (matches.isEmpty()) {
-                matches = manageMatchUseCase.getMatchDetailsByState(1, 1, MatchState.SCHEDULED);
+                matches = allMatches.stream()
+                        .filter(m -> m.matchState() == MatchState.SCHEDULED)
+                        .toList();
             }
 
             comboLiveMatchSelector.setItems(FXCollections.observableArrayList(matches));
@@ -498,7 +503,7 @@ public class LiveConsoleController {
             Parent root = springFXMLLoader.load("/views/dashboard.fxml");
             Stage stage = (Stage) btnBackToDashboard.getScene().getWindow();
             stage.getScene().setRoot(root);
-            stage.setTitle("NEPE 2.0 - Nexus Exchange Prediction Engine");
+            stage.setTitle("NEPE - Nexus Exchange Prediction Engine");
         } catch (Exception e) {
             log.error("Failed to return to dashboard", e);
         }

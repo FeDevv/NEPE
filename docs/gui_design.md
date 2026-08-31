@@ -1,6 +1,6 @@
-# Specifiche dell'Interfaccia Utente e Flussi di Navigazione - NEPE 2.0
+# Specifiche dell'Interfaccia Utente e Flussi di Navigazione - NEPE
 
-Questo documento descrive in dettaglio il design dell'esperienza utente (UX), il layout visivo e il comportamento funzionale di ciascuna schermata della GUI JavaFX di **NEPE 2.0**.
+Questo documento descrive in dettaglio il design dell'esperienza utente (UX), il layout visivo e il comportamento funzionale di ciascuna schermata della GUI JavaFX di **NEPE**.
 
 Tutte le schermate seguono una filosofia di design **moderna, reattiva e orientata ai dati** per consentire al trader sportivo di prendere decisioni oggettive nel minor tempo possibile.
 
@@ -9,7 +9,7 @@ Tutte le schermate seguono una filosofia di design **moderna, reattiva e orienta
 ## 1. Struttura Generale del Layout (Shell Principale)
 
 L'applicazione adotta una struttura a **Dashboard con Navigazione Laterale (Sidebar)**:
-* **Sidebar Sinistra (Fissa):** Contiene il logo NEPE 2.0, l'indicatore della **Competizione Selezionata** attiva ed i pulsanti di navigazione principale (Dashboard, Gestione Anagrafiche, Impostazioni).
+* **Sidebar Sinistra (Fissa):** Contiene il logo NEPE, l'indicatore della **Competizione Selezionata** attiva ed i pulsanti di navigazione principale (Dashboard, Gestione Anagrafiche, Impostazioni).
 * **Header Superiore (Fisso):** Mostra la stagione attiva (es. `2025/2026`), lo stato della connessione al DB locale MariaDB, il pulsante rapido **"Importa CSV"** e l'orologio locale sincronizzato con l'orario UTC salvato nel DB.
 * **Area di Contenuto Centrale (Dinamica):** Area che ospita le varie schermate `.fxml` scambiate dinamicamente durante la navigazione.
 
@@ -80,14 +80,15 @@ Interfaccia di controllo in tempo reale durante lo svolgimento degli incontri.
 ---
 
 ### 2.5 Popup Modale Mappatura Alias (`alias_mapping_popup.fxml` / `AliasMappingController`)
-Finestra di dialogo modale bloccante che interrompe l'importazione dei CSV quando viene rilevata una squadra sconosciuta.
+Finestra di dialogo modale che compare in caso di rilevamento di una squadra non ancora censita o mappata durante l'importazione CSV.
 
-* **Scopo:** Garantire l'integrità del database evitando che nomi con spelling diverso creino squadre duplicate.
+* **Scopo:** Garantire l'integrità del database evitando che nomi con spelling diverso creino squadre duplicate (*Human-in-the-Loop*).
 * **Comportamento UX:**
   * Mostra il messaggio: *"Squadra non riconosciuta nel file CSV: '[Nome CSV]'"*.
   * Offre due opzioni:
-    1. **Associa a squadra esistente:** Menu a tendina con ricerca autocomplete per scegliere la squadra reale dal DB. Cliccando "Conferma", crea il nuovo record in `team_aliases` e prosegue l'importazione.
-    2. **Crea Nuova Squadra:** Campo di testo pre-compilato per salvare la squadra come nuova entità nel DB.
+    1. **Associa a squadra esistente:** Menu a tendina con ricerca per scegliere la squadra reale dal DB. Cliccando "Conferma Associazione", il sistema crea il record in `team_aliases` e riprende automaticamente e in modo trasparente l'elaborazione del file CSV dal punto di interruzione.
+    2. **Crea Nuova Squadra:** Salva la squadra come nuova entità nel DB, associa l'alias e prosegue l'importazione.
+    3. **Annulla:** Interrompe l'importazione del file corrente e notifica l'annullamento.
 
 ---
 

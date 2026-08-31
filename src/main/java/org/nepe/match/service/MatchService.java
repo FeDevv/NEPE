@@ -194,6 +194,12 @@ public class MatchService implements ManageMatchUseCase {
 
     @Override
     @Transactional(readOnly = true)
+    public List<MatchDetailsDTO> getAllMatchDetails() {
+        return matchDetailsRepositoryPort.findAllDetails();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance> getHistoricalTeamPerformances(
             int teamId,
             int competitionId,
@@ -234,10 +240,7 @@ public class MatchService implements ManageMatchUseCase {
     @Override
     @Transactional(readOnly = true)
     public double getLeagueAverageXgPerTeam(int competitionId, int seasonId) {
-        List<Match> matches = matchRepositoryPort.findByCompetitionAndSeason(competitionId, seasonId);
-        List<Match> finishedMatches = matches.stream()
-                .filter(m -> m.getState() == MatchState.FINISHED)
-                .toList();
+        List<Match> finishedMatches = matchRepositoryPort.findFinishedMatchesByCompetitionAndSeason(competitionId, seasonId);
 
         if (finishedMatches.isEmpty()) {
             return 1.35;

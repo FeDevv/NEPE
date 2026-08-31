@@ -79,7 +79,7 @@ public class MarketOddsService implements ManageMarketOddsUseCase {
             return Collections.emptyList();
         }
 
-        List<MarketOdds> oddsToSave = new ArrayList<>();
+        java.util.Map<String, MarketOdds> pendingMap = new java.util.LinkedHashMap<>();
 
         for (SaveMarketOddsCommand command : commands) {
             if (command == null) {
@@ -87,30 +87,36 @@ public class MarketOddsService implements ManageMarketOddsUseCase {
             }
 
             verifyMatchExists(command.matchId());
+            String key = command.matchId() + ":" + command.marketType() + ":" + (command.outcome() != null ? command.outcome().trim().toUpperCase() : "");
 
-            Optional<MarketOdds> existingOpt = marketOddsRepositoryPort.findByMatchIdAndMarketTypeAndOutcome(
-                    command.matchId(),
-                    command.marketType(),
-                    command.outcome()
-            );
-
-            if (existingOpt.isPresent()) {
-                MarketOdds existing = existingOpt.get();
-                existing.updateOdds(command.backOdds(), command.layOdds());
-                oddsToSave.add(existing);
+            MarketOdds inFlight = pendingMap.get(key);
+            if (inFlight != null) {
+                inFlight.updateOdds(command.backOdds(), command.layOdds());
             } else {
-                MarketOdds newOdds = MarketOdds.create(
+                Optional<MarketOdds> existingOpt = marketOddsRepositoryPort.findByMatchIdAndMarketTypeAndOutcome(
                         command.matchId(),
                         command.marketType(),
-                        command.outcome(),
-                        command.backOdds(),
-                        command.layOdds()
+                        command.outcome()
                 );
-                oddsToSave.add(newOdds);
+
+                if (existingOpt.isPresent()) {
+                    MarketOdds existing = existingOpt.get();
+                    existing.updateOdds(command.backOdds(), command.layOdds());
+                    pendingMap.put(key, existing);
+                } else {
+                    MarketOdds newOdds = MarketOdds.create(
+                            command.matchId(),
+                            command.marketType(),
+                            command.outcome(),
+                            command.backOdds(),
+                            command.layOdds()
+                    );
+                    pendingMap.put(key, newOdds);
+                }
             }
         }
 
-        return marketOddsRepositoryPort.saveAll(oddsToSave);
+        return marketOddsRepositoryPort.saveAll(new ArrayList<>(pendingMap.values()));
     }
 
     @Override

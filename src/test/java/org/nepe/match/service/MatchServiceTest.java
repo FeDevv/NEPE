@@ -269,6 +269,26 @@ class MatchServiceTest {
             assertThatThrownBy(() -> service.deleteMatch(999))
                     .isInstanceOf(EntityNotFoundException.class);
         }
+
+        @Test
+        @DisplayName("Should retrieve all match details projection DTOs")
+        void shouldRetrieveAllMatchDetails() {
+            MatchDetailsDTO dto1 = new MatchDetailsDTO(
+                    1, KICKOFF, MatchState.SCHEDULED, false,
+                    null, null, null, null, null, null, 0, 0,
+                    null, null, 2.10, 3.40, 3.50,
+                    false, false, false, false, false, 1.0, 1.0, 1.0, 1.0, 0,
+                    COMP_ID, "I1", "Serie A", "Italy", -0.12,
+                    SEASON_ID, "2025/2026",
+                    HOME_TEAM_ID, "Inter", AWAY_TEAM_ID, "Milan"
+            );
+            matchDetailsRepository.storage.put(1, dto1);
+
+            List<MatchDetailsDTO> all = service.getAllMatchDetails();
+
+            assertThat(all).hasSize(1);
+            assertThat(all.get(0).matchId()).isEqualTo(1);
+        }
     }
 
     @Nested
@@ -363,6 +383,41 @@ class MatchServiceTest {
             // (2.0 + 1.0 + 1.2 + 1.4) / (2 * 2 matches) = 5.6 / 4 = 1.40
             assertThat(leagueAvg).isEqualTo(1.40);
         }
+
+        @Test
+        @DisplayName("Should compute league average xG from finished matches only, ignoring scheduled matches")
+        void shouldComputeLeagueAverageXgFromFinishedMatchesOnly() {
+            // Match 1: Home xG = 2.0, Away xG = 1.0 -> Sum = 3.0
+            Match m1 = new Match(
+                    null, SEASON_ID, COMP_ID, HOME_TEAM_ID, AWAY_TEAM_ID,
+                    KICKOFF, MatchState.FINISHED, false,
+                    new org.nepe.match.domain.MatchStatistics(2, 1, 10, 5, 5, 2, 0, 0, 2.0, 1.0),
+                    MatchModifiers.defaultModifiers(), 2.0, 3.2, 3.5, 90
+            );
+            // Match 2: Home xG = 1.2, Away xG = 1.8 -> Sum = 3.0
+            Match m2 = new Match(
+                    null, SEASON_ID, COMP_ID, HOME_TEAM_ID, AWAY_TEAM_ID,
+                    KICKOFF.plusSeconds(86400L), MatchState.FINISHED, false,
+                    new org.nepe.match.domain.MatchStatistics(1, 1, 8, 8, 3, 3, 0, 0, 1.2, 1.8),
+                    MatchModifiers.defaultModifiers(), 2.0, 3.2, 3.5, 90
+            );
+            // Match 3: SCHEDULED (must be ignored)
+            Match m3 = new Match(
+                    null, SEASON_ID, COMP_ID, HOME_TEAM_ID, AWAY_TEAM_ID,
+                    KICKOFF.plusSeconds(172800L), MatchState.SCHEDULED, false,
+                    org.nepe.match.domain.MatchStatistics.empty(),
+                    MatchModifiers.defaultModifiers(), 2.0, 3.2, 3.5, 0
+            );
+
+            matchRepository.save(m1);
+            matchRepository.save(m2);
+            matchRepository.save(m3);
+
+            // Total xG = 3.0 + 3.0 = 6.0 across 2 finished matches -> avg per team per match = 6.0 / (2 * 2) = 1.50
+            double avgXg = service.getLeagueAverageXgPerTeam(COMP_ID, SEASON_ID);
+
+            assertThat(avgXg).isEqualTo(1.50);
+        }
     }
 
     // --- In-Memory Test Doubles ---
@@ -404,6 +459,13 @@ class MatchServiceTest {
         public List<Match> findByCompetitionAndSeason(int competitionId, int seasonId) {
             return storage.values().stream()
                     .filter(m -> m.getCompetitionId() == competitionId && m.getSeasonId() == seasonId)
+                    .toList();
+        }
+
+        @Override
+        public List<Match> findFinishedMatchesByCompetitionAndSeason(int competitionId, int seasonId) {
+            return storage.values().stream()
+                    .filter(m -> m.getCompetitionId() == competitionId && m.getSeasonId() == seasonId && m.getState() == MatchState.FINISHED)
                     .toList();
         }
 

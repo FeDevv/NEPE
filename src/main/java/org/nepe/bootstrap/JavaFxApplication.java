@@ -29,7 +29,7 @@ public class JavaFxApplication extends Application {
 
     private static final String MAIN_VIEW_PATH = "/views/dashboard.fxml";
     private static final String STYLESHEET_PATH = "/styles.css";
-    private static final String APPLICATION_TITLE = "NEPE 2.0 - Nexus Exchange Prediction Engine";
+    private static final String APPLICATION_TITLE = "NEPE - Nexus Exchange Prediction Engine";
     private static final double MIN_WIDTH = 1100.0;
     private static final double MIN_HEIGHT = 700.0;
 
@@ -37,7 +37,7 @@ public class JavaFxApplication extends Application {
 
     @Override
     public void init() {
-        log.info("Initializing NEPE 2.0 Spring Boot context...");
+        log.info("Initializing NEPE Spring Boot context...");
         String[] args = getParameters().getRaw().toArray(new String[0]);
         this.applicationContext = new SpringApplicationBuilder()
                 .sources(NepeApplication.class)
@@ -67,15 +67,24 @@ public class JavaFxApplication extends Application {
         primaryStage.setMinWidth(MIN_WIDTH);
         primaryStage.setMinHeight(MIN_HEIGHT);
         primaryStage.setScene(scene);
+        primaryStage.setOnCloseRequest(event -> {
+            log.info("Primary stage close requested by user. Terminating JavaFX application.");
+            Platform.exit();
+        });
         primaryStage.show();
-        log.info("NEPE 2.0 JavaFX UI displayed successfully.");
+        log.info("NEPE JavaFX UI displayed successfully.");
     }
 
     @Override
     public void stop() {
-        log.info("Shutting down NEPE 2.0 application...");
+        log.info("Shutting down NEPE application and closing Spring context...");
         if (applicationContext != null && applicationContext.isActive()) {
-            applicationContext.close();
+            try {
+                applicationContext.close();
+                log.info("Spring ApplicationContext closed successfully.");
+            } catch (Exception e) {
+                log.error("Error during Spring ApplicationContext shutdown: {}", e.getMessage(), e);
+            }
         }
         Platform.exit();
     }

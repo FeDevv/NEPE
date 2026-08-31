@@ -1,8 +1,8 @@
-# NEPE 2.0 - Nexus Exchange Prediction Engine
+# NEPE - Nexus Exchange Prediction Engine
 
-Benvenuto in **NEPE 2.0**, la piattaforma software progettata per supportare e ottimizzare le decisioni operative nei mercati calcistici del Betting Exchange (Punta/Banca). 
+Benvenuto in **NEPE**, la piattaforma software progettata per supportare e ottimizzare le decisioni operative nei mercati calcistici del Betting Exchange (Punta/Banca). 
 
-NEPE 2.0 funge da assistente analitico personale: stima le probabilità reali degli eventi calcistici incrociando lo storico delle prestazioni delle squadre e ti permette di confrontarle con le quote offerte dai mercati per individuare opportunità a valore matematico positivo (Expected Value), sia prima dell'inizio delle partite che in tempo reale.
+NEPE funge da assistente analitico personale: stima le probabilità reali degli eventi calcistici incrociando lo storico delle prestazioni delle squadre e ti permette di confrontarle con le quote offerte dai mercati per individuare opportunità a valore matematico positivo (Expected Value), sia prima dell'inizio delle partite che in tempo reale.
 
 Il sistema adotta una filosofia **Human-in-the-Loop** (l'utente al centro del flusso): offre una totale flessibilità di manipolazione manuale dei dati unita a strumenti di caricamento semplificato per azzerare lo sforzo operativo.
 

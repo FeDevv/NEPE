@@ -23,6 +23,8 @@ import java.util.List;
  * @param greenUpProfitTarget profit percentage threshold for Green-Up notifications (e.g., 0.10)
  * @param currentLiveOdds     current live market Back/Lay odds (nullable or empty)
  * @param entryOdds           initial opening position odds (nullable, used for Green-Up profit evaluation)
+ * @param entryMarketType     market type of the initial position (default: MATCH_ODDS)
+ * @param entryOutcome        outcome of the initial position (default: "1")
  */
 public record LiveInferenceQuery(
         double lambdaHomePre,
@@ -37,11 +39,52 @@ public record LiveInferenceQuery(
         double commissionRate,
         double greenUpProfitTarget,
         List<MarketOdds> currentLiveOdds,
-        Double entryOdds
+        Double entryOdds,
+        org.nepe.match.domain.MarketType entryMarketType,
+        String entryOutcome
 ) {
 
     public LiveInferenceQuery {
         modifiers = (modifiers != null) ? modifiers : MatchModifiers.defaultModifiers();
         currentLiveOdds = (currentLiveOdds != null) ? List.copyOf(currentLiveOdds) : Collections.emptyList();
+        entryMarketType = (entryMarketType != null) ? entryMarketType : org.nepe.match.domain.MarketType.MATCH_ODDS;
+        entryOutcome = (entryOutcome != null && !entryOutcome.isBlank()) ? entryOutcome.trim().toUpperCase() : "1";
+    }
+
+    /**
+     * Backward-compatible constructor defaulting entry market to 1X2 Match Odds on Home ("1").
+     */
+    public LiveInferenceQuery(
+            double lambdaHomePre,
+            double muAwayPre,
+            int currentMinute,
+            int currentHomeScore,
+            int currentAwayScore,
+            int homeRedCards,
+            int awayRedCards,
+            MatchModifiers modifiers,
+            double dixonColesRho,
+            double commissionRate,
+            double greenUpProfitTarget,
+            List<MarketOdds> currentLiveOdds,
+            Double entryOdds
+    ) {
+        this(
+                lambdaHomePre,
+                muAwayPre,
+                currentMinute,
+                currentHomeScore,
+                currentAwayScore,
+                homeRedCards,
+                awayRedCards,
+                modifiers,
+                dixonColesRho,
+                commissionRate,
+                greenUpProfitTarget,
+                currentLiveOdds,
+                entryOdds,
+                org.nepe.match.domain.MarketType.MATCH_ODDS,
+                "1"
+        );
     }
 }

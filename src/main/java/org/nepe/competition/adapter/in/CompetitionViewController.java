@@ -398,7 +398,7 @@ public class CompetitionViewController {
             Parent root = springFXMLLoader.load("/views/dashboard.fxml");
             Stage stage = (Stage) btnBackToDashboard.getScene().getWindow();
             stage.getScene().setRoot(root);
-            stage.setTitle("NEPE 2.0 - Nexus Exchange Prediction Engine");
+            stage.setTitle("NEPE - Nexus Exchange Prediction Engine");
         } catch (Exception e) {
             log.error("Failed to return to dashboard", e);
         }

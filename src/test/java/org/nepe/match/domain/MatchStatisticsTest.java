@@ -122,10 +122,18 @@ class MatchStatisticsTest {
         }
 
         @Test
-        @DisplayName("Should throw on negative red cards or invalid manual xG")
+        @DisplayName("Should throw on negative or excessive red cards or invalid manual xG")
         void shouldThrowOnInvalidCardsOrXg() {
             assertThatThrownBy(() -> new MatchStatistics(null, null, null, null, null, null, -1, 0, null, null))
                     .isInstanceOf(DomainValidationException.class);
+
+            assertThatThrownBy(() -> new MatchStatistics(null, null, null, null, null, null, 6, 0, null, null))
+                    .isInstanceOf(DomainValidationException.class)
+                    .hasMessageContaining("between 0 and 5");
+
+            assertThatThrownBy(() -> new MatchStatistics(null, null, null, null, null, null, 0, 7, null, null))
+                    .isInstanceOf(DomainValidationException.class)
+                    .hasMessageContaining("between 0 and 5");
 
             assertThatThrownBy(() -> new MatchStatistics(null, null, null, null, null, null, 0, 0, -0.5, null))
                     .isInstanceOf(DomainValidationException.class);

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/26"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.nepe.match.adapter.in.CreateMatchController"
+      styleClass="card"
+      spacing="16.0"
+      prefWidth="560.0">
+
+    <padding>
+        <Insets top="20.0" right="24.0" bottom="20.0" left="24.0"/>
+    </padding>
+
+    <!-- Header Section -->
+    <VBox spacing="4.0">
+        <Label text="➕ Inserimento Nuovo Match Manuale" styleClass="card-title"/>
+        <Label text="Pianifica un nuovo incontro specificando squadre, data, orario e quote di riferimento." styleClass="label-muted"/>
+    </VBox>
+
+    <Separator opacity="0.3"/>
+
+    <!-- Form Fields Grid -->
+    <GridPane hgap="12.0" vgap="12.0">
+        <columnConstraints>
+            <ColumnConstraints prefWidth="140.0"/>
+            <ColumnConstraints prefWidth="360.0" hgrow="ALWAYS"/>
+        </columnConstraints>
+
+        <!-- Competition Selection -->
+        <Label text="Competizione:" styleClass="label-strong" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <ComboBox fx:id="comboCompetition" prefWidth="360.0" promptText="Seleziona competizione..." GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+        <!-- Season Selection -->
+        <Label text="Stagione:" styleClass="label-strong" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <ComboBox fx:id="comboSeason" prefWidth="360.0" promptText="Seleziona stagione..." GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+        <!-- Home Team -->
+        <Label text="Squadra Casa:" styleClass="label-strong" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+        <ComboBox fx:id="comboHomeTeam" prefWidth="360.0" promptText="Seleziona squadra di casa..." GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+        <!-- Away Team -->
+        <Label text="Squadra Ospite:" styleClass="label-strong" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+        <ComboBox fx:id="comboAwayTeam" prefWidth="360.0" promptText="Seleziona squadra ospite..." GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+
+        <!-- Date & Time Row -->
+        <Label text="Data &amp; Ora (CET):" styleClass="label-strong" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+        <HBox spacing="10.0" alignment="CENTER_LEFT" GridPane.rowIndex="4" GridPane.columnIndex="1">
+            <DatePicker fx:id="dpMatchDate" prefWidth="220.0" promptText="Data partita"/>
+            <TextField fx:id="txtMatchTime" prefWidth="110.0" promptText="15:00"/>
+        </HBox>
+
+        <!-- Reference Odds 1X2 Row -->
+        <Label text="Quote 1X2 (Opz.):" styleClass="label-strong" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+        <HBox spacing="10.0" alignment="CENTER_LEFT" GridPane.rowIndex="5" GridPane.columnIndex="1">
+            <TextField fx:id="txtOddsHome" promptText="Quota 1" prefWidth="105.0"/>
+            <TextField fx:id="txtOddsDraw" promptText="Quota X" prefWidth="105.0"/>
+            <TextField fx:id="txtOddsAway" promptText="Quota 2" prefWidth="105.0"/>
+        </HBox>
+    </GridPane>
+
+    <!-- Error / Status Feedback -->
+    <Label fx:id="lblError" text="" styleClass="label-muted" style="-fx-text-fill: #f87171;"/>
+
+    <Separator opacity="0.3"/>
+
+    <!-- Action Buttons Bar -->
+    <HBox spacing="12.0" alignment="CENTER_RIGHT">
+        <Button fx:id="btnCancel" text="Annulla" styleClass="button" onAction="#handleCancel"/>
+        <Button fx:id="btnConfirm" text="💾 Salva Partita" styleClass="button, btn-primary" onAction="#handleConfirm"/>
+    </HBox>
+
+</VBox>

@@ -230,6 +230,35 @@ class ImportCsvMatchesServiceTest {
         }
 
         @Test
+        @DisplayName("Should preserve manually rescheduled kickoff time on manually edited match during CSV re-import")
+        void shouldPreserveManualKickoffTimeOnReimport() {
+            // Initial CSV import at 19:45
+            RawCsvMatchRow initialRow = new RawCsvMatchRow("I1", "20/09/2025", "19:45", "Inter", "Milan", null, null, null, null, null, null, 0, 0, 2.10, 3.40, 3.50);
+            csvParser.setRows(List.of(initialRow));
+            service.importCsvContent("dummy", "2025/2026");
+
+            Match match = matchRepository.findAll().get(0);
+            // User manually reschedules the match to a custom time (e.g. 15:00 UTC)
+            Instant manualReschedule = Instant.parse("2025-09-20T15:00:00Z");
+            match.reschedule(manualReschedule);
+            matchRepository.save(match);
+
+            assertThat(match.isManuallyEdited()).isTrue();
+            assertThat(match.getMatchDateTime()).isEqualTo(manualReschedule);
+
+            // Re-importing CSV feed that still reports 19:45
+            RawCsvMatchRow secondImportRow = new RawCsvMatchRow("I1", "20/09/2025", "19:45", "Inter", "Milan", 2, 0, 15, 5, 6, 2, 0, 0, 2.10, 3.40, 3.50);
+            csvParser.setRows(List.of(secondImportRow));
+            ImportCsvResultDTO result = service.importCsvContent("dummy", "2025/2026");
+
+            assertThat(result.manualMatchesPreserved()).isEqualTo(1);
+
+            Match reloaded = matchRepository.findAll().get(0);
+            // Must keep manual schedule of 15:00 UTC, NOT overwrite back to 19:45
+            assertThat(reloaded.getMatchDateTime()).isEqualTo(manualReschedule);
+        }
+
+        @Test
         @DisplayName("Should update default 12:00 UTC kickoff time when subsequent CSV specifies explicit time")
         void shouldUpdateDefaultKickoffTimeOnLaterCsvWithExplicitTime() {
             // First CSV import without Time column (defaults to 12:00:00 UTC)
@@ -339,6 +368,13 @@ class ImportCsvMatchesServiceTest {
         @Override
         public List<Match> findByCompetitionAndSeason(int competitionId, int seasonId) {
             return List.of();
+        }
+
+        @Override
+        public List<Match> findFinishedMatchesByCompetitionAndSeason(int competitionId, int seasonId) {
+            return storage.values().stream()
+                    .filter(m -> m.getCompetitionId() == competitionId && m.getSeasonId() == seasonId && m.getState() == MatchState.FINISHED)
+                    .toList();
         }
 
         @Override

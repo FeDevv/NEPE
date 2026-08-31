@@ -234,11 +234,7 @@ public class PreMatchAnalysisController {
 
     private void loadAvailableMatches() {
         try {
-            List<MatchDetailsDTO> matches = manageMatchUseCase.getMatchDetailsByCompetitionAndSeason(1, 1);
-            if (matches.isEmpty()) {
-                matches = manageMatchUseCase.getMatchDetailsByState(1, 1, null);
-            }
-
+            List<MatchDetailsDTO> matches = manageMatchUseCase.getAllMatchDetails();
             comboMatchSelector.setItems(FXCollections.observableArrayList(matches));
             if (!matches.isEmpty()) {
                 comboMatchSelector.getSelectionModel().selectFirst();
@@ -586,7 +582,7 @@ public class PreMatchAnalysisController {
             Parent root = springFXMLLoader.load("/views/dashboard.fxml");
             Stage stage = (Stage) btnBackToDashboard.getScene().getWindow();
             stage.getScene().setRoot(root);
-            stage.setTitle("NEPE 2.0 - Nexus Exchange Prediction Engine");
+            stage.setTitle("NEPE - Nexus Exchange Prediction Engine");
         } catch (Exception e) {
             log.error("Failed to return to dashboard", e);
         }

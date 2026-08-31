@@ -3,6 +3,8 @@ package org.nepe.match.adapter.out;
 import org.nepe.match.port.out.CsvParserPort;
 import org.nepe.match.port.out.RawCsvMatchRow;
 import org.nepe.shared.exception.DataImportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
@@ -25,6 +27,8 @@ import java.util.Map;
  */
 @Component
 public class CsvParserAdapter implements CsvParserPort {
+
+    private static final Logger log = LoggerFactory.getLogger(CsvParserAdapter.class);
 
     // Mandatory Header Names
     private static final String HEADER_DIV = "DIV";
@@ -236,6 +240,7 @@ public class CsvParserAdapter implements CsvParserPort {
         try {
             return Integer.parseInt(value.trim());
         } catch (NumberFormatException e) {
+            log.debug("Ignoring non-integer CSV token value: '{}'", value);
             return null;
         }
     }
@@ -252,6 +257,7 @@ public class CsvParserAdapter implements CsvParserPort {
         try {
             return Double.parseDouble(value.trim());
         } catch (NumberFormatException e) {
+            log.debug("Ignoring non-numeric CSV token value: '{}'", value);
             return null;
         }
     }

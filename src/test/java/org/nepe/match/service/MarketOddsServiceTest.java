@@ -152,6 +152,21 @@ class MarketOddsServiceTest {
         }
 
         @Test
+        @DisplayName("Should handle duplicate commands in the same batch by updating in-flight record")
+        void shouldHandleDuplicateCommandsInSameBatch() {
+            List<SaveMarketOddsCommand> commandsWithDuplicates = List.of(
+                    new SaveMarketOddsCommand(MATCH_ID, MarketType.MATCH_ODDS, "1", 2.10, 2.14),
+                    new SaveMarketOddsCommand(MATCH_ID, MarketType.MATCH_ODDS, "1", 2.20, 2.24) // Duplicate / updated quote in same batch
+            );
+
+            List<MarketOdds> savedList = service.saveBatchOdds(commandsWithDuplicates);
+
+            assertThat(savedList).hasSize(1);
+            assertThat(savedList.get(0).getBackOdds()).isEqualTo(2.20);
+            assertThat(savedList.get(0).getLayOdds()).isEqualTo(2.24);
+        }
+
+        @Test
         @DisplayName("Should return empty list on empty or null batch command")
         void shouldHandleEmptyBatch() {
             assertThat(service.saveBatchOdds(List.of())).isEmpty();
@@ -297,6 +312,13 @@ class MarketOddsServiceTest {
         public List<Match> findByCompetitionAndSeason(int competitionId, int seasonId) {
             return storage.values().stream()
                     .filter(m -> m.getCompetitionId() == competitionId && m.getSeasonId() == seasonId)
+                    .toList();
+        }
+
+        @Override
+        public List<Match> findFinishedMatchesByCompetitionAndSeason(int competitionId, int seasonId) {
+            return storage.values().stream()
+                    .filter(m -> m.getCompetitionId() == competitionId && m.getSeasonId() == seasonId && m.getState() == MatchState.FINISHED)
                     .toList();
         }
 

@@ -3,7 +3,7 @@ package org.nepe.match.domain;
 import org.nepe.shared.exception.DomainValidationException;
 
 /**
- * Lifecycle state of a football match within NEPE 2.0.
+ * Lifecycle state of a football match within NEPE.
  */
 public enum MatchState {
 

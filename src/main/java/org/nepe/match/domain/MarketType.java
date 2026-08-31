@@ -7,7 +7,7 @@ import java.util.OptionalDouble;
 import java.util.Set;
 
 /**
- * Supported betting exchange market types in NEPE 2.0.
+ * Supported betting exchange market types in NEPE.
  */
 public enum MarketType {
 

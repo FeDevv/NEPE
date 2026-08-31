@@ -62,6 +62,15 @@ public interface MatchRepositoryPort {
     List<Match> findByCompetitionAndSeason(int competitionId, int seasonId);
 
     /**
+     * Retrieves all finished matches belonging to a specific competition and season.
+     *
+     * @param competitionId competition identifier
+     * @param seasonId      season identifier
+     * @return list of finished {@link Match} entities, ordered by kickoff date/time
+     */
+    List<Match> findFinishedMatchesByCompetitionAndSeason(int competitionId, int seasonId);
+
+    /**
      * Retrieves finished matches for a specific team within a competition and season, ordered newest first.
      *
      * @param teamId        team identifier

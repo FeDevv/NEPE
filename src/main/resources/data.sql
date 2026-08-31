@@ -1,5 +1,5 @@
 -- =============================================================================
--- NEPE 2.0 - Initial Seed Data (DML)
+-- NEPE - Initial Seed Data (DML)
 -- =============================================================================
 
 -- Inserimento impostazioni di default iniziale (utilizzando INSERT IGNORE per idempotenza)

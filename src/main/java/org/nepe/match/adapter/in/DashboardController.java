@@ -189,7 +189,7 @@ public class DashboardController {
         colOdds.setStyle("-fx-alignment: CENTER;");
 
         colEvBadge.setCellValueFactory(cellData ->
-                new SimpleStringProperty(evaluateSyntheticEvSignal(cellData.getValue()))
+                new SimpleStringProperty(getSyntheticEvSignal(cellData.getValue()))
         );
         colEvBadge.setCellFactory(column -> new TableCell<>() {
             @Override
@@ -307,6 +307,9 @@ public class DashboardController {
             tblMatches.setItems(observableList);
             lblSummary.setText(String.format("Partite caricate: %d (Stagione: %s)", matches.size(), currentSeason.getName()));
             lblMessage.setText("");
+
+            // Compute EV signals asynchronously on a Java 25 Virtual Thread to prevent UI thread stuttering
+            computeSyntheticEvSignalsAsync(matches);
         } catch (Exception e) {
             log.error("Error reloading matches", e);
             lblMessage.setText("Errore nel caricamento delle partite: " + e.getMessage());
@@ -317,7 +320,49 @@ public class DashboardController {
 
     private final Map<Integer, String> syntheticEvCache = new java.util.concurrent.ConcurrentHashMap<>();
 
-    private String evaluateSyntheticEvSignal(MatchDetailsDTO match) {
+    private String getSyntheticEvSignal(MatchDetailsDTO match) {
+        if (match == null) {
+            return "-";
+        }
+        return syntheticEvCache.getOrDefault(match.matchId(), "-");
+    }
+
+    private void computeSyntheticEvSignalsAsync(List<MatchDetailsDTO> matches) {
+        if (matches == null || matches.isEmpty()) {
+            return;
+        }
+
+        Thread.startVirtualThread(() -> {
+            boolean updated = false;
+            for (MatchDetailsDTO match : matches) {
+                if (match != null && !syntheticEvCache.containsKey(match.matchId())) {
+                    String signal = calculateSyntheticEv(match);
+                    syntheticEvCache.put(match.matchId(), signal);
+                    updated = true;
+                }
+            }
+            if (updated) {
+                Platform.runLater(tblMatches::refresh);
+            }
+        });
+    }
+
+    /**
+     * Computes a high-performance synthetic EV+ signal for batch fixture rendering on the Dashboard table.
+     * <p>
+     * <b>Architectural Trade-Off & Design Rationale:</b>
+     * To ensure a responsive 60 FPS UI experience during table scrolling and rapid filter switching,
+     * this method applies a lightweight heuristic based on market-implied goal expectations derived
+     * from 1X2 market odds, rather than querying and processing historical N-match time-series
+     * for every fixture in the viewport.
+     * <p>
+     * Complete and rigorous pre-match inference using the full Dixon-Coles bivariate Poisson model
+     * and historical team strengths is executed when navigating to the Pre-Match Analysis view.
+     *
+     * @param match the match projection DTO
+     * @return a synthetic EV+ badge label (e.g., "EV+ 1 (+5.2%)") or "-" if no positive value is identified
+     */
+    private String calculateSyntheticEv(MatchDetailsDTO match) {
         if (match.oddsHome() == null && match.oddsDraw() == null && match.oddsAway() == null) {
             return "-";
         }
@@ -325,46 +370,44 @@ public class DashboardController {
             return "-";
         }
 
-        return syntheticEvCache.computeIfAbsent(match.matchId(), id -> {
-            try {
-                // Approximate market-implied goal expectation rates
-                double pHomeImplied = (match.oddsHome() != null && match.oddsHome() > 1.0) ? (1.0 / match.oddsHome()) : 0.40;
-                double pAwayImplied = (match.oddsAway() != null && match.oddsAway() > 1.0) ? (1.0 / match.oddsAway()) : 0.30;
-                double totalImplied = pHomeImplied + pAwayImplied;
+        try {
+            // Approximate market-implied goal expectation rates
+            double pHomeImplied = (match.oddsHome() != null && match.oddsHome() > 1.0) ? (1.0 / match.oddsHome()) : 0.40;
+            double pAwayImplied = (match.oddsAway() != null && match.oddsAway() > 1.0) ? (1.0 / match.oddsAway()) : 0.30;
+            double totalImplied = pHomeImplied + pAwayImplied;
 
-                double lambdaH = Math.max(0.6, totalImplied * 1.5 * (pHomeImplied / Math.max(0.1, totalImplied)));
-                double muA = Math.max(0.5, totalImplied * 1.5 * (pAwayImplied / Math.max(0.1, totalImplied)));
+            double lambdaH = Math.max(0.6, totalImplied * 1.5 * (pHomeImplied / Math.max(0.1, totalImplied)));
+            double muA = Math.max(0.5, totalImplied * 1.5 * (pAwayImplied / Math.max(0.1, totalImplied)));
 
-                PreMatchAnalysisResult result = calculatePreMatchInferenceUseCase.calculate(
-                        lambdaH,
-                        muA,
-                        match.dixonColesRho(),
-                        0.05,
-                        Collections.emptyList()
-                );
+            PreMatchAnalysisResult result = calculatePreMatchInferenceUseCase.calculate(
+                    lambdaH,
+                    muA,
+                    match.dixonColesRho(),
+                    0.05,
+                    Collections.emptyList()
+            );
 
-                if (match.oddsHome() != null) {
-                    double evHome = (result.homeWin().probability() * (match.oddsHome() - 1.0) * 0.95) - (1.0 - result.homeWin().probability());
-                    if (evHome > 0.03) {
-                        return String.format("EV+ 1 (+%.1f%%)", evHome * 100);
-                    }
+            if (match.oddsHome() != null) {
+                double evHome = (result.homeWin().probability() * (match.oddsHome() - 1.0) * 0.95) - (1.0 - result.homeWin().probability());
+                if (evHome > 0.03) {
+                    return String.format("EV+ 1 (+%.1f%%)", evHome * 100);
                 }
-                if (match.oddsDraw() != null) {
-                    double evDraw = (result.draw().probability() * (match.oddsDraw() - 1.0) * 0.95) - (1.0 - result.draw().probability());
-                    if (evDraw > 0.03) {
-                        return String.format("EV+ X (+%.1f%%)", evDraw * 100);
-                    }
-                }
-                if (match.oddsAway() != null) {
-                    double evAway = (result.awayWin().probability() * (match.oddsAway() - 1.0) * 0.95) - (1.0 - result.awayWin().probability());
-                    if (evAway > 0.03) {
-                        return String.format("EV+ 2 (+%.1f%%)", evAway * 100);
-                    }
-                }
-            } catch (Exception ignored) {
             }
-            return "-";
-        });
+            if (match.oddsDraw() != null) {
+                double evDraw = (result.draw().probability() * (match.oddsDraw() - 1.0) * 0.95) - (1.0 - result.draw().probability());
+                if (evDraw > 0.03) {
+                    return String.format("EV+ X (+%.1f%%)", evDraw * 100);
+                }
+            }
+            if (match.oddsAway() != null) {
+                double evAway = (result.awayWin().probability() * (match.oddsAway() - 1.0) * 0.95) - (1.0 - result.awayWin().probability());
+                if (evAway > 0.03) {
+                    return String.format("EV+ 2 (+%.1f%%)", evAway * 100);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return "-";
     }
 
     // --- Action & Event Handlers ---
@@ -430,34 +473,65 @@ public class DashboardController {
         String seasonName = (currentSeason != null) ? currentSeason.getName() : "2025/2026";
 
         // Execute CSV ingestion asynchronously on a Java 25 Virtual Thread to prevent UI thread freezes
+        // and support seamless interactive alias resolution continuation
         Thread.startVirtualThread(() -> {
-            try {
-                ImportCsvResultDTO result = importCsvMatchesUseCase.importCsvFile(selectedFile.toPath(), seasonName);
-                Platform.runLater(() -> {
-                    syntheticEvCache.clear();
-                    showInformationAlert("Importazione CSV Completata",
-                            String.format("Righe elaborate: %d\nNuove partite: %d\nPartite aggiornate: %d\nModifiche manuali preservate: %d\nRighe saltate: %d",
-                                    result.totalRowsParsed(),
-                                    result.newMatchesInserted(),
-                                    result.existingMatchesUpdated(),
-                                    result.manualMatchesPreserved(),
-                                    result.skippedRows()));
-                    reloadMatches();
-                });
-            } catch (AliasMappingRequiredException ex) {
-                log.warn("Unknown team detected in CSV: {}", ex.getRawTeamName());
-                Platform.runLater(() -> openAliasMappingDialog(ex.getRawTeamName(), ex.getCompetitionCode()));
-            } catch (NepeException ex) {
-                Platform.runLater(() -> showErrorAlert("Errore durante l'importazione CSV", ex.getMessage()));
-            } catch (Exception ex) {
-                Platform.runLater(() -> showErrorAlert("Errore imprevisto", "Impossibile completare l'importazione: " + ex.getMessage()));
+            boolean importCompleted = false;
+            while (!importCompleted) {
+                try {
+                    ImportCsvResultDTO result = importCsvMatchesUseCase.importCsvFile(selectedFile.toPath(), seasonName);
+                    importCompleted = true;
+                    Platform.runLater(() -> {
+                        syntheticEvCache.clear();
+                        showInformationAlert("Importazione CSV Completata",
+                                String.format("Righe elaborate: %d\nNuove partite: %d\nPartite aggiornate: %d\nModifiche manuali preservate: %d\nRighe saltate: %d",
+                                        result.totalRowsParsed(),
+                                        result.newMatchesInserted(),
+                                        result.existingMatchesUpdated(),
+                                        result.manualMatchesPreserved(),
+                                        result.skippedRows()));
+                        reloadMatches();
+                    });
+                } catch (AliasMappingRequiredException ex) {
+                    log.warn("Unknown team detected in CSV: {}", ex.getRawTeamName());
+                    java.util.concurrent.CompletableFuture<Boolean> mappingFuture = new java.util.concurrent.CompletableFuture<>();
+                    Platform.runLater(() -> {
+                        boolean resolved = openAliasMappingDialog(ex.getRawTeamName(), ex.getCompetitionCode());
+                        mappingFuture.complete(resolved);
+                    });
+
+                    try {
+                        Boolean resolved = mappingFuture.get();
+                        if (!Boolean.TRUE.equals(resolved)) {
+                            log.info("User canceled alias mapping. Aborting CSV import.");
+                            Platform.runLater(() -> {
+                                showInformationAlert("Importazione Annullata", "L'importazione del CSV è stata annullata dall'utente.");
+                                reloadMatches();
+                            });
+                            break;
+                        }
+                        // Alias was resolved and persisted; the loop retries importCsvFile seamlessly!
+                    } catch (Exception waitEx) {
+                        log.error("Error awaiting alias mapping dialog response", waitEx);
+                        break;
+                    }
+                } catch (NepeException ex) {
+                    Platform.runLater(() -> showErrorAlert("Errore durante l'importazione CSV", ex.getMessage()));
+                    break;
+                } catch (Exception ex) {
+                    Platform.runLater(() -> showErrorAlert("Errore imprevisto", "Impossibile completare l'importazione: " + ex.getMessage()));
+                    break;
+                }
             }
         });
     }
 
     @FXML
     public void handleAddMatch(ActionEvent event) {
-        showInformationAlert("Aggiunta Partita", "La finestra di inserimento rapido nuovo match sarà disponibile a breve.");
+        boolean created = openCreateMatchDialog();
+        if (created) {
+            syntheticEvCache.clear();
+            reloadMatches();
+        }
     }
 
     // --- Navigation Handlers ---
@@ -483,12 +557,12 @@ public class DashboardController {
 
     @FXML
     public void handleNavCompetition(ActionEvent event) {
-        switchScene("/views/competition_manager.fxml", "NEPE 2.0 - Gestione Anagrafiche e Competizioni");
+        switchScene("/views/competition_manager.fxml", "NEPE - Gestione Anagrafiche e Competizioni");
     }
 
     @FXML
     public void handleNavSettings(ActionEvent event) {
-        switchScene("/views/settings.fxml", "NEPE 2.0 - Impostazioni");
+        switchScene("/views/settings.fxml", "NEPE - Impostazioni");
     }
 
     private void openPreMatchAnalysis(int matchId) {
@@ -505,7 +579,7 @@ public class DashboardController {
             }
             Stage stage = (Stage) tblMatches.getScene().getWindow();
             stage.getScene().setRoot(view.rootNode());
-            stage.setTitle("NEPE 2.0 - Analisi Pre-Match & Calcolo EV");
+            stage.setTitle("NEPE - Analisi Pre-Match & Calcolo EV");
         } catch (Exception e) {
             log.error("Failed to navigate to pre-match analysis", e);
             showErrorAlert("Errore Navigazione", "Impossibile caricare la schermata di analisi: " + e.getMessage());
@@ -526,14 +600,14 @@ public class DashboardController {
             }
             Stage stage = (Stage) tblMatches.getScene().getWindow();
             stage.getScene().setRoot(view.rootNode());
-            stage.setTitle("NEPE 2.0 - Console Trading Live");
+            stage.setTitle("NEPE - Console Trading Live");
         } catch (Exception e) {
             log.error("Failed to navigate to live console", e);
             showErrorAlert("Errore Navigazione", "Impossibile caricare la console live: " + e.getMessage());
         }
     }
 
-    private void openAliasMappingDialog(String rawTeamName, String competitionCode) {
+    private boolean openAliasMappingDialog(String rawTeamName, String competitionCode) {
         try {
             SpringFXMLLoader.ViewResult<Parent, org.nepe.competition.adapter.in.AliasMappingController> view =
                     springFXMLLoader.loadWithController("/views/alias_mapping_popup.fxml");
@@ -543,14 +617,48 @@ public class DashboardController {
             dialogStage.setTitle("Risoluzione Squadra Sconosciuta");
             dialogStage.initModality(Modality.APPLICATION_MODAL);
             dialogStage.initOwner(tblMatches.getScene().getWindow());
-            dialogStage.setScene(new Scene(view.rootNode()));
+
+            Scene scene = new Scene(view.rootNode());
+            java.net.URL cssResource = getClass().getResource("/styles.css");
+            if (cssResource != null) {
+                scene.getStylesheets().add(cssResource.toExternalForm());
+            }
+            dialogStage.setScene(scene);
             dialogStage.showAndWait();
 
-            // Reload matches after alias resolution
-            reloadMatches();
+            return view.controller().isResolved();
         } catch (Exception e) {
             log.error("Failed to open alias mapping dialog", e);
             showErrorAlert("Errore Apertura Modale", "Impossibile aprire il dialogo di mapping alias: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean openCreateMatchDialog() {
+        try {
+            SpringFXMLLoader.ViewResult<Parent, CreateMatchController> view =
+                    springFXMLLoader.loadWithController("/views/create_match_popup.fxml");
+            Competition comp = comboCompetition.getSelectionModel().getSelectedItem();
+            view.controller().setScope(comp, currentSeason);
+
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Nuova Partita - Inserimento Manuale");
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+            dialogStage.initOwner(tblMatches.getScene().getWindow());
+
+            Scene scene = new Scene(view.rootNode());
+            java.net.URL cssResource = getClass().getResource("/styles.css");
+            if (cssResource != null) {
+                scene.getStylesheets().add(cssResource.toExternalForm());
+            }
+            dialogStage.setScene(scene);
+            dialogStage.showAndWait();
+
+            return view.controller().isMatchCreated();
+        } catch (Exception e) {
+            log.error("Failed to open create match dialog", e);
+            showErrorAlert("Errore Apertura Modale", "Impossibile aprire il dialogo di creazione partita: " + e.getMessage());
+            return false;
         }
     }
 

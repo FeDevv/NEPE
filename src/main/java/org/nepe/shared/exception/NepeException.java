@@ -1,7 +1,7 @@
 package org.nepe.shared.exception;
 
 /**
- * Base abstract unchecked exception for all application and domain exceptions in NEPE 2.0.
+ * Base abstract unchecked exception for all application and domain exceptions in NEPE.
  * <p>
  * By extending {@link RuntimeException}, it prevents boilerplate throws signatures across the domain core
  * while enabling centralized exception handling, translation, and structured error reporting.

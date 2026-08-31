@@ -19,7 +19,7 @@
 
             <!-- App Title -->
             <VBox spacing="2.0">
-                <Label text="NEPE 2.0" styleClass="app-title"/>
+                <Label text="NEPE" styleClass="app-title"/>
                 <Label text="Nexus Exchange Prediction" styleClass="label-muted"/>
             </VBox>
 

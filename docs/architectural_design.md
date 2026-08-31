@@ -1,6 +1,6 @@
-# Architettura del Software - NEPE 2.0
+# Architettura del Software - NEPE
 
-Questo documento descrive dettagliatamente la struttura dei pacchetti, la disposizione delle cartelle e i flussi di comunicazione scelti per lo sviluppo di **NEPE 2.0**. 
+Questo documento descrive dettagliatamente la struttura dei pacchetti, la disposizione delle cartelle e i flussi di comunicazione scelti per lo sviluppo di **NEPE**. 
 
 Il progetto adotta un approccio ibrido che unisce i vantaggi dell'**Architettura Esagonale (Ports & Adapters)** con la modularità dell'organizzazione **Feature-by-Package**, garantendo massima manutenibilità, isolamento dei calcoli matematici ed indipendenza dai framework tecnologici (JavaFX, Spring Boot, MariaDB).
 
@@ -205,7 +205,7 @@ Per permettere l'iniezione delle dipendenze di Spring nei controller delle scher
 
 ## 7. Gestione delle Eccezioni Personalizzate (Unchecked Exceptions)
 
-Per garantire la massima robustezza agli errori senza appesantire la firma dei metodi con dichiarazioni `throws` (tipiche delle checked exceptions), NEPE 2.0 implementa una **rete di eccezioni personalizzate non controllate (Unchecked Exceptions)** che estendono `RuntimeException`.
+Per garantire la massima robustezza agli errori senza appesantire la firma dei metodi con dichiarazioni `throws` (tipiche delle checked exceptions), NEPE implementa una **rete di eccezioni personalizzate non controllate (Unchecked Exceptions)** che estendono `RuntimeException`.
 
 ### 7.1 Gerarchia delle Eccezioni
 Tutte le eccezioni ereditano da una classe base comune inserita nel pacchetto `shared.domain`:

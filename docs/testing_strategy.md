@@ -1,6 +1,6 @@
-# Strategia di Testing e Qualità del Codice - NEPE 2.0
+# Strategia di Testing e Qualità del Codice - NEPE
 
-Questo documento definisce la strategia di testing, la copertura della qualità e i criteri di validazione software per **NEPE 2.0**.
+Questo documento definisce la strategia di testing, la copertura della qualità e i criteri di validazione software per **NEPE**.
 
 L'obiettivo è garantire che il motore matematico di previsione, la logica di calcolo dell'Expected Value (EV) e le componenti di persistenza/importazione siano totalmente immuni da regressioni e pronti per l'analisi statica tramite **SonarQube**.
 

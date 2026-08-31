@@ -1,5 +1,5 @@
 -- =============================================================================
--- NEPE 2.0 - Database Schema DDL (MariaDB / MySQL)
+-- NEPE - Database Schema DDL (MariaDB / MySQL)
 -- Configurato per essere NON distruttivo (Persistenza dati tra i riavvii)
 -- =============================================================================
 

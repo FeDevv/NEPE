@@ -1,6 +1,6 @@
-# Progettazione del Database - NEPE 2.0
+# Progettazione del Database - NEPE
 
-Questo documento descrive la struttura del database relazionale locale per **NEPE 2.0** utilizzando **MariaDB**. Lo schema è progettato per rispettare rigorosamente la **Terza Forma Normale (3NF)**, garantendo l'assenza di ridondanze, l'integrità dei dati e ottime prestazioni di query tramite indici ottimizzati.
+Questo documento descrive la struttura del database relazionale locale per **NEPE** utilizzando **MariaDB**. Lo schema è progettato per rispettare rigorosamente la **Terza Forma Normale (3NF)**, garantendo l'assenza di ridondanze, l'integrità dei dati e ottime prestazioni di query tramite indici ottimizzati.
 
 Include inoltre la strategia per il caricamento ripetuto dei file CSV e la tutela dei dati modificati manualmente dall'utente.
 
@@ -38,8 +38,8 @@ Due squadre non possono giocare l'una contro l'altra due volte nello stesso gior
 Durante il parsing del CSV, per ogni riga:
 1. Se il match **non esiste** nel DB, viene inserito un nuovo record.
 2. Se il match **esiste già** nel DB:
-   * **Se `is_manually_edited = 1`:** Il sistema **salta** l'aggiornamento dei dati di punteggio, tiri e cartellini per non perdere le correzioni manuali inserite dall'utente (*Human-in-the-Loop*). Viene aggiornata solo la quota se prima era assente.
-   * **Se `is_manually_edited = 0`:** Il sistema effettua l'aggiornamento dei dati (es. se la partita era programmata e ora è terminata, vengono compilati punteggi e statistiche).
+   * **Se `is_manually_edited = 1`:** Il sistema **salta** l'aggiornamento dei dati di data/ora kickoff, punteggio, tiri, cartellini, xG manuale e modificatori tattici per non perdere le correzioni manuali inserite dall'utente (*Human-in-the-Loop*). Viene effettuato unicamente il backfilling additivo delle quote di riferimento pre-match (`odds_home`, `odds_draw`, `odds_away`) se nel record erano originariamente assenti (`null`).
+   * **Se `is_manually_edited = 0`:** Il sistema effettua l'aggiornamento dei dati (es. se la partita era programmata e ora è terminata, vengono compilati punteggi e statistiche, e l'orario di inizio viene aggiornato se il feed fornisce l'ora esatta).
 
 ---
 
@@ -135,7 +135,7 @@ Questa vista unisce `matches` con `teams`, `competitions` e `seasons`, fornendo 
 ### 4.3 Scelta Architetturale su Trigger vs Logica Java
 In merito ai **Trigger** (es. aggiornare automaticamente il punteggio in `matches` all'inserimento di un evento in `match_events`):
 * **Cosa farebbe un Trigger:** Un trigger `AFTER INSERT ON match_events` potrebbe aggiornare `home_score`/`away_score` o `home_red_cards`/`away_red_cards` su `matches`.
-* **Perché lo evitiamo in NEPE 2.0 (Consigliato):** Seguendo le linee guida dell'**Architettura Esagonale** adottata, la logica di business e le transizioni di stato (es. *"se c'è un gol, il punteggio aumenta"*) devono risiedere interamente nel **Domain Core** in Java. Delegare parte di questa logica al database (trigger) frammenterebbe le regole di business, renderebbe il codice core dipendente da comportamenti impliciti del DB e complicherebbe la testabilità unitaria.
+* **Perché lo evitiamo in NEPE (Consigliato):** Seguendo le linee guida dell'**Architettura Esagonale** adottata, la logica di business e le transizioni di stato (es. *"se c'è un gol, il punteggio aumenta"*) devono risiedere interamente nel **Domain Core** in Java. Delegare parte di questa logica al database (trigger) frammenterebbe le regole di business, renderebbe il codice core dipendente da comportamenti impliciti del DB e complicherebbe la testabilità unitaria.
 * **Soluzione:** La gestione e la sincronizzazione dello stato delle partite live è gestita interamente a livello Java, eseguendo le scritture di eventi e l'aggiornamento del match all'interno di una singola transazione gestita da Spring. Il database rimane un archivio di persistenza passivo, preservando la purezza architetturale.
 
 ---

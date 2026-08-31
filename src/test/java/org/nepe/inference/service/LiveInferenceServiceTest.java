@@ -200,6 +200,72 @@ class LiveInferenceServiceTest {
         }
 
         @Test
+        @DisplayName("Should NOT trigger greenUpTargetMet when low lay odds belong to a different market")
+        void shouldNotTriggerGreenUpAlertWhenLowLayOddsBelongToDifferentMarket() {
+            // Entry Back on Home (Match Odds "1") @ 2.50.
+            // Live odds: Under 2.5 Lay is 1.20 (low, would trigger if checked!), but Match Odds "1" Lay is 2.80 (loss).
+            List<MarketOdds> liveOdds = List.of(
+                    MarketOdds.create(1, MarketType.UNDER_OVER_25, "UNDER", 1.18, 1.20),
+                    MarketOdds.create(1, MarketType.MATCH_ODDS, "1", 2.70, 2.80)
+            );
+
+            LiveInferenceQuery query = new LiveInferenceQuery(
+                    1.50,
+                    1.00,
+                    60,
+                    0,
+                    0,
+                    0,
+                    0,
+                    MatchModifiers.defaultModifiers(),
+                    -0.12,
+                    0.05,
+                    0.10,
+                    liveOdds,
+                    2.50, // Entry Back on Home (1) @ 2.50
+                    MarketType.MATCH_ODDS,
+                    "1"
+            );
+
+            LiveAnalysisResult result = service.calculate(query);
+
+            // Lay odds for "1" are 2.80 -> (2.50 - 2.80)/2.80 = -10.7% (loss, not profit target)
+            assertThat(result.greenUpTargetMet()).isFalse();
+        }
+
+        @Test
+        @DisplayName("Should trigger greenUpTargetMet for non-default market (e.g. Over 2.5)")
+        void shouldTriggerGreenUpForCustomMarketAndOutcome() {
+            // Entry Back on OVER 2.5 @ 2.20. Live Lay on OVER 2.5 drops to 1.50.
+            // Profit ratio: (2.20 - 1.50) / 1.50 = 46.7% >= 10%
+            List<MarketOdds> liveOdds = List.of(
+                    MarketOdds.create(1, MarketType.UNDER_OVER_25, "OVER", 1.45, 1.50)
+            );
+
+            LiveInferenceQuery query = new LiveInferenceQuery(
+                    1.50,
+                    1.00,
+                    60,
+                    1,
+                    1,
+                    0,
+                    0,
+                    MatchModifiers.defaultModifiers(),
+                    -0.12,
+                    0.05,
+                    0.10,
+                    liveOdds,
+                    2.20,
+                    MarketType.UNDER_OVER_25,
+                    "OVER"
+            );
+
+            LiveAnalysisResult result = service.calculate(query);
+
+            assertThat(result.greenUpTargetMet()).isTrue();
+        }
+
+        @Test
         @DisplayName("Should throw DomainValidationException when query is null")
         void shouldThrowWhenQueryIsNull() {
             assertThatThrownBy(() -> service.calculate(null))

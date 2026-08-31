@@ -55,6 +55,21 @@ public interface SpringDataMatchRepository extends JpaRepository<MatchJpaEntity,
     );
 
     /**
+     * Retrieves finished matches for a specific competition and season, ordered chronologically.
+     */
+    @Query("""
+            SELECT m FROM MatchJpaEntity m
+            WHERE m.competitionId = :competitionId
+              AND m.seasonId = :seasonId
+              AND m.state = 'FINISHED'
+            ORDER BY m.matchDateTime ASC
+            """)
+    List<MatchJpaEntity> findFinishedMatchesByCompetitionAndSeason(
+            @Param("competitionId") Integer competitionId,
+            @Param("seasonId") Integer seasonId
+    );
+
+    /**
      * Retrieves finished matches for a specific team in a specific season, ordered newest first.
      */
     @Query("""

@@ -108,8 +108,10 @@ public class LiveInferenceService implements CalculateLiveInferenceUseCase {
         // 5. Evaluate Green-Up profit threshold target
         boolean greenUpTargetMet = evaluateGreenUpTarget(
                 query.entryOdds(),
+                query.entryMarketType(),
+                query.entryOutcome(),
                 query.greenUpProfitTarget(),
-                query.currentLiveOdds()
+                oddsIndex
         );
 
         return new LiveAnalysisResult(
@@ -193,19 +195,21 @@ public class LiveInferenceService implements CalculateLiveInferenceUseCase {
 
     // --- Green-Up Evaluation Helper ---
 
-    private static boolean evaluateGreenUpTarget(Double entryOdds, double profitTarget, List<MarketOdds> liveOddsList) {
-        if (entryOdds == null || entryOdds <= 1.0 || liveOddsList == null || liveOddsList.isEmpty()) {
+    private static boolean evaluateGreenUpTarget(Double entryOdds,
+                                                 MarketType entryMarketType,
+                                                 String entryOutcome,
+                                                 double profitTarget,
+                                                 Map<String, MarketOdds> oddsIndex) {
+        if (entryOdds == null || entryOdds <= 1.0 || entryMarketType == null || entryOutcome == null || oddsIndex == null) {
             return false;
         }
 
-        for (MarketOdds odds : liveOddsList) {
-            if (odds != null && odds.getLayOdds() != null && odds.getLayOdds() > 1.0) {
-                // Hedging Profit Ratio = (Entry Back Odds - Current Lay Odds) / Current Lay Odds
-                double profitRatio = (entryOdds - odds.getLayOdds()) / odds.getLayOdds();
-                if (profitRatio >= profitTarget) {
-                    return true;
-                }
-            }
+        String key = buildOddsKey(entryMarketType, entryOutcome);
+        MarketOdds matchingOdds = oddsIndex.get(key);
+        if (matchingOdds != null && matchingOdds.getLayOdds() != null && matchingOdds.getLayOdds() > 1.0) {
+            // Hedging Profit Ratio = (Entry Back Odds - Current Lay Odds) / Current Lay Odds
+            double profitRatio = (entryOdds - matchingOdds.getLayOdds()) / matchingOdds.getLayOdds();
+            return profitRatio >= profitTarget;
         }
         return false;
     }

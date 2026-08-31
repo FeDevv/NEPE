@@ -183,11 +183,6 @@ public class ImportCsvMatchesService implements ImportCsvMatchesUseCase {
             if (existingMatchOpt.isPresent()) {
                 Match existing = existingMatchOpt.get();
 
-                // If existing match had default 12:00 UTC time and this CSV specifies an explicit kickoff time, update datetime
-                if (row.timeStr() != null && !row.timeStr().isBlank()) {
-                    existing.updateKickoffFromFeed(matchDateTime);
-                }
-
                 // Protect manually edited matches from automated CSV overwrites, but backfill missing reference odds
                 if (existing.isManuallyEdited()) {
                     boolean oddsBackfilled = false;
@@ -214,6 +209,11 @@ public class ImportCsvMatchesService implements ImportCsvMatchesUseCase {
                     }
                     manualMatchesPreserved++;
                 } else {
+                    // Update kickoff datetime from feed if explicit time is specified
+                    if (row.timeStr() != null && !row.timeStr().isBlank()) {
+                        existing.updateKickoffFromFeed(matchDateTime);
+                    }
+
                     if (isFinished) {
                         MatchStatistics stats = new MatchStatistics(
                                 row.fthg(),

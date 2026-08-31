@@ -1,6 +1,6 @@
-# Fondamenti Teorici e Modelli Matematici - NEPE 2.0
+# Fondamenti Teorici e Modelli Matematici - NEPE
 
-Questo documento raccoglie la teoria matematica, statistica e finanziaria che costituisce il cuore dell'**Inference Engine** di **NEPE 2.0**. 
+Questo documento raccoglie la teoria matematica, statistica e finanziaria che costituisce il cuore dell'**Inference Engine** di **NEPE**. 
 
 Il software abbandona qualsiasi approccio soggettivo, basando le proprie stime su modelli stocastici consolidati nella letteratura scientifica sul trading sportivo e sulla teoria delle probabilità.
 
@@ -11,7 +11,7 @@ Il software abbandona qualsiasi approccio soggettivo, basando le proprie stime s
 ### 1.1 Concetto
 Gli **Expected Goals (xG)** misurano la qualità delle occasioni da gol create e concesse da una squadra. Nelle metriche avanzate ufficiali, l'xG viene calcolato tracciando la posizione precisa di ogni tiro sul campo. 
 
-Poiché i dataset gratuiti pubblicamente disponibili (come Football-Data) non forniscono coordinate spaziali ma solo il conteggio dei tiri totali e dei tiri in porta, NEPE 2.0 adotta una **formula euristica di regressione** per stimare l'xG:
+Poiché i dataset gratuiti pubblicamente disponibili (come Football-Data) non forniscono coordinate spaziali ma solo il conteggio dei tiri totali e dei tiri in porta, NEPE adotta una **formula euristica di regressione** per stimare l'xG:
 
 $$\text{xG} = (\text{Tiri in Porta} \times 0.30) + ((\text{Tiri Totali} - \text{Tiri in Porta}) \times 0.05)$$
 
@@ -86,7 +86,7 @@ Esistono tre metodi per ottenere il parametro $\rho$:
 Nel paper fondamentale di Dixon & Coles (1997), la stima calcolata sui dati storici dei campionati inglesi risultava $\rho \approx -0.13$ (nello specifico $-0.128 \pm 0.038$). 
 Studi empirici successivi sui principali campionati europei (Serie A, Premier League, La Liga, Bundesliga) confermano che per i massimi campionati continentali $\rho$ ricade stabilmente nell'intervallo:
 $$\rho \in [-0.15, -0.09]$$
-Il valore di default globale impostato in NEPE 2.0 (**$-0.1200$**) rappresenta un ottimo stimatore *off-the-shelf* applicabile a qualsiasi competizione prima di aver calibrato i dati.
+Il valore di default globale impostato in NEPE (**$-0.1200$**) rappresenta un ottimo stimatore *off-the-shelf* applicabile a qualsiasi competizione prima di aver calibrato i dati.
 
 #### 2. Calcolo Esatto tramite Maximum Likelihood Estimation (MLE)
 Disponendo nel database dello storico dei risultati $(x_k, y_k)$ di una competizione (ad esempio l'intera stagione precedente composta da 380 partite) e dei relativi tassi $(\lambda_k, \mu_k)$, $\rho$ si ottiene massimizzando la funzione di log-verosimiglianza:

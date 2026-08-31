@@ -249,6 +249,13 @@ class LiveMatchTradingServiceTest {
         }
 
         @Override
+        public List<Match> findFinishedMatchesByCompetitionAndSeason(int competitionId, int seasonId) {
+            return storage.values().stream()
+                    .filter(m -> m.getCompetitionId() == competitionId && m.getSeasonId() == seasonId && m.getState() == MatchState.FINISHED)
+                    .toList();
+        }
+
+        @Override
         public List<Match> findFinishedMatchesForTeamInSeason(int teamId, int competitionId, int seasonId) {
             return storage.values().stream()
                     .filter(m -> m.getCompetitionId() == competitionId && m.getSeasonId() == seasonId && m.getState() == MatchState.FINISHED

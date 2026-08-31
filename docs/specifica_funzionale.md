@@ -1,6 +1,6 @@
-# NEPE 2.0 - Specifica Funzionale dei Requisiti
+# NEPE - Specifica Funzionale dei Requisiti
 
-Questo documento descrive in dettaglio i requisiti funzionali, le regole di business e le logiche matematiche che governano il comportamento di **NEPE 2.0**.
+Questo documento descrive in dettaglio i requisiti funzionali, le regole di business e le logiche matematiche che governano il comportamento di **NEPE**.
 
 ---
 

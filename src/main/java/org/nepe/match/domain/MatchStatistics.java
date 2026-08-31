@@ -127,11 +127,15 @@ public class MatchStatistics {
     }
 
     public void incrementHomeRedCards() {
-        this.homeRedCards++;
+        if (this.homeRedCards < 5) {
+            this.homeRedCards++;
+        }
     }
 
     public void incrementAwayRedCards() {
-        this.awayRedCards++;
+        if (this.awayRedCards < 5) {
+            this.awayRedCards++;
+        }
     }
 
     public void decrementHomeScore() {
@@ -206,8 +210,8 @@ public class MatchStatistics {
     }
 
     private static void validateRedCards(int redCards, String side) {
-        if (redCards < 0) {
-            throw new DomainValidationException(side + " red cards cannot be negative.");
+        if (redCards < 0 || redCards > 5) {
+            throw new DomainValidationException(side + " red cards must be between 0 and 5.");
         }
     }
 
