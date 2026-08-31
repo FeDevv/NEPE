@@ -33,7 +33,7 @@ L'applicazione adotta una struttura a **Dashboard con Navigazione Laterale (Side
 
 ---
 
-### 2.2 Gestione Anagrafiche e Competizioni (`competition_manager.fxml` / `CompetitionController`)
+### 2.2 Gestione Anagrafiche e Competizioni (`competition_manager.fxml` / `CompetitionViewController`)
 Schermata dedicata al controllo ed all'operatività manuale totale sulle entità di base.
 
 * **Scopo:** Permettere la gestione CRUD (Creazione, Lettura, Modifica, Eliminazione) per competizioni, squadre e alias.
@@ -92,7 +92,7 @@ Finestra di dialogo modale che compare in caso di rilevamento di una squadra non
 
 ---
 
-### 2.6 Pannello Impostazioni (`settings.fxml` / `SettingsController`)
+### 2.6 Pannello Impostazioni (`settings.fxml` / `SettingsViewController`)
 Schermata di configurazione dei parametri globali del software.
 
 * **Scopo:** Consentire all'utente di personalizzare le costanti dei modelli matematici e di trading.

@@ -208,7 +208,7 @@ Per permettere l'iniezione delle dipendenze di Spring nei controller delle scher
 Per garantire la massima robustezza agli errori senza appesantire la firma dei metodi con dichiarazioni `throws` (tipiche delle checked exceptions), NEPE implementa una **rete di eccezioni personalizzate non controllate (Unchecked Exceptions)** che estendono `RuntimeException`.
 
 ### 7.1 Gerarchia delle Eccezioni
-Tutte le eccezioni ereditano da una classe base comune inserita nel pacchetto `shared.domain`:
+Tutte le eccezioni ereditano da una classe base comune inserita nel pacchetto `org.nepe.shared.exception`:
 * **`NepeException` (extends `RuntimeException`):** Classe base globale per le eccezioni dell'applicazione.
   * **`EntityNotFoundException`:** Lanciata quando un'entità richiesta (squadra, competizione, match, alias) non è presente nel DB.
   * **`DomainValidationException`:** Lanciata quando una regola di business o una validazione matematica viene violata (es. quote negative, punteggio inferiore a zero, minutaggio live non valido).

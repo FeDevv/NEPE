@@ -7,6 +7,13 @@ spring:
     username: ${DB_USERNAME:fede}
     password: ${DB_PASSWORD:3002FedericO2003}
     driver-class-name: org.mariadb.jdbc.Driver
+    hikari:
+      maximum-pool-size: 8
+      minimum-idle: 2
+      idle-timeout: 30000
+      connection-timeout: 10000
+      max-lifetime: 1800000
+      pool-name: NepeHikariPool
 
   jpa:
     hibernate:

@@ -258,6 +258,7 @@ public class DashboardController {
 
         comboCompetition.getSelectionModel().selectedItemProperty().addListener((obs, oldComp, newComp) -> {
             if (newComp != null) {
+                syntheticEvCache.clear();
                 reloadMatches();
             }
         });
