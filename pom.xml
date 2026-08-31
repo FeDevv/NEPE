@@ -29,6 +29,7 @@
     <properties>
         <java.version>25</java.version>
         <javafx.version>26.0.2</javafx.version>
+        <sonar.organization>fedevv</sonar.organization>
     </properties>
     <dependencies>
         <dependency>
