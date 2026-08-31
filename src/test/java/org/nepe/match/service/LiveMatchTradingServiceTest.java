@@ -236,8 +236,24 @@ class LiveMatchTradingServiceTest {
         }
 
         @Override
+        public Optional<Match> findByTeamsAndDateRange(int homeTeamId, int awayTeamId, Instant startOfDay, Instant endOfDay) {
+            return storage.values().stream()
+                    .filter(m -> m.getHomeTeamId() == homeTeamId && m.getAwayTeamId() == awayTeamId
+                            && !m.getMatchDateTime().isBefore(startOfDay) && !m.getMatchDateTime().isAfter(endOfDay))
+                    .findFirst();
+        }
+
+        @Override
         public List<Match> findByCompetitionAndSeason(int competitionId, int seasonId) {
             return List.of();
+        }
+
+        @Override
+        public List<Match> findFinishedMatchesForTeamInSeason(int teamId, int competitionId, int seasonId) {
+            return storage.values().stream()
+                    .filter(m -> m.getCompetitionId() == competitionId && m.getSeasonId() == seasonId && m.getState() == MatchState.FINISHED
+                            && (m.getHomeTeamId() == teamId || m.getAwayTeamId() == teamId))
+                    .toList();
         }
 
         @Override

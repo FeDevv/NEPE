@@ -149,6 +149,14 @@ public class Match {
         markAsManuallyEdited();
     }
 
+    /**
+     * Updates kickoff date/time from external feed without setting the manual edit flag.
+     */
+    public void updateKickoffFromFeed(Instant newDateTime) {
+        validateMatchDateTime(newDateTime);
+        this.matchDateTime = newDateTime;
+    }
+
     // --- Live Event Applications ---
 
     /**
@@ -232,6 +240,16 @@ public class Match {
         }
         this.statistics = newStatistics;
         markAsManuallyEdited();
+    }
+
+    /**
+     * Updates statistics from external data feed without setting the manual edit flag.
+     */
+    public void updateStatisticsFromFeed(MatchStatistics newStatistics) {
+        if (newStatistics == null) {
+            throw new DomainValidationException("Statistics cannot be null.");
+        }
+        this.statistics = newStatistics;
     }
 
     public void updateReferenceOdds(Double home, Double draw, Double away) {

@@ -79,7 +79,7 @@ public final class EvCalculator {
      */
     public static double calculateEvLayRiskAdjusted(double probability, double layOdds, double commissionRate) {
         double evLay = calculateEvLay(probability, layOdds, commissionRate);
-        double liability = layOdds - 1.0;
+        double liability = Math.max(0.001, layOdds - 1.0);
         return evLay / liability;
     }
 

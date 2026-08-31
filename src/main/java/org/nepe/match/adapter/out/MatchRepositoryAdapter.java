@@ -70,9 +70,28 @@ public class MatchRepositoryAdapter implements MatchRepositoryPort {
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<Match> findByTeamsAndDateRange(int homeTeamId, int awayTeamId, Instant startOfDay, Instant endOfDay) {
+        if (startOfDay == null || endOfDay == null) {
+            return Optional.empty();
+        }
+        return springDataRepository.findByTeamsAndDateRange(homeTeamId, awayTeamId, startOfDay, endOfDay)
+                .map(mapper::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Match> findByCompetitionAndSeason(int competitionId, int seasonId) {
         List<MatchJpaEntity> entities = springDataRepository.findByCompetitionIdAndSeasonIdOrderByMatchDateTimeAsc(
                 competitionId, seasonId
+        );
+        return mapper.toDomainList(entities);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Match> findFinishedMatchesForTeamInSeason(int teamId, int competitionId, int seasonId) {
+        List<MatchJpaEntity> entities = springDataRepository.findFinishedMatchesForTeamInSeason(
+                teamId, competitionId, seasonId
         );
         return mapper.toDomainList(entities);
     }

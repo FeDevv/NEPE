@@ -25,7 +25,7 @@ Il sistema adotta la classica piramide dei test, sfruttando le peculiarità dell
 ## 2. Dettaglio dei Livelli di Testing
 
 ### 2.1 Test Unitari Puri del Domain Core (Obiettivo Copertura > 95%)
-Il **Domain Core** (`com.nexus.nepe.inference.domain`, `com.nexus.nepe.match.domain`, ecc.) è scritto in Java puro ed è completamente disaccoppiato da Spring, JPA o MariaDB.
+Il **Domain Core** (`org.nepe.inference.domain`, `org.nepe.match.domain`, ecc.) è scritto in Java puro ed è completamente disaccoppiato da Spring, JPA o MariaDB.
 
 * **Strumenti:** JUnit 5, AssertJ, Fake/Stub creati a mano in Java. **Nessun uso di Mockito o librerie di mocking dinamico**, garantendo test reali, leggibili e manutenibili.
 * **Velocità:** Esecuzione in pochi millisecondi.

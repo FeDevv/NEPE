@@ -99,10 +99,10 @@ CREATE TABLE IF NOT EXISTS match_events (
     id INT AUTO_INCREMENT PRIMARY KEY,
     match_id INT NOT NULL,
     event_type VARCHAR(20) NOT NULL, -- 'GOAL_HOME', 'GOAL_AWAY', 'RED_CARD_HOME', 'RED_CARD_AWAY'
-    minute INT NOT NULL,
+    `minute` INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
-    INDEX idx_match_events_lookup (match_id, minute)
+    INDEX idx_match_events_lookup (match_id, `minute`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 7. Tabella Quote Exchange Correnti (Impostate dall'utente per la valutazione EV)

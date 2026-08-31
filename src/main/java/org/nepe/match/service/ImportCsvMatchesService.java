@@ -154,23 +154,28 @@ public class ImportCsvMatchesService implements ImportCsvMatchesUseCase {
                 continue;
             }
 
-            // 2. Parse Kickoff Timestamp
-            Instant matchDateTime = parseKickoffInstant(row.dateStr(), row.timeStr());
-            if (matchDateTime == null) {
-                warnings.add(String.format("Row %d skipped: Unable to parse date/time '%s %s'.", i + 1, row.dateStr(), row.timeStr()));
+            // 2. Parse Kickoff Date and Timestamp
+            LocalDate matchDate = parseKickoffDate(row.dateStr());
+            if (matchDate == null) {
+                warnings.add(String.format("Row %d skipped: Unable to parse date '%s'.", i + 1, row.dateStr()));
                 skippedRows++;
                 continue;
             }
+
+            Instant matchDateTime = resolveKickoffInstant(matchDate, row.timeStr());
+            Instant startOfDay = matchDate.atStartOfDay(ZoneOffset.UTC).toInstant();
+            Instant endOfDay = matchDate.atTime(LocalTime.MAX).toInstant(ZoneOffset.UTC);
 
             // 3. Resolve Teams via 3-Tier Alias Resolution (Throws AliasMappingRequiredException if unknown)
             Team homeTeam = manageTeamUseCase.resolveTeamByRawName(row.homeTeamRaw());
             Team awayTeam = manageTeamUseCase.resolveTeamByRawName(row.awayTeamRaw());
 
-            // 4. Upsert Matching against Database
-            Optional<Match> existingMatchOpt = matchRepositoryPort.findByTeamsAndDateTime(
+            // 4. Upsert Matching against Database (Matching by Teams and same UTC Calendar Day)
+            Optional<Match> existingMatchOpt = matchRepositoryPort.findByTeamsAndDateRange(
                     homeTeam.getId(),
                     awayTeam.getId(),
-                    matchDateTime
+                    startOfDay,
+                    endOfDay
             );
 
             boolean isFinished = (row.fthg() != null && row.ftag() != null);
@@ -178,8 +183,35 @@ public class ImportCsvMatchesService implements ImportCsvMatchesUseCase {
             if (existingMatchOpt.isPresent()) {
                 Match existing = existingMatchOpt.get();
 
-                // Protect manually edited matches from automated CSV overwrites
+                // If existing match had default 12:00 UTC time and this CSV specifies an explicit kickoff time, update datetime
+                if (row.timeStr() != null && !row.timeStr().isBlank()) {
+                    existing.updateKickoffFromFeed(matchDateTime);
+                }
+
+                // Protect manually edited matches from automated CSV overwrites, but backfill missing reference odds
                 if (existing.isManuallyEdited()) {
+                    boolean oddsBackfilled = false;
+                    Double currentH = existing.getOddsHome();
+                    Double currentD = existing.getOddsDraw();
+                    Double currentA = existing.getOddsAway();
+
+                    if (currentH == null && row.oddsHome() != null) {
+                        currentH = row.oddsHome();
+                        oddsBackfilled = true;
+                    }
+                    if (currentD == null && row.oddsDraw() != null) {
+                        currentD = row.oddsDraw();
+                        oddsBackfilled = true;
+                    }
+                    if (currentA == null && row.oddsAway() != null) {
+                        currentA = row.oddsAway();
+                        oddsBackfilled = true;
+                    }
+
+                    if (oddsBackfilled) {
+                        existing.updateReferenceOdds(currentH, currentD, currentA);
+                        matchRepositoryPort.save(existing);
+                    }
                     manualMatchesPreserved++;
                 } else {
                     if (isFinished) {
@@ -195,7 +227,7 @@ public class ImportCsvMatchesService implements ImportCsvMatchesUseCase {
                                 null,
                                 null
                         );
-                        existing.updateStatistics(stats);
+                        existing.updateStatisticsFromFeed(stats);
                         existing.finishMatch();
                     }
 
@@ -245,24 +277,21 @@ public class ImportCsvMatchesService implements ImportCsvMatchesUseCase {
         );
     }
 
-    private static Instant parseKickoffInstant(String dateStr, String timeStr) {
+    private static LocalDate parseKickoffDate(String dateStr) {
         if (dateStr == null || dateStr.isBlank()) {
             return null;
         }
 
-        LocalDate date = null;
         for (DateTimeFormatter formatter : DATE_FORMATTERS) {
             try {
-                date = LocalDate.parse(dateStr.trim(), formatter);
-                break;
+                return LocalDate.parse(dateStr.trim(), formatter);
             } catch (DateTimeParseException ignored) {
             }
         }
+        return null;
+    }
 
-        if (date == null) {
-            return null;
-        }
-
+    private static Instant resolveKickoffInstant(LocalDate date, String timeStr) {
         LocalTime time = DEFAULT_MATCH_TIME;
         if (timeStr != null && !timeStr.isBlank()) {
             for (DateTimeFormatter formatter : TIME_FORMATTERS) {
@@ -273,7 +302,6 @@ public class ImportCsvMatchesService implements ImportCsvMatchesUseCase {
                 }
             }
         }
-
         return date.atTime(time).toInstant(ZoneOffset.UTC);
     }
 }

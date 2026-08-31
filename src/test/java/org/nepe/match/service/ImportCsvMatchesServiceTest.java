@@ -196,6 +196,66 @@ class ImportCsvMatchesServiceTest {
         }
 
         @Test
+        @DisplayName("Should backfill missing reference odds on manually edited matches while keeping manual score")
+        void shouldBackfillMissingOddsOnManuallyEditedMatches() {
+            // Initial import without odds
+            RawCsvMatchRow initialRow = new RawCsvMatchRow("I1", "20/09/2025", "19:45", "Inter", "Milan", 2, 1, 12, 8, 4, 3, 0, 0, null, null, null);
+            csvParser.setRows(List.of(initialRow));
+            service.importCsvContent("dummy", "2025/2026");
+
+            Match match = matchRepository.findAll().get(0);
+            match.markAsManuallyEdited();
+            matchRepository.save(match);
+
+            assertThat(match.getOddsHome()).isNull();
+            assertThat(match.isManuallyEdited()).isTrue();
+
+            // Subsequent CSV import provides reference odds
+            RawCsvMatchRow secondRow = new RawCsvMatchRow("I1", "20/09/2025", "19:45", "Inter", "Milan", 9, 9, 30, 30, 10, 10, 0, 0, 2.15, 3.40, 3.60);
+            csvParser.setRows(List.of(secondRow));
+            ImportCsvResultDTO result = service.importCsvContent("dummy", "2025/2026");
+
+            assertThat(result.manualMatchesPreserved()).isEqualTo(1);
+            assertThat(result.newMatchesInserted()).isEqualTo(0);
+
+            Match updated = matchRepository.findAll().get(0);
+            // Score remains manual override
+            assertThat(updated.getStatistics().getHomeScore()).isEqualTo(2);
+            assertThat(updated.getStatistics().getAwayScore()).isEqualTo(1);
+            // Odds are backfilled
+            assertThat(updated.getOddsHome()).isEqualTo(2.15);
+            assertThat(updated.getOddsDraw()).isEqualTo(3.40);
+            assertThat(updated.getOddsAway()).isEqualTo(3.60);
+            assertThat(updated.isManuallyEdited()).isTrue();
+        }
+
+        @Test
+        @DisplayName("Should update default 12:00 UTC kickoff time when subsequent CSV specifies explicit time")
+        void shouldUpdateDefaultKickoffTimeOnLaterCsvWithExplicitTime() {
+            // First CSV import without Time column (defaults to 12:00:00 UTC)
+            RawCsvMatchRow dateOnlyRow = new RawCsvMatchRow("I1", "20/09/2025", null, "Inter", "Milan", null, null, null, null, null, null, 0, 0, null, null, null);
+            csvParser.setRows(List.of(dateOnlyRow));
+            service.importCsvContent("dummy", "2025/2026");
+
+            List<Match> initialMatches = matchRepository.findAll();
+            assertThat(initialMatches).hasSize(1);
+            assertThat(initialMatches.get(0).getMatchDateTime()).isEqualTo(Instant.parse("2025-09-20T12:00:00Z"));
+
+            // Second CSV import has explicit time 20:45 UTC for the same date
+            RawCsvMatchRow timeRow = new RawCsvMatchRow("I1", "20/09/2025", "20:45", "Inter", "Milan", null, null, null, null, null, null, 0, 0, 2.10, 3.40, 3.50);
+            csvParser.setRows(List.of(timeRow));
+            ImportCsvResultDTO result = service.importCsvContent("dummy", "2025/2026");
+
+            assertThat(result.newMatchesInserted()).isEqualTo(0);
+            assertThat(result.existingMatchesUpdated()).isEqualTo(1);
+
+            List<Match> updatedMatches = matchRepository.findAll();
+            assertThat(updatedMatches).hasSize(1);
+            assertThat(updatedMatches.get(0).getMatchDateTime()).isEqualTo(Instant.parse("2025-09-20T20:45:00Z"));
+            assertThat(updatedMatches.get(0).getOddsHome()).isEqualTo(2.10);
+        }
+
+        @Test
         @DisplayName("Should bubble up AliasMappingRequiredException when encountering unmapped team")
         void shouldThrowAliasMappingRequiredExceptionOnUnknownTeam() {
             RawCsvMatchRow unknownTeamRow = new RawCsvMatchRow("I1", "20/09/2025", "19:45", "Unknown FC", "Milan", null, null, null, null, null, null, 0, 0, null, null, null);
@@ -269,8 +329,24 @@ class ImportCsvMatchesServiceTest {
         }
 
         @Override
+        public Optional<Match> findByTeamsAndDateRange(int homeTeamId, int awayTeamId, Instant startOfDay, Instant endOfDay) {
+            return storage.values().stream()
+                    .filter(m -> m.getHomeTeamId() == homeTeamId && m.getAwayTeamId() == awayTeamId
+                            && !m.getMatchDateTime().isBefore(startOfDay) && !m.getMatchDateTime().isAfter(endOfDay))
+                    .findFirst();
+        }
+
+        @Override
         public List<Match> findByCompetitionAndSeason(int competitionId, int seasonId) {
             return List.of();
+        }
+
+        @Override
+        public List<Match> findFinishedMatchesForTeamInSeason(int teamId, int competitionId, int seasonId) {
+            return storage.values().stream()
+                    .filter(m -> m.getCompetitionId() == competitionId && m.getSeasonId() == seasonId && m.getState() == MatchState.FINISHED
+                            && (m.getHomeTeamId() == teamId || m.getAwayTeamId() == teamId))
+                    .toList();
         }
 
         @Override

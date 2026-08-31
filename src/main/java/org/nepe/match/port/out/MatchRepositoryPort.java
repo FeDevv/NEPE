@@ -38,7 +38,19 @@ public interface MatchRepositoryPort {
      * @param matchDateTime exact kickoff date and time (UTC)
      * @return an {@link Optional} containing the match if already present in DB
      */
-    Optional<Match> findByTeamsAndDateTime(int homeTeamId, int awayTeamId, Instant matchDateTime);
+     Optional<Match> findByTeamsAndDateTime(int homeTeamId, int awayTeamId, Instant matchDateTime);
+
+    /**
+     * Finds a match between two teams within a date range (same UTC calendar day).
+     * Used for idempotent CSV re-imports where match kickoff time may be unspecified (12:00 UTC) or updated.
+     *
+     * @param homeTeamId Home team identifier
+     * @param awayTeamId Away team identifier
+     * @param startOfDay start of the match day (UTC)
+     * @param endOfDay   end of the match day (UTC)
+     * @return an {@link Optional} containing the match if found
+     */
+    Optional<Match> findByTeamsAndDateRange(int homeTeamId, int awayTeamId, Instant startOfDay, Instant endOfDay);
 
     /**
      * Retrieves all matches belonging to a specific competition and season.
@@ -48,6 +60,16 @@ public interface MatchRepositoryPort {
      * @return list of {@link Match} entities, ordered by kickoff date/time
      */
     List<Match> findByCompetitionAndSeason(int competitionId, int seasonId);
+
+    /**
+     * Retrieves finished matches for a specific team within a competition and season, ordered newest first.
+     *
+     * @param teamId        team identifier
+     * @param competitionId competition identifier
+     * @param seasonId      season identifier
+     * @return list of finished {@link Match} entities
+     */
+    List<Match> findFinishedMatchesForTeamInSeason(int teamId, int competitionId, int seasonId);
 
     /**
      * Retrieves the most recent finished matches for a specific team within a competition,

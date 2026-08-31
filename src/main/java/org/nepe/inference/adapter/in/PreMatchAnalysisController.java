@@ -11,6 +11,7 @@ import org.nepe.bootstrap.SpringFXMLLoader;
 import org.nepe.inference.port.in.CalculatePreMatchInferenceUseCase;
 import org.nepe.inference.port.in.MarketPrediction;
 import org.nepe.inference.port.in.PreMatchAnalysisResult;
+import org.nepe.inference.port.in.PreMatchInferenceQuery;
 import org.nepe.match.domain.MarketOdds;
 import org.nepe.match.domain.MarketType;
 import org.nepe.match.domain.MatchModifiers;
@@ -233,7 +234,6 @@ public class PreMatchAnalysisController {
 
     private void loadAvailableMatches() {
         try {
-            // Load matches for the first competition or current active season
             List<MatchDetailsDTO> matches = manageMatchUseCase.getMatchDetailsByCompetitionAndSeason(1, 1);
             if (matches.isEmpty()) {
                 matches = manageMatchUseCase.getMatchDetailsByState(1, 1, null);
@@ -245,6 +245,21 @@ public class PreMatchAnalysisController {
             }
         } catch (Exception e) {
             log.warn("Could not preload matches for pre-match analysis", e);
+        }
+    }
+
+    /**
+     * Sets the active competition and season scope to populate match selector.
+     */
+    public void setScope(int competitionId, int seasonId) {
+        try {
+            List<MatchDetailsDTO> matches = manageMatchUseCase.getMatchDetailsByCompetitionAndSeason(competitionId, seasonId);
+            comboMatchSelector.setItems(FXCollections.observableArrayList(matches));
+            if (!matches.isEmpty()) {
+                comboMatchSelector.getSelectionModel().selectFirst();
+            }
+        } catch (Exception e) {
+            log.warn("Could not load matches for competition ID {} and season ID {}", competitionId, seasonId, e);
         }
     }
 
@@ -282,7 +297,7 @@ public class PreMatchAnalysisController {
             // Pre-fill reference 1X2 back odds if present
             if (match.oddsHome() != null) txtBack1.setText(String.format("%.2f", match.oddsHome()));
             if (match.oddsDraw() != null) txtBackX.setText(String.format("%.2f", match.oddsDraw()));
-            if (match.oddsAway() != null) txtBackAway(match.oddsAway());
+            if (match.oddsAway() != null) setBackAwayOdds(match.oddsAway());
 
             // Load saved market odds from repository
             loadPersistedMarketOdds(match.matchId());
@@ -294,7 +309,7 @@ public class PreMatchAnalysisController {
         recalculateInference();
     }
 
-    private void txtBackAway(Double oddsAway) {
+    private void setBackAwayOdds(Double oddsAway) {
         if (oddsAway != null) {
             txtBack2.setText(String.format("%.2f", oddsAway));
         }
@@ -348,42 +363,54 @@ public class PreMatchAnalysisController {
         if (currentMatch == null) return;
 
         try {
-            // Base expectation rates
-            double baseLambdaH = 1.45;
-            double baseMuA = 1.15;
-
-            // Apply tactical multiplier sliders
-            double lambdaH = baseLambdaH * sliderModAttHome.getValue() * sliderModDefAway.getValue();
-            double muA = baseMuA * sliderModAttAway.getValue() * sliderModDefHome.getValue();
-
-            // Apply Home Advantage (if not neutral venue)
-            if (!chkNeutralVenue.isSelected()) {
-                lambdaH *= 1.15;
-                muA *= (1.0 / 1.15);
-            }
-
-            // Apply Low-Urgency mutual risk aversion
-            if (chkLowUrgencyHome.isSelected() && chkLowUrgencyAway.isSelected()) {
-                lambdaH *= 0.65;
-                muA *= 0.65;
-            }
-
-            lblLambdaHome.setText(String.format("%.2f", lambdaH));
-            lblMuAway.setText(String.format("%.2f", muA));
-
-            // Assemble market odds list from input fields
-            List<MarketOdds> oddsList = assembleCurrentMarketOddsList();
-
+            int defaultN = (currentSettings != null) ? currentSettings.getDefaultNMatches() : 10;
+            double gamma = (currentSettings != null) ? currentSettings.getSeasonalDecayGamma() : 0.70;
             double commission = (currentSettings != null) ? currentSettings.getCommissionRate() : 0.05;
 
-            // Execute Dixon-Coles and EV calculations
-            PreMatchAnalysisResult result = calculatePreMatchInferenceUseCase.calculate(
-                    lambdaH,
-                    muA,
+            // 1. Fetch team historical match performances (N_min = 10 with previous season gamma decay)
+            List<org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance> homeHistory =
+                    manageMatchUseCase.getHistoricalTeamPerformances(currentMatch.homeTeamId(), currentMatch.competitionId(), currentMatch.seasonId(), defaultN);
+            List<org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance> awayHistory =
+                    manageMatchUseCase.getHistoricalTeamPerformances(currentMatch.awayTeamId(), currentMatch.competitionId(), currentMatch.seasonId(), defaultN);
+
+            // 2. Fetch league average xG
+            double leagueAvgXg = manageMatchUseCase.getLeagueAverageXgPerTeam(currentMatch.competitionId(), currentMatch.seasonId());
+
+            // 3. Assemble tactical modifiers from UI state
+            org.nepe.match.domain.MatchModifiers modifiers = new org.nepe.match.domain.MatchModifiers(
+                    chkNeutralVenue.isSelected(),
+                    chkMustWinHome.isSelected(),
+                    chkMustWinAway.isSelected(),
+                    chkLowUrgencyHome.isSelected(),
+                    chkLowUrgencyAway.isSelected(),
+                    sliderModAttHome.getValue(),
+                    sliderModDefHome.getValue(),
+                    sliderModAttAway.getValue(),
+                    sliderModDefAway.getValue()
+            );
+
+            // 4. Assemble market odds list from input fields
+            List<MarketOdds> oddsList = assembleCurrentMarketOddsList();
+
+            double homeAdvantageRatio = chkNeutralVenue.isSelected() ? 1.0 : 1.20;
+
+            PreMatchInferenceQuery query = new PreMatchInferenceQuery(
+                    homeHistory,
+                    awayHistory,
+                    leagueAvgXg,
+                    homeAdvantageRatio,
                     currentMatch.dixonColesRho(),
                     commission,
+                    gamma,
+                    modifiers,
                     oddsList
             );
+
+            // 5. Execute Dixon-Coles and EV calculations via Use Case
+            PreMatchAnalysisResult result = calculatePreMatchInferenceUseCase.calculate(query);
+
+            lblLambdaHome.setText(String.format("%.2f", result.lambdaHome()));
+            lblMuAway.setText(String.format("%.2f", result.muAway()));
 
             // Update 1X2 Market UI
             updatePredictionUi(result.homeWin(), lblProb1, lblFairOdds1, lblEvBack1, lblEvLay1);

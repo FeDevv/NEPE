@@ -3,9 +3,9 @@ spring:
     name: NEPE
 
   datasource:
-    url: jdbc:mariadb://localhost:3306/nepe_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
-    username: fede
-    password: 3002FedericO2003
+    url: jdbc:mariadb://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:nepe_db}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:fede}
+    password: ${DB_PASSWORD:3002FedericO2003}
     driver-class-name: org.mariadb.jdbc.Driver
 
   jpa:

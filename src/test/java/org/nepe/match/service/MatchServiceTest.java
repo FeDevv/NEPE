@@ -271,6 +271,100 @@ class MatchServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("Historical Sampling and League xG Tests")
+    class HistoricalSamplingTests {
+
+        @Test
+        @DisplayName("Should analyze all matches in current season when M >= 10")
+        void shouldFetchAllMatchesWhenCurrentSeasonHasAtLeastN() {
+            // Seed 12 finished matches in current season
+            for (int i = 1; i <= 12; i++) {
+                Match m = new Match(
+                        null, SEASON_ID, COMP_ID, HOME_TEAM_ID, AWAY_TEAM_ID,
+                        KICKOFF.plusSeconds(i * 86400L), MatchState.FINISHED, false,
+                        new org.nepe.match.domain.MatchStatistics(2, 1, 12, 8, 5, 3, 0, 0, 1.80, 0.90),
+                        MatchModifiers.defaultModifiers(), 2.0, 3.2, 3.5, 90
+                );
+                matchRepository.save(m);
+            }
+
+            List<org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance> performances =
+                    service.getHistoricalTeamPerformances(HOME_TEAM_ID, COMP_ID, SEASON_ID, 10);
+
+            assertThat(performances).hasSize(12);
+            assertThat(performances).allMatch(p -> !p.fromPreviousSeason());
+            assertThat(performances.get(0).xgScored()).isEqualTo(1.80);
+            assertThat(performances.get(0).xgConceded()).isEqualTo(0.90);
+        }
+
+        @Test
+        @DisplayName("Should supplement with previous season matches when current season has M < 10")
+        void shouldFetchPreviousSeasonMatchesWhenCurrentSeasonHasLessThanN() {
+            int prevSeasonId = 2;
+            Season prevSeason = Season.create("2024/2025");
+            prevSeason.assignId(prevSeasonId);
+            seasonRepository.save(prevSeason);
+
+            // Seed 3 matches in current season (2025/2026)
+            for (int i = 1; i <= 3; i++) {
+                Match m = new Match(
+                        null, SEASON_ID, COMP_ID, HOME_TEAM_ID, AWAY_TEAM_ID,
+                        KICKOFF.plusSeconds(i * 86400L), MatchState.FINISHED, false,
+                        new org.nepe.match.domain.MatchStatistics(2, 0, 10, 5, 4, 1, 0, 0, 1.50, 0.50),
+                        MatchModifiers.defaultModifiers(), 2.0, 3.2, 3.5, 90
+                );
+                matchRepository.save(m);
+            }
+
+            // Seed 10 matches in previous season (2024/2025)
+            for (int i = 1; i <= 10; i++) {
+                Match m = new Match(
+                        null, prevSeasonId, COMP_ID, HOME_TEAM_ID, AWAY_TEAM_ID,
+                        KICKOFF.minusSeconds(i * 86400L), MatchState.FINISHED, false,
+                        new org.nepe.match.domain.MatchStatistics(1, 1, 8, 8, 3, 3, 0, 0, 1.10, 1.10),
+                        MatchModifiers.defaultModifiers(), 2.0, 3.2, 3.5, 90
+                );
+                matchRepository.save(m);
+            }
+
+            List<org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance> performances =
+                    service.getHistoricalTeamPerformances(HOME_TEAM_ID, COMP_ID, SEASON_ID, 10);
+
+            // 3 from current season + 7 from previous season = 10 total
+            assertThat(performances).hasSize(10);
+            long currentSeasonCount = performances.stream().filter(p -> !p.fromPreviousSeason()).count();
+            long prevSeasonCount = performances.stream().filter(p -> p.fromPreviousSeason()).count();
+
+            assertThat(currentSeasonCount).isEqualTo(3);
+            assertThat(prevSeasonCount).isEqualTo(7);
+        }
+
+        @Test
+        @DisplayName("Should correctly calculate league average xG per team")
+        void shouldCalculateLeagueAverageXgPerTeam() {
+            Match m1 = new Match(
+                    null, SEASON_ID, COMP_ID, HOME_TEAM_ID, AWAY_TEAM_ID,
+                    KICKOFF, MatchState.FINISHED, false,
+                    new org.nepe.match.domain.MatchStatistics(2, 1, 10, 8, 4, 3, 0, 0, 2.00, 1.00),
+                    MatchModifiers.defaultModifiers(), 2.0, 3.2, 3.5, 90
+            );
+            Match m2 = new Match(
+                    null, SEASON_ID, COMP_ID, AWAY_TEAM_ID, HOME_TEAM_ID,
+                    KICKOFF.plusSeconds(86400L), MatchState.FINISHED, false,
+                    new org.nepe.match.domain.MatchStatistics(1, 1, 6, 6, 2, 2, 0, 0, 1.20, 1.40),
+                    MatchModifiers.defaultModifiers(), 2.0, 3.2, 3.5, 90
+            );
+            matchRepository.save(m1);
+            matchRepository.save(m2);
+
+            double leagueAvg = service.getLeagueAverageXgPerTeam(COMP_ID, SEASON_ID);
+
+            // (2.0 + 1.0 + 1.2 + 1.4) / (2 * 2 matches) = 5.6 / 4 = 1.40
+            assertThat(leagueAvg).isEqualTo(1.40);
+        }
+    }
+
     // --- In-Memory Test Doubles ---
 
     private static class InMemoryMatchRepository implements MatchRepositoryPort {
@@ -299,9 +393,25 @@ class MatchServiceTest {
         }
 
         @Override
+        public Optional<Match> findByTeamsAndDateRange(int homeTeamId, int awayTeamId, Instant startOfDay, Instant endOfDay) {
+            return storage.values().stream()
+                    .filter(m -> m.getHomeTeamId() == homeTeamId && m.getAwayTeamId() == awayTeamId
+                            && !m.getMatchDateTime().isBefore(startOfDay) && !m.getMatchDateTime().isAfter(endOfDay))
+                    .findFirst();
+        }
+
+        @Override
         public List<Match> findByCompetitionAndSeason(int competitionId, int seasonId) {
             return storage.values().stream()
                     .filter(m -> m.getCompetitionId() == competitionId && m.getSeasonId() == seasonId)
+                    .toList();
+        }
+
+        @Override
+        public List<Match> findFinishedMatchesForTeamInSeason(int teamId, int competitionId, int seasonId) {
+            return storage.values().stream()
+                    .filter(m -> m.getCompetitionId() == competitionId && m.getSeasonId() == seasonId && m.getState() == MatchState.FINISHED
+                            && (m.getHomeTeamId() == teamId || m.getAwayTeamId() == teamId))
                     .toList();
         }
 

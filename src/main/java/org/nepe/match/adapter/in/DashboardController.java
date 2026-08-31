@@ -1,5 +1,6 @@
 package org.nepe.match.adapter.in;
 
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -41,6 +42,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -313,6 +315,8 @@ public class DashboardController {
 
     // --- Synthetic EV+ Evaluator for Dashboard Badge ---
 
+    private final Map<Integer, String> syntheticEvCache = new java.util.concurrent.ConcurrentHashMap<>();
+
     private String evaluateSyntheticEvSignal(MatchDetailsDTO match) {
         if (match.oddsHome() == null && match.oddsDraw() == null && match.oddsAway() == null) {
             return "-";
@@ -321,39 +325,46 @@ public class DashboardController {
             return "-";
         }
 
-        try {
-            // Evaluates pre-match probability matrix directly from average odds or reference lambda
-            double lambdaH = 1.45;
-            double muA = 1.15;
-            PreMatchAnalysisResult result = calculatePreMatchInferenceUseCase.calculate(
-                    lambdaH,
-                    muA,
-                    match.dixonColesRho(),
-                    0.05,
-                    Collections.emptyList()
-            );
+        return syntheticEvCache.computeIfAbsent(match.matchId(), id -> {
+            try {
+                // Approximate market-implied goal expectation rates
+                double pHomeImplied = (match.oddsHome() != null && match.oddsHome() > 1.0) ? (1.0 / match.oddsHome()) : 0.40;
+                double pAwayImplied = (match.oddsAway() != null && match.oddsAway() > 1.0) ? (1.0 / match.oddsAway()) : 0.30;
+                double totalImplied = pHomeImplied + pAwayImplied;
 
-            if (match.oddsHome() != null) {
-                double evHome = (result.homeWin().probability() * (match.oddsHome() - 1.0) * 0.95) - (1.0 - result.homeWin().probability());
-                if (evHome > 0.03) {
-                    return String.format("EV+ 1 (+%.1f%%)", evHome * 100);
+                double lambdaH = Math.max(0.6, totalImplied * 1.5 * (pHomeImplied / Math.max(0.1, totalImplied)));
+                double muA = Math.max(0.5, totalImplied * 1.5 * (pAwayImplied / Math.max(0.1, totalImplied)));
+
+                PreMatchAnalysisResult result = calculatePreMatchInferenceUseCase.calculate(
+                        lambdaH,
+                        muA,
+                        match.dixonColesRho(),
+                        0.05,
+                        Collections.emptyList()
+                );
+
+                if (match.oddsHome() != null) {
+                    double evHome = (result.homeWin().probability() * (match.oddsHome() - 1.0) * 0.95) - (1.0 - result.homeWin().probability());
+                    if (evHome > 0.03) {
+                        return String.format("EV+ 1 (+%.1f%%)", evHome * 100);
+                    }
                 }
-            }
-            if (match.oddsDraw() != null) {
-                double evDraw = (result.draw().probability() * (match.oddsDraw() - 1.0) * 0.95) - (1.0 - result.draw().probability());
-                if (evDraw > 0.03) {
-                    return String.format("EV+ X (+%.1f%%)", evDraw * 100);
+                if (match.oddsDraw() != null) {
+                    double evDraw = (result.draw().probability() * (match.oddsDraw() - 1.0) * 0.95) - (1.0 - result.draw().probability());
+                    if (evDraw > 0.03) {
+                        return String.format("EV+ X (+%.1f%%)", evDraw * 100);
+                    }
                 }
-            }
-            if (match.oddsAway() != null) {
-                double evAway = (result.awayWin().probability() * (match.oddsAway() - 1.0) * 0.95) - (1.0 - result.awayWin().probability());
-                if (evAway > 0.03) {
-                    return String.format("EV+ 2 (+%.1f%%)", evAway * 100);
+                if (match.oddsAway() != null) {
+                    double evAway = (result.awayWin().probability() * (match.oddsAway() - 1.0) * 0.95) - (1.0 - result.awayWin().probability());
+                    if (evAway > 0.03) {
+                        return String.format("EV+ 2 (+%.1f%%)", evAway * 100);
+                    }
                 }
+            } catch (Exception ignored) {
             }
-        } catch (Exception ignored) {
-        }
-        return "-";
+            return "-";
+        });
     }
 
     // --- Action & Event Handlers ---
@@ -399,6 +410,7 @@ public class DashboardController {
 
     @FXML
     public void handleRefresh(ActionEvent event) {
+        syntheticEvCache.clear();
         loadInitialData();
         reloadMatches();
     }
@@ -417,24 +429,30 @@ public class DashboardController {
 
         String seasonName = (currentSeason != null) ? currentSeason.getName() : "2025/2026";
 
-        try {
-            ImportCsvResultDTO result = importCsvMatchesUseCase.importCsvFile(selectedFile.toPath(), seasonName);
-            showInformationAlert("Importazione CSV Completata",
-                    String.format("Righe elaborate: %d\nNuove partite: %d\nPartite aggiornate: %d\nModifiche manuali preservate: %d\nRighe saltate: %d",
-                            result.totalRowsParsed(),
-                            result.newMatchesInserted(),
-                            result.existingMatchesUpdated(),
-                            result.manualMatchesPreserved(),
-                            result.skippedRows()));
-            reloadMatches();
-        } catch (AliasMappingRequiredException ex) {
-            log.warn("Unknown team detected in CSV: {}", ex.getRawTeamName());
-            openAliasMappingDialog(ex.getRawTeamName(), ex.getCompetitionCode());
-        } catch (NepeException ex) {
-            showErrorAlert("Errore durante l'importazione CSV", ex.getMessage());
-        } catch (Exception ex) {
-            showErrorAlert("Errore imprevisto", "Impossibile completare l'importazione: " + ex.getMessage());
-        }
+        // Execute CSV ingestion asynchronously on a Java 25 Virtual Thread to prevent UI thread freezes
+        Thread.startVirtualThread(() -> {
+            try {
+                ImportCsvResultDTO result = importCsvMatchesUseCase.importCsvFile(selectedFile.toPath(), seasonName);
+                Platform.runLater(() -> {
+                    syntheticEvCache.clear();
+                    showInformationAlert("Importazione CSV Completata",
+                            String.format("Righe elaborate: %d\nNuove partite: %d\nPartite aggiornate: %d\nModifiche manuali preservate: %d\nRighe saltate: %d",
+                                    result.totalRowsParsed(),
+                                    result.newMatchesInserted(),
+                                    result.existingMatchesUpdated(),
+                                    result.manualMatchesPreserved(),
+                                    result.skippedRows()));
+                    reloadMatches();
+                });
+            } catch (AliasMappingRequiredException ex) {
+                log.warn("Unknown team detected in CSV: {}", ex.getRawTeamName());
+                Platform.runLater(() -> openAliasMappingDialog(ex.getRawTeamName(), ex.getCompetitionCode()));
+            } catch (NepeException ex) {
+                Platform.runLater(() -> showErrorAlert("Errore durante l'importazione CSV", ex.getMessage()));
+            } catch (Exception ex) {
+                Platform.runLater(() -> showErrorAlert("Errore imprevisto", "Impossibile completare l'importazione: " + ex.getMessage()));
+            }
+        });
     }
 
     @FXML
@@ -478,9 +496,12 @@ public class DashboardController {
         try {
             SpringFXMLLoader.ViewResult<Parent, org.nepe.inference.adapter.in.PreMatchAnalysisController> view =
                     springFXMLLoader.loadWithController("/views/pre_match_analysis.fxml");
+            Competition comp = comboCompetition.getSelectionModel().getSelectedItem();
             if (matchId > 0) {
                 MatchDetailsDTO match = manageMatchUseCase.getMatchDetailsById(matchId);
                 view.controller().loadMatchDetails(match);
+            } else if (comp != null && currentSeason != null) {
+                view.controller().setScope(comp.getId(), currentSeason.getId());
             }
             Stage stage = (Stage) tblMatches.getScene().getWindow();
             stage.getScene().setRoot(view.rootNode());
@@ -496,9 +517,12 @@ public class DashboardController {
         try {
             SpringFXMLLoader.ViewResult<Parent, LiveConsoleController> view =
                     springFXMLLoader.loadWithController("/views/live_console.fxml");
+            Competition comp = comboCompetition.getSelectionModel().getSelectedItem();
             if (matchId > 0) {
                 MatchDetailsDTO match = manageMatchUseCase.getMatchDetailsById(matchId);
                 view.controller().loadMatchDetails(match);
+            } else if (comp != null && currentSeason != null) {
+                view.controller().setScope(comp.getId(), currentSeason.getId());
             }
             Stage stage = (Stage) tblMatches.getScene().getWindow();
             stage.getScene().setRoot(view.rootNode());

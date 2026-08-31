@@ -18,8 +18,10 @@ import org.nepe.shared.exception.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Application Service implementing {@link ManageMatchUseCase}.
@@ -188,6 +190,111 @@ public class MatchService implements ManageMatchUseCase {
             return matchDetailsRepositoryPort.findDetailsByCompetitionAndSeason(competitionId, seasonId);
         }
         return matchDetailsRepositoryPort.findDetailsByCompetitionAndSeasonAndState(competitionId, seasonId, state);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance> getHistoricalTeamPerformances(
+            int teamId,
+            int competitionId,
+            int seasonId,
+            int minSampleSize) {
+        int safeN = Math.max(1, minSampleSize);
+        List<Match> currentSeasonMatches = matchRepositoryPort.findFinishedMatchesForTeamInSeason(teamId, competitionId, seasonId);
+
+        List<org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance> performances = new ArrayList<>();
+
+        if (currentSeasonMatches.size() >= safeN) {
+            for (Match m : currentSeasonMatches) {
+                performances.add(mapToPerformance(m, teamId, false));
+            }
+        } else {
+            for (Match m : currentSeasonMatches) {
+                performances.add(mapToPerformance(m, teamId, false));
+            }
+
+            int needed = safeN - currentSeasonMatches.size();
+            Optional<org.nepe.competition.domain.Season> currentSeasonOpt = seasonRepositoryPort.findById(seasonId);
+            if (currentSeasonOpt.isPresent()) {
+                String prevSeasonName = currentSeasonOpt.get().previous().getName();
+                Optional<org.nepe.competition.domain.Season> prevSeasonOpt = seasonRepositoryPort.findByName(prevSeasonName);
+                if (prevSeasonOpt.isPresent()) {
+                    List<Match> prevMatches = matchRepositoryPort.findFinishedMatchesForTeamInSeason(teamId, competitionId, prevSeasonOpt.get().getId());
+                    int toTake = Math.min(needed, prevMatches.size());
+                    for (int i = 0; i < toTake; i++) {
+                        performances.add(mapToPerformance(prevMatches.get(i), teamId, true));
+                    }
+                }
+            }
+        }
+
+        return List.copyOf(performances);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public double getLeagueAverageXgPerTeam(int competitionId, int seasonId) {
+        List<Match> matches = matchRepositoryPort.findByCompetitionAndSeason(competitionId, seasonId);
+        List<Match> finishedMatches = matches.stream()
+                .filter(m -> m.getState() == MatchState.FINISHED)
+                .toList();
+
+        if (finishedMatches.isEmpty()) {
+            return 1.35;
+        }
+
+        double totalXg = 0.0;
+        for (Match m : finishedMatches) {
+            double homeXg = resolveXg(
+                    m.getStatistics().getManualHomeXg(),
+                    m.getStatistics().getHomeShots(),
+                    m.getStatistics().getHomeShotsOnTarget(),
+                    m.getStatistics().getHomeScore()
+            );
+            double awayXg = resolveXg(
+                    m.getStatistics().getManualAwayXg(),
+                    m.getStatistics().getAwayShots(),
+                    m.getStatistics().getAwayShotsOnTarget(),
+                    m.getStatistics().getAwayScore()
+            );
+            totalXg += (homeXg + awayXg);
+        }
+
+        double avg = totalXg / (2.0 * finishedMatches.size());
+        return Math.max(0.5, avg);
+    }
+
+    private org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance mapToPerformance(Match m, int teamId, boolean fromPreviousSeason) {
+        boolean isHome = m.getHomeTeamId().equals(teamId);
+        double xgScored;
+        double xgConceded;
+
+        if (isHome) {
+            xgScored = resolveXg(m.getStatistics().getManualHomeXg(),
+                    m.getStatistics().getHomeShots(),
+                    m.getStatistics().getHomeShotsOnTarget(),
+                    m.getStatistics().getHomeScore());
+            xgConceded = resolveXg(m.getStatistics().getManualAwayXg(),
+                    m.getStatistics().getAwayShots(),
+                    m.getStatistics().getAwayShotsOnTarget(),
+                    m.getStatistics().getAwayScore());
+        } else {
+            xgScored = resolveXg(m.getStatistics().getManualAwayXg(),
+                    m.getStatistics().getAwayShots(),
+                    m.getStatistics().getAwayShotsOnTarget(),
+                    m.getStatistics().getAwayScore());
+            xgConceded = resolveXg(m.getStatistics().getManualHomeXg(),
+                    m.getStatistics().getHomeShots(),
+                    m.getStatistics().getHomeShotsOnTarget(),
+                    m.getStatistics().getHomeScore());
+        }
+
+        return new org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance(xgScored, xgConceded, fromPreviousSeason);
+    }
+
+    private double resolveXg(Double manualXg, Integer totalShots, Integer shotsOnTarget, Integer goals) {
+        return org.nepe.inference.domain.XgEstimator.resolveEffectiveXg(manualXg, totalShots, shotsOnTarget, goals)
+                .orElse(1.30);
     }
 
     @Override

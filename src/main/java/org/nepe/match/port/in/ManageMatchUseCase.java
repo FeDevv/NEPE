@@ -101,6 +101,32 @@ public interface ManageMatchUseCase {
     List<MatchDetailsDTO> getMatchDetailsByState(int competitionId, int seasonId, MatchState state);
 
     /**
+     * Retrieves historical match performances for a specific team in a competition,
+     * enforcing the scientific N_min = 10 sample size rule with inter-season gamma decay.
+     *
+     * @param teamId        team identifier
+     * @param competitionId competition identifier
+     * @param seasonId      current season identifier
+     * @param minSampleSize minimum historical matches required (default 10)
+     * @return list of chronological {@link org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance} objects
+     */
+    List<org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance> getHistoricalTeamPerformances(
+            int teamId,
+            int competitionId,
+            int seasonId,
+            int minSampleSize
+    );
+
+    /**
+     * Calculates the league average xG per team per match in a competition/season.
+     *
+     * @param competitionId competition identifier
+     * @param seasonId      season identifier
+     * @return average xG per team (e.g. 1.35)
+     */
+    double getLeagueAverageXgPerTeam(int competitionId, int seasonId);
+
+    /**
      * Deletes a match by its database ID.
      *
      * @param matchId primary key identifier

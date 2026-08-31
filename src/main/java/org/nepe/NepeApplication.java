@@ -17,5 +17,3 @@ public class NepeApplication {
         Application.launch(JavaFxApplication.class, args);
     }
 }
-
-// agy --conversation=9441f379-2469-48b7-8778-00e22f38eb22

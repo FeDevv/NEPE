@@ -200,6 +200,21 @@ public class LiveConsoleController {
     }
 
     /**
+     * Sets the active competition and season scope to populate live match selector.
+     */
+    public void setScope(int competitionId, int seasonId) {
+        try {
+            List<MatchDetailsDTO> liveMatches = manageMatchUseCase.getMatchDetailsByState(competitionId, seasonId, MatchState.LIVE);
+            comboLiveMatchSelector.setItems(FXCollections.observableArrayList(liveMatches));
+            if (!liveMatches.isEmpty()) {
+                comboLiveMatchSelector.getSelectionModel().selectFirst();
+            }
+        } catch (Exception e) {
+            log.warn("Could not load live matches for competition ID {} and season ID {}", competitionId, seasonId, e);
+        }
+    }
+
+    /**
      * Binds a match aggregate to the live console view.
      *
      * @param match match details DTO
@@ -264,14 +279,23 @@ public class LiveConsoleController {
         if (currentMatch == null) return;
 
         try {
-            // Established pre-match rates adjusted by context modifiers
-            double lambdaPre = 1.45 * currentMatch.modAttHome() * currentMatch.modDefAway();
-            double muPre = 1.15 * currentMatch.modAttAway() * currentMatch.modDefHome();
+            int defaultN = (currentSettings != null) ? currentSettings.getDefaultNMatches() : 10;
+            double gamma = (currentSettings != null) ? currentSettings.getSeasonalDecayGamma() : 0.70;
 
-            if (!currentMatch.isNeutralVenue()) {
-                lambdaPre *= 1.15;
-                muPre *= (1.0 / 1.15);
-            }
+            // 1. Fetch team historical match performances (N_min = 10 with previous season gamma decay)
+            List<org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance> homeHistory =
+                    manageMatchUseCase.getHistoricalTeamPerformances(currentMatch.homeTeamId(), currentMatch.competitionId(), currentMatch.seasonId(), defaultN);
+            List<org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance> awayHistory =
+                    manageMatchUseCase.getHistoricalTeamPerformances(currentMatch.awayTeamId(), currentMatch.competitionId(), currentMatch.seasonId(), defaultN);
+
+            double leagueAvgXg = manageMatchUseCase.getLeagueAverageXgPerTeam(currentMatch.competitionId(), currentMatch.seasonId());
+
+            org.nepe.inference.domain.TeamStrengthCalculator.TeamStrength homeStrength =
+                    org.nepe.inference.domain.TeamStrengthCalculator.calculateStrength(homeHistory, leagueAvgXg, gamma);
+            org.nepe.inference.domain.TeamStrengthCalculator.TeamStrength awayStrength =
+                    org.nepe.inference.domain.TeamStrengthCalculator.calculateStrength(awayHistory, leagueAvgXg, gamma);
+
+            double homeAdv = currentMatch.isNeutralVenue() ? 1.0 : 1.20;
 
             MatchModifiers modifiers = new MatchModifiers(
                     currentMatch.isNeutralVenue(),
@@ -284,6 +308,14 @@ public class LiveConsoleController {
                     currentMatch.modAttAway(),
                     currentMatch.modDefAway()
             );
+
+            org.nepe.inference.domain.TeamStrengthCalculator.PreMatchRates preRates =
+                    org.nepe.inference.domain.TeamStrengthCalculator.calculatePreMatchRates(
+                            homeStrength, awayStrength, leagueAvgXg, homeAdv, modifiers
+                    );
+
+            double lambdaPre = preRates.lambdaHome();
+            double muPre = preRates.muAway();
 
             double commission = (currentSettings != null) ? currentSettings.getCommissionRate() : 0.05;
             double profitTarget = (currentSettings != null) ? currentSettings.getGreenUpProfitTarget() : 0.10;

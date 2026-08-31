@@ -37,84 +37,56 @@ Allo stesso modo, il *Feature-by-Package* puro rischia di mescolare dettagli DB 
 
 Di seguito viene illustrato l'albero delle cartelle del progetto all'interno del sorgente Java (`src/main/java`):
 
+com.nexus.nepe -> org.nepe
 ```text
-com.nexus.nepe
+org.nepe
 │
 ├── shared                         # Elementi comuni riutilizzabili da più feature
-│   └── domain
-│       ├── Money.java             # Value Object per valute
-│       └── ValidationException.java
+│   └── exception
+│       ├── NepeException.java
+│       ├── DomainValidationException.java
+│       ├── EntityNotFoundException.java
+│       ├── DataImportException.java
+│       ├── AliasMappingRequiredException.java
+│       ├── LiveTradingException.java
+│       └── GuiException.java
 │
-├── competition                    # FEATURE: Gestione Campionati/Competizioni
-│   ├── domain
-│   │   └── Competition.java       # Entità di Dominio (id, code, name, rho)
-│   ├── port
-│   │   ├── in
-│   │   │   ├── ManageCompetitionUseCase.java
-│   │   │   └── DTOs/                      # Data Transfer Objects per input
-│   │   └── out
-│   │       └── CompetitionRepositoryPort.java
-│   └── adapter
-│       ├── in
-│       │   └── CompetitionViewController.java # Controller JavaFX
-│       └── out
-│           ├── CompetitionRepositoryAdapter.java # JPA/JDBC Adapter per MariaDB
-│           └── SpringDataCompetitionRepository.java # Interfaccia Spring Data
+├── competition                    # FEATURE: Gestione Campionati, Squadre e Alias
+│   ├── domain/                    # Competition.java, Season.java, Team.java, TeamAlias.java
+│   ├── port/in/                   # ManageCompetitionUseCase.java, ManageSeasonUseCase.java, ManageTeamUseCase.java
+│   ├── port/out/                  # CompetitionRepositoryPort.java, SeasonRepositoryPort.java, TeamRepositoryPort.java, TeamAliasRepositoryPort.java
+│   ├── service/                   # CompetitionService.java, SeasonService.java, TeamService.java
+│   └── adapter/
+│       ├── in/                    # CompetitionViewController.java, AliasMappingController.java (JavaFX)
+│       └── out/                   # Repositories, JPA Entities, Mappers
 │
-├── match                          # FEATURE: Palinsesto, CRUD, Eventi e Storico Match
-│   ├── domain
-│   │   ├── Match.java             # Entità di Dominio centrale (senza annotazioni JPA)
-│   │   ├── MatchEvent.java        # Entità per i gol e cartellini rossi
-│   │   └── MatchState.java        # Enum Java (SCHEDULED, LIVE, FINISHED, ecc.)
-│   ├── port
-│   │   ├── in
-│   │   │   ├── ManageMatchUseCase.java
-│   │   │   ├── ImportCsvUseCase.java
-│   │   │   └── DTOs/                      # MatchDTO, CsvImportResultDTO
-│   │   └── out
-│   │       ├── MatchRepositoryPort.java
-│   │       └── TeamRepositoryPort.java    # Necessario per verificare alias/squadre
-│   └── adapter
-│       ├── in
-│       │   ├── MatchViewController.java   # Controller JavaFX
-│       │   ├── LiveConsoleController.java # Console di trading live JavaFX
-│       │   └── CsvParserAdapter.java      # Parser CSV per Football-Data
-│       └── out
-│           ├── MatchRepositoryAdapter.java
-│           └── SpringDataMatchRepository.java
+├── match                          # FEATURE: Palinsesto, CRUD, Eventi, Quote e Ingestione CSV
+│   ├── domain/                    # Match.java, MatchEvent.java, MatchStatistics.java, MatchModifiers.java, MarketOdds.java
+│   ├── port/in/                   # ManageMatchUseCase.java, LiveMatchTradingUseCase.java, ManageMarketOddsUseCase.java, ImportCsvMatchesUseCase.java
+│   ├── port/out/                  # MatchRepositoryPort.java, MatchEventRepositoryPort.java, MarketOddsRepositoryPort.java, MatchDetailsRepositoryPort.java, CsvParserPort.java
+│   ├── service/                   # MatchService.java, LiveMatchTradingService.java, MarketOddsService.java, ImportCsvMatchesService.java
+│   └── adapter/
+│       ├── in/                    # DashboardController.java, LiveConsoleController.java (JavaFX)
+│       └── out/                   # CsvParserAdapter.java, Repositories, JPA Entities, Mappers
 │
 ├── inference                      # FEATURE: Motore Matematico di Calcolo (Inference Engine)
-│   ├── domain
-│   │   ├── PoissonModel.java      # Calcolo matematico puro delle probabilità
-│   │   ├── DixonColesModel.java   # Correzione Dixon-Coles dei punteggi bassi
-│   │   └── EvCalculator.java      # Calcolo dell'EV Punta/Banca con commissione
-│   ├── port
-│   │   └── in
-│   │       ├── CalculateProbabilitiesUseCase.java
-│   │       └── CalculateEvUseCase.java
-│   └── adapter
-│       └── in
-│           └── PredictionPanelController.java # JavaFX Controller per pannello analisi
+│   ├── domain/                    # PoissonModel.java, DixonColesModel.java, EvCalculator.java, TeamStrengthCalculator.java, XgEstimator.java, LiveEngineModifiers.java
+│   ├── port/in/                   # CalculatePreMatchInferenceUseCase.java, CalculateLiveInferenceUseCase.java
+│   ├── service/                   # PreMatchInferenceService.java, LiveInferenceService.java
+│   └── adapter/in/                # PreMatchAnalysisController.java (JavaFX)
 │
 ├── settings                       # FEATURE: Preferenze e Parametri Globali
-│   ├── domain
-│   │   └── AppSettings.java       # commission_rate, default_n_matches, ecc.
-│   ├── port
-│   │   ├── in
-│   │   │   └── ManageSettingsUseCase.java
-│   │   └── out
-│   │       └── SettingsRepositoryPort.java
-│   └── adapter
-│       ├── in
-│       │   └── SettingsViewController.java # JavaFX Controller
-│       └── out
-│           └── SettingsRepositoryAdapter.java
+│   ├── domain/                    # AppSettings.java
+│   ├── port/in/ & port/out/       # ManageSettingsUseCase.java, SettingsRepositoryPort.java
+│   ├── service/                   # SettingsService.java
+│   └── adapter/
+│       ├── in/                    # SettingsViewController.java (JavaFX)
+│       └── out/                   # SettingsRepositoryAdapter.java, JPA Entity, Mapper
 │
 └── bootstrap                      # Configurazione infrastrutturale e colla Spring/JavaFX
     ├── NepeApplication.java       # Main Spring Boot Application
     ├── JavaFxApplication.java     # Bootstrap del ciclo di vita JavaFX
-    ├── SpringFXMLLoader.java      # FXML Loader personalizzato integrato con Spring
-    └── AppConfig.java             # Registrazione manuale dei Beans del Domain Core
+    └── SpringFXMLLoader.java      # FXML Loader personalizzato integrato con Spring
 ```
 
 ---
@@ -263,8 +235,8 @@ La struttura dei controller JavaFX riflette le aree operative dell'applicazione.
 | Vista FXML | Controller JavaFX | Descrizione |
 | :--- | :--- | :--- |
 | `dashboard.fxml` | `DashboardController` | **Schermata Principale:** Mostra il palinsesto delle partite della competizione attiva, filtri stagioni, pulsanti per importazione CSV e navigazione verso le altre aree. |
-| `competition_manager.fxml` | `CompetitionController` | **Gestione Anagrafiche:** CRUD per competizioni, squadre e alias. |
+| `competition_manager.fxml` | `CompetitionViewController` | **Gestione Anagrafiche:** CRUD per competizioni, squadre e alias. |
 | `pre_match_analysis.fxml` | `PreMatchAnalysisController` | **Analisi Pre-Match:** Visualizzazione delle quote stimate (Dixon-Coles + Poisson), inserimento quote Back/Lay dell'Exchange, calcolo EV (classico e tarato sul rischio), e configurazione dei modificatori. |
 | `live_console.fxml` | `LiveConsoleController` | **Console Live:** Console di inserimento eventi in tempo reale (gol, rossi), aggiornamento del minuto, ricalcolo istantaneo delle probabilità residue e allarmi per Green Up. |
 | `alias_mapping_popup.fxml` | `AliasMappingController` | **Popup Modale di Mapping:** Finestra di dialogo bloccante che compare durante il caricamento CSV se viene rilevata una squadra sconosciuta. |
-| `settings.fxml` | `SettingsController` | **Pannello Impostazioni:** Modifica persistente dei parametri globali (commissioni, decay $\gamma$, campione $N$). |
+| `settings.fxml` | `SettingsViewController` | **Pannello Impostazioni:** Modifica persistente dei parametri globali (commissioni, decay $\gamma$, campione $N$). |
