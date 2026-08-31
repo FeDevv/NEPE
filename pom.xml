@@ -73,10 +73,14 @@
     </dependencies>
 
     <build>
+        <finalName>nepe</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>org.nepe.NepeApplication</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>
