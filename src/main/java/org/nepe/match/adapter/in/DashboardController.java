@@ -71,6 +71,7 @@ public class DashboardController {
     private final ManageSeasonUseCase manageSeasonUseCase;
     private final ImportCsvMatchesUseCase importCsvMatchesUseCase;
     private final CalculatePreMatchInferenceUseCase calculatePreMatchInferenceUseCase;
+    private final org.nepe.settings.port.in.ManageSettingsUseCase manageSettingsUseCase;
     private final SpringFXMLLoader springFXMLLoader;
 
     // --- FXML UI Injections ---
@@ -83,6 +84,7 @@ public class DashboardController {
     @FXML private Label lblDbStatus;
 
     @FXML private ComboBox<Competition> comboCompetition;
+    @FXML private ComboBox<Season> comboSeason;
     @FXML private Button btnFilterAll;
     @FXML private Button btnFilterScheduled;
     @FXML private Button btnFilterLive;
@@ -115,12 +117,14 @@ public class DashboardController {
                                ManageSeasonUseCase manageSeasonUseCase,
                                ImportCsvMatchesUseCase importCsvMatchesUseCase,
                                CalculatePreMatchInferenceUseCase calculatePreMatchInferenceUseCase,
+                               org.nepe.settings.port.in.ManageSettingsUseCase manageSettingsUseCase,
                                SpringFXMLLoader springFXMLLoader) {
         this.manageMatchUseCase = Objects.requireNonNull(manageMatchUseCase, "ManageMatchUseCase must not be null");
         this.manageCompetitionUseCase = Objects.requireNonNull(manageCompetitionUseCase, "ManageCompetitionUseCase must not be null");
         this.manageSeasonUseCase = Objects.requireNonNull(manageSeasonUseCase, "ManageSeasonUseCase must not be null");
         this.importCsvMatchesUseCase = Objects.requireNonNull(importCsvMatchesUseCase, "ImportCsvMatchesUseCase must not be null");
         this.calculatePreMatchInferenceUseCase = Objects.requireNonNull(calculatePreMatchInferenceUseCase, "CalculatePreMatchInferenceUseCase must not be null");
+        this.manageSettingsUseCase = Objects.requireNonNull(manageSettingsUseCase, "ManageSettingsUseCase must not be null");
         this.springFXMLLoader = Objects.requireNonNull(springFXMLLoader, "SpringFXMLLoader must not be null");
     }
 
@@ -128,6 +132,7 @@ public class DashboardController {
     public void initialize() {
         configureTableColumns();
         configureCompetitionDropdown();
+        configureSeasonDropdown();
         loadInitialData();
     }
 
@@ -220,12 +225,16 @@ public class DashboardController {
 
                 btnAnalyze.setOnAction(event -> {
                     MatchDetailsDTO match = getTableView().getItems().get(getIndex());
-                    openPreMatchAnalysis(match.matchId());
+                    if (match != null && match.matchState().allowsPreMatchAnalysis()) {
+                        openPreMatchAnalysis(match.matchId());
+                    }
                 });
 
                 btnLive.setOnAction(event -> {
                     MatchDetailsDTO match = getTableView().getItems().get(getIndex());
-                    openLiveConsole(match.matchId());
+                    if (match != null && match.matchState().allowsLiveTrading()) {
+                        openLiveConsole(match.matchId());
+                    }
                 });
             }
 
@@ -236,8 +245,13 @@ public class DashboardController {
                     setGraphic(null);
                 } else {
                     MatchDetailsDTO match = getTableView().getItems().get(getIndex());
-                    btnLive.setDisable(match.matchState() == MatchState.FINISHED || match.matchState() == MatchState.CANCELLED);
-                    setGraphic(container);
+                    if (match != null) {
+                        btnAnalyze.setDisable(!match.matchState().allowsPreMatchAnalysis());
+                        btnLive.setDisable(!match.matchState().allowsLiveTrading());
+                        setGraphic(container);
+                    } else {
+                        setGraphic(null);
+                    }
                 }
             }
         });
@@ -264,12 +278,42 @@ public class DashboardController {
         });
     }
 
+    private void configureSeasonDropdown() {
+        comboSeason.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(Season season) {
+                return (season != null) ? season.getName() : "";
+            }
+
+            @Override
+            public Season fromString(String string) {
+                return null;
+            }
+        });
+
+        comboSeason.getSelectionModel().selectedItemProperty().addListener((obs, oldSeason, newSeason) -> {
+            if (newSeason != null) {
+                this.currentSeason = newSeason;
+                syntheticEvCache.clear();
+                reloadMatches();
+            }
+        });
+    }
+
     private void loadInitialData() {
         try {
-            try {
-                this.currentSeason = manageSeasonUseCase.getLatestSeason();
-            } catch (EntityNotFoundException e) {
-                this.currentSeason = manageSeasonUseCase.getOrCreateSeason("2025/2026");
+            List<Season> seasons = manageSeasonUseCase.getAllSeasons();
+            if (seasons.isEmpty()) {
+                Season defaultSeason = manageSeasonUseCase.getOrCreateSeason(Season.current().getName());
+                seasons = List.of(defaultSeason);
+            }
+            comboSeason.setItems(FXCollections.observableArrayList(seasons));
+
+            if (currentSeason != null && seasons.contains(currentSeason)) {
+                comboSeason.getSelectionModel().select(currentSeason);
+            } else {
+                comboSeason.getSelectionModel().selectFirst();
+                this.currentSeason = comboSeason.getSelectionModel().getSelectedItem();
             }
 
             List<Competition> competitions = manageCompetitionUseCase.getAllCompetitions();
@@ -290,23 +334,26 @@ public class DashboardController {
 
     public void reloadMatches() {
         Competition selectedComp = comboCompetition.getSelectionModel().getSelectedItem();
-        if (selectedComp == null || currentSeason == null) {
+        Season selectedSeason = comboSeason.getSelectionModel().getSelectedItem();
+        if (selectedComp == null || selectedSeason == null) {
             tblMatches.setItems(FXCollections.emptyObservableList());
             lblSummary.setText("Partite caricate: 0");
             return;
         }
 
+        this.currentSeason = selectedSeason;
+
         try {
             List<MatchDetailsDTO> matches;
             if (currentFilterState == null) {
-                matches = manageMatchUseCase.getMatchDetailsByCompetitionAndSeason(selectedComp.getId(), currentSeason.getId());
+                matches = manageMatchUseCase.getMatchDetailsByCompetitionAndSeason(selectedComp.getId(), selectedSeason.getId());
             } else {
-                matches = manageMatchUseCase.getMatchDetailsByState(selectedComp.getId(), currentSeason.getId(), currentFilterState);
+                matches = manageMatchUseCase.getMatchDetailsByState(selectedComp.getId(), selectedSeason.getId(), currentFilterState);
             }
 
             ObservableList<MatchDetailsDTO> observableList = FXCollections.observableArrayList(matches);
             tblMatches.setItems(observableList);
-            lblSummary.setText(String.format("Partite caricate: %d (Stagione: %s)", matches.size(), currentSeason.getName()));
+            lblSummary.setText(String.format("Partite caricate: %d (Competizione: %s | Stagione: %s)", matches.size(), selectedComp.getName(), selectedSeason.getName()));
             lblMessage.setText("");
 
             // Compute EV signals asynchronously on a Java 25 Virtual Thread to prevent UI thread stuttering
@@ -380,28 +427,30 @@ public class DashboardController {
             double lambdaH = Math.max(0.6, totalImplied * 1.5 * (pHomeImplied / Math.max(0.1, totalImplied)));
             double muA = Math.max(0.5, totalImplied * 1.5 * (pAwayImplied / Math.max(0.1, totalImplied)));
 
+            double commRate = (manageSettingsUseCase != null) ? manageSettingsUseCase.getSettings().getCommissionRate() : 0.05;
+
             PreMatchAnalysisResult result = calculatePreMatchInferenceUseCase.calculate(
                     lambdaH,
                     muA,
                     match.dixonColesRho(),
-                    0.05,
+                    commRate,
                     Collections.emptyList()
             );
 
             if (match.oddsHome() != null) {
-                double evHome = (result.homeWin().probability() * (match.oddsHome() - 1.0) * 0.95) - (1.0 - result.homeWin().probability());
+                double evHome = (result.homeWin().probability() * (match.oddsHome() - 1.0) * (1.0 - commRate)) - (1.0 - result.homeWin().probability());
                 if (evHome > 0.03) {
                     return String.format("EV+ 1 (+%.1f%%)", evHome * 100);
                 }
             }
             if (match.oddsDraw() != null) {
-                double evDraw = (result.draw().probability() * (match.oddsDraw() - 1.0) * 0.95) - (1.0 - result.draw().probability());
+                double evDraw = (result.draw().probability() * (match.oddsDraw() - 1.0) * (1.0 - commRate)) - (1.0 - result.draw().probability());
                 if (evDraw > 0.03) {
                     return String.format("EV+ X (+%.1f%%)", evDraw * 100);
                 }
             }
             if (match.oddsAway() != null) {
-                double evAway = (result.awayWin().probability() * (match.oddsAway() - 1.0) * 0.95) - (1.0 - result.awayWin().probability());
+                double evAway = (result.awayWin().probability() * (match.oddsAway() - 1.0) * (1.0 - commRate)) - (1.0 - result.awayWin().probability());
                 if (evAway > 0.03) {
                     return String.format("EV+ 2 (+%.1f%%)", evAway * 100);
                 }
@@ -471,7 +520,22 @@ public class DashboardController {
             return;
         }
 
-        String seasonName = (currentSeason != null) ? currentSeason.getName() : "2025/2026";
+        String initialSeason = (currentSeason != null) ? currentSeason.getName() : Season.current().getName();
+        java.util.Optional<String> chosenSeasonOpt = promptForSeasonName(stage, initialSeason);
+        if (chosenSeasonOpt.isEmpty() || chosenSeasonOpt.get().isBlank()) {
+            return;
+        }
+
+        String seasonNameInput = chosenSeasonOpt.get().trim();
+        Season targetSeason;
+        try {
+            targetSeason = manageSeasonUseCase.getOrCreateSeason(seasonNameInput);
+        } catch (DomainValidationException e) {
+            showErrorAlert("Formato Stagione Non Valido", e.getMessage());
+            return;
+        }
+
+        String targetSeasonName = targetSeason.getName();
 
         // Execute CSV ingestion asynchronously on a Java 25 Virtual Thread to prevent UI thread freezes
         // and support seamless interactive alias resolution continuation
@@ -479,12 +543,25 @@ public class DashboardController {
             boolean importCompleted = false;
             while (!importCompleted) {
                 try {
-                    ImportCsvResultDTO result = importCsvMatchesUseCase.importCsvFile(selectedFile.toPath(), seasonName);
+                    ImportCsvResultDTO result = importCsvMatchesUseCase.importCsvFile(selectedFile.toPath(), targetSeasonName);
                     importCompleted = true;
                     Platform.runLater(() -> {
                         syntheticEvCache.clear();
+
+                        // Reload seasons in comboSeason and select imported season
+                        List<Season> updatedSeasons = manageSeasonUseCase.getAllSeasons();
+                        comboSeason.setItems(FXCollections.observableArrayList(updatedSeasons));
+                        for (Season s : updatedSeasons) {
+                            if (s.getName().equalsIgnoreCase(targetSeasonName)) {
+                                comboSeason.getSelectionModel().select(s);
+                                this.currentSeason = s;
+                                break;
+                            }
+                        }
+
                         showInformationAlert("Importazione CSV Completata",
-                                String.format("Righe elaborate: %d\nNuove partite: %d\nPartite aggiornate: %d\nModifiche manuali preservate: %d\nRighe saltate: %d",
+                                String.format("Stagione: %s\nRighe elaborate: %d\nNuove partite: %d\nPartite aggiornate: %d\nModifiche manuali preservate: %d\nRighe saltate: %d",
+                                        targetSeasonName,
                                         result.totalRowsParsed(),
                                         result.newMatchesInserted(),
                                         result.existingMatchesUpdated(),
@@ -526,6 +603,55 @@ public class DashboardController {
         });
     }
 
+    private java.util.Optional<String> promptForSeasonName(Stage owner, String defaultSeasonName) {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Stagione di Destinazione CSV");
+        dialog.setHeaderText("Specifica la stagione a cui associare le partite del file CSV:");
+        if (owner != null) {
+            dialog.initOwner(owner);
+        }
+        dialog.initModality(Modality.APPLICATION_MODAL);
+
+        ButtonType btnConfirm = new ButtonType("Conferma e Importa", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(btnConfirm, ButtonType.CANCEL);
+
+        List<String> existingSeasonNames = manageSeasonUseCase.getAllSeasons()
+                .stream()
+                .map(Season::getName)
+                .toList();
+
+        ComboBox<String> combo = new ComboBox<>(FXCollections.observableArrayList(existingSeasonNames));
+        combo.setEditable(true);
+        combo.setPrefWidth(240.0);
+        combo.setPromptText("es. 2026/2027");
+
+        if (defaultSeasonName != null && !defaultSeasonName.isBlank()) {
+            combo.getSelectionModel().select(defaultSeasonName);
+            combo.getEditor().setText(defaultSeasonName);
+        } else if (!existingSeasonNames.isEmpty()) {
+            combo.getSelectionModel().selectFirst();
+            combo.getEditor().setText(existingSeasonNames.getFirst());
+        }
+
+        javafx.scene.layout.VBox content = new javafx.scene.layout.VBox(8);
+        Label promptLabel = new Label("Seleziona una stagione esistente o digita un nuovo anno (Formato: YYYY/YYYY):");
+        promptLabel.setStyle("-fx-font-size: 12px;");
+        content.getChildren().addAll(promptLabel, combo);
+        content.setPadding(new javafx.geometry.Insets(10, 10, 10, 10));
+
+        dialog.getDialogPane().setContent(content);
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == btnConfirm) {
+                String val = combo.getEditor().getText();
+                return (val != null) ? val.trim() : null;
+            }
+            return null;
+        });
+
+        return dialog.showAndWait();
+    }
+
     @FXML
     public void handleAddMatch(ActionEvent event) {
         boolean created = openCreateMatchDialog();
@@ -545,15 +671,33 @@ public class DashboardController {
     @FXML
     public void handleNavPreMatch(ActionEvent event) {
         MatchDetailsDTO selected = tblMatches.getSelectionModel().getSelectedItem();
-        int matchId = (selected != null) ? selected.matchId() : (selectedMatchIdForNavigation != null ? selectedMatchIdForNavigation : 0);
-        openPreMatchAnalysis(matchId);
+        if (selected != null) {
+            if (!selected.matchState().allowsPreMatchAnalysis()) {
+                showInformationAlert("Analisi Pre-Match Non Disponibile",
+                        "L'analisi pre-match è disponibile solo per partite programmate o posticipate (SCHEDULED / POSTPONED).");
+                return;
+            }
+            openPreMatchAnalysis(selected.matchId());
+        } else {
+            int matchId = (selectedMatchIdForNavigation != null) ? selectedMatchIdForNavigation : 0;
+            openPreMatchAnalysis(matchId);
+        }
     }
 
     @FXML
     public void handleNavLive(ActionEvent event) {
         MatchDetailsDTO selected = tblMatches.getSelectionModel().getSelectedItem();
-        int matchId = (selected != null) ? selected.matchId() : (selectedMatchIdForNavigation != null ? selectedMatchIdForNavigation : 0);
-        openLiveConsole(matchId);
+        if (selected != null) {
+            if (!selected.matchState().allowsLiveTrading()) {
+                showInformationAlert("Trading Live Non Disponibile",
+                        "La console live è attiva solo per partite in corso (LIVE).");
+                return;
+            }
+            openLiveConsole(selected.matchId());
+        } else {
+            int matchId = (selectedMatchIdForNavigation != null) ? selectedMatchIdForNavigation : 0;
+            openLiveConsole(matchId);
+        }
     }
 
     @FXML

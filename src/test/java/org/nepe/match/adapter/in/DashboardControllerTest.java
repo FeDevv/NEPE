@@ -21,38 +21,44 @@ class DashboardControllerTest {
     private final ManageSeasonUseCase manageSeasonUseCase = mock(ManageSeasonUseCase.class);
     private final ImportCsvMatchesUseCase importCsvMatchesUseCase = mock(ImportCsvMatchesUseCase.class);
     private final CalculatePreMatchInferenceUseCase calculatePreMatchInferenceUseCase = mock(CalculatePreMatchInferenceUseCase.class);
+    private final org.nepe.settings.port.in.ManageSettingsUseCase manageSettingsUseCase = mock(org.nepe.settings.port.in.ManageSettingsUseCase.class);
     private final SpringFXMLLoader springFXMLLoader = mock(SpringFXMLLoader.class);
 
     @Test
     @DisplayName("Constructor should enforce non-null dependencies")
     void shouldEnforceConstructorInvariants() {
         assertThatThrownBy(() -> new DashboardController(
-                null, manageCompetitionUseCase, manageSeasonUseCase, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, springFXMLLoader))
+                null, manageCompetitionUseCase, manageSeasonUseCase, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, manageSettingsUseCase, springFXMLLoader))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("ManageMatchUseCase must not be null");
 
         assertThatThrownBy(() -> new DashboardController(
-                manageMatchUseCase, null, manageSeasonUseCase, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, springFXMLLoader))
+                manageMatchUseCase, null, manageSeasonUseCase, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, manageSettingsUseCase, springFXMLLoader))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("ManageCompetitionUseCase must not be null");
 
         assertThatThrownBy(() -> new DashboardController(
-                manageMatchUseCase, manageCompetitionUseCase, null, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, springFXMLLoader))
+                manageMatchUseCase, manageCompetitionUseCase, null, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, manageSettingsUseCase, springFXMLLoader))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("ManageSeasonUseCase must not be null");
 
         assertThatThrownBy(() -> new DashboardController(
-                manageMatchUseCase, manageCompetitionUseCase, manageSeasonUseCase, null, calculatePreMatchInferenceUseCase, springFXMLLoader))
+                manageMatchUseCase, manageCompetitionUseCase, manageSeasonUseCase, null, calculatePreMatchInferenceUseCase, manageSettingsUseCase, springFXMLLoader))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("ImportCsvMatchesUseCase must not be null");
 
         assertThatThrownBy(() -> new DashboardController(
-                manageMatchUseCase, manageCompetitionUseCase, manageSeasonUseCase, importCsvMatchesUseCase, null, springFXMLLoader))
+                manageMatchUseCase, manageCompetitionUseCase, manageSeasonUseCase, importCsvMatchesUseCase, null, manageSettingsUseCase, springFXMLLoader))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("CalculatePreMatchInferenceUseCase must not be null");
 
         assertThatThrownBy(() -> new DashboardController(
-                manageMatchUseCase, manageCompetitionUseCase, manageSeasonUseCase, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, null))
+                manageMatchUseCase, manageCompetitionUseCase, manageSeasonUseCase, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, null, springFXMLLoader))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("ManageSettingsUseCase must not be null");
+
+        assertThatThrownBy(() -> new DashboardController(
+                manageMatchUseCase, manageCompetitionUseCase, manageSeasonUseCase, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, manageSettingsUseCase, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("SpringFXMLLoader must not be null");
     }
@@ -66,6 +72,7 @@ class DashboardControllerTest {
                 manageSeasonUseCase,
                 importCsvMatchesUseCase,
                 calculatePreMatchInferenceUseCase,
+                manageSettingsUseCase,
                 springFXMLLoader
         );
 

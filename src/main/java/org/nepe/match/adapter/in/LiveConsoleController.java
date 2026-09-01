@@ -300,7 +300,7 @@ public class LiveConsoleController {
             org.nepe.inference.domain.TeamStrengthCalculator.TeamStrength awayStrength =
                     org.nepe.inference.domain.TeamStrengthCalculator.calculateStrength(awayHistory, leagueAvgXg, gamma);
 
-            double homeAdv = currentMatch.isNeutralVenue() ? 1.0 : 1.20;
+            double homeAdv = currentMatch.isNeutralVenue() ? 1.0 : org.nepe.inference.domain.TeamStrengthCalculator.DEFAULT_HOME_ADVANTAGE;
 
             MatchModifiers modifiers = new MatchModifiers(
                     currentMatch.isNeutralVenue(),

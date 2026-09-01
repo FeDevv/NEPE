@@ -32,6 +32,7 @@ class MatchStateTest {
         assertThat(state.isLive()).isTrue();
         assertThat(state.isTerminal()).isFalse();
         assertThat(state.allowsLiveTrading()).isTrue();
+        assertThat(state.allowsPreMatchAnalysis()).isFalse();
     }
 
     @Test
@@ -41,6 +42,7 @@ class MatchStateTest {
         assertThat(state.isFinished()).isTrue();
         assertThat(state.isTerminal()).isTrue();
         assertThat(state.allowsLiveTrading()).isFalse();
+        assertThat(state.allowsPreMatchAnalysis()).isFalse();
     }
 
     @Test
@@ -52,6 +54,8 @@ class MatchStateTest {
 
         MatchState cancelled = MatchState.CANCELLED;
         assertThat(cancelled.isTerminal()).isTrue();
+        assertThat(cancelled.allowsPreMatchAnalysis()).isFalse();
+        assertThat(cancelled.allowsLiveTrading()).isFalse();
     }
 
     @Test

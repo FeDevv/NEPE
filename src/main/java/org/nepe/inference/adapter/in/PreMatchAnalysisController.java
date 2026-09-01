@@ -388,16 +388,16 @@ public class PreMatchAnalysisController {
             // 4. Assemble market odds list from input fields
             List<MarketOdds> oddsList = assembleCurrentMarketOddsList();
 
-            double homeAdvantageRatio = chkNeutralVenue.isSelected() ? 1.0 : 1.20;
+            double homeAdvantageRatio = chkNeutralVenue.isSelected() ? 1.0 : org.nepe.inference.domain.TeamStrengthCalculator.DEFAULT_HOME_ADVANTAGE;
 
             PreMatchInferenceQuery query = new PreMatchInferenceQuery(
                     homeHistory,
                     awayHistory,
                     leagueAvgXg,
                     homeAdvantageRatio,
+                    gamma,
                     currentMatch.dixonColesRho(),
                     commission,
-                    gamma,
                     modifiers,
                     oddsList
             );

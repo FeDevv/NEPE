@@ -48,7 +48,10 @@
             <!-- Top Header & Action Controls Bar -->
             <HBox spacing="12.0" alignment="CENTER_LEFT">
                 <Label text="Competizione:" styleClass="section-header"/>
-                <ComboBox fx:id="comboCompetition" prefWidth="200.0" promptText="Seleziona Campionato..."/>
+                <ComboBox fx:id="comboCompetition" prefWidth="180.0" promptText="Seleziona Campionato..."/>
+
+                <Label text="Stagione:" styleClass="section-header"/>
+                <ComboBox fx:id="comboSeason" prefWidth="140.0" promptText="Seleziona Stagione..."/>
 
                 <Separator orientation="VERTICAL"/>
 

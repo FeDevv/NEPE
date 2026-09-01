@@ -243,7 +243,7 @@ public class MatchService implements ManageMatchUseCase {
         List<Match> finishedMatches = matchRepositoryPort.findFinishedMatchesByCompetitionAndSeason(competitionId, seasonId);
 
         if (finishedMatches.isEmpty()) {
-            return 1.35;
+            return org.nepe.inference.domain.TeamStrengthCalculator.DEFAULT_LEAGUE_AVG_XG;
         }
 
         double totalXg = 0.0;
@@ -297,7 +297,7 @@ public class MatchService implements ManageMatchUseCase {
 
     private double resolveXg(Double manualXg, Integer totalShots, Integer shotsOnTarget, Integer goals) {
         return org.nepe.inference.domain.XgEstimator.resolveEffectiveXg(manualXg, totalShots, shotsOnTarget, goals)
-                .orElse(1.30);
+                .orElse(org.nepe.inference.domain.TeamStrengthCalculator.DEFAULT_LEAGUE_AVG_XG);
     }
 
     @Override

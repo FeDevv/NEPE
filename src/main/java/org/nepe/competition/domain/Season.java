@@ -32,6 +32,18 @@ public class Season implements Comparable<Season> {
     }
 
     /**
+     * Factory method for creating an unpersisted Season based on current calendar year.
+     * Football seasons typically run from July to June.
+     *
+     * @return a new validated {@link Season} instance for current date
+     */
+    public static Season current() {
+        java.time.LocalDate now = java.time.LocalDate.now();
+        int startYear = (now.getMonthValue() >= 7) ? now.getYear() : now.getYear() - 1;
+        return Season.of(startYear);
+    }
+
+    /**
      * Factory method for creating an unpersisted Season from a string representation (e.g., "2025/2026").
      *
      * @param name formatted season name

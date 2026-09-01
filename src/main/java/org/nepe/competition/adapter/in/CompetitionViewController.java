@@ -289,7 +289,7 @@ public class CompetitionViewController {
         txtCompCode.setDisable(false);
         txtCompName.setText("");
         txtCompCountry.setText("");
-        txtCompRho.setText("-0.1200");
+        txtCompRho.setText(String.format(java.util.Locale.US, "%.4f", Competition.DEFAULT_DIXON_COLES_RHO));
     }
 
     // --- Tab 2 Action Handlers ---
