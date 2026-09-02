@@ -718,6 +718,12 @@ public class DashboardController {
             Competition comp = comboCompetition.getSelectionModel().getSelectedItem();
             if (matchId > 0) {
                 MatchDetailsDTO match = manageMatchUseCase.getMatchDetailsById(matchId);
+                if (!match.matchState().allowsPreMatchAnalysis()) {
+                    showInformationAlert("Analisi Pre-Match Non Disponibile",
+                            "La partita selezionata non è idonea all'analisi pre-match (stato attuale: " + match.matchState().name() + ").");
+                    return;
+                }
+                view.controller().setScope(match.competitionId(), match.seasonId());
                 view.controller().loadMatchDetails(match);
             } else if (comp != null && currentSeason != null) {
                 view.controller().setScope(comp.getId(), currentSeason.getId());

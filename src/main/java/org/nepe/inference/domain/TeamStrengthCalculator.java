@@ -120,8 +120,8 @@ public final class TeamStrengthCalculator {
                                                       double homeAdvantageRatio,
                                                       MatchModifiers modifiers) {
         validateParameters(leagueAvgXgPerTeam, 1.0);
-        if (homeAdvantageRatio < 1.0 || homeAdvantageRatio > 3.0) {
-            throw new DomainValidationException("Home advantage ratio must be between 1.0 and 3.0 (received: " + homeAdvantageRatio + ").");
+        if (homeAdvantageRatio < 1.0 || homeAdvantageRatio > 2.0) {
+            throw new DomainValidationException("Home advantage ratio must be between 1.0 and 2.0 (received: " + homeAdvantageRatio + ").");
         }
 
         TeamStrength hStr = (homeStrength != null) ? homeStrength : new TeamStrength(1.0, 1.0, leagueAvgXgPerTeam, leagueAvgXgPerTeam);

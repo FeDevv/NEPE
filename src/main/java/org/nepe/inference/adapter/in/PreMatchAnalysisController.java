@@ -8,6 +8,7 @@ import javafx.scene.control.*;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
 import org.nepe.bootstrap.SpringFXMLLoader;
+import org.nepe.competition.port.in.ManageCompetitionUseCase;
 import org.nepe.inference.port.in.CalculatePreMatchInferenceUseCase;
 import org.nepe.inference.port.in.MarketPrediction;
 import org.nepe.inference.port.in.PreMatchAnalysisResult;
@@ -59,6 +60,7 @@ public class PreMatchAnalysisController {
     private final ManageMatchUseCase manageMatchUseCase;
     private final ManageMarketOddsUseCase manageMarketOddsUseCase;
     private final ManageSettingsUseCase manageSettingsUseCase;
+    private final ManageCompetitionUseCase manageCompetitionUseCase;
     private final SpringFXMLLoader springFXMLLoader;
 
     // --- FXML Header & Navigation Controls ---
@@ -112,7 +114,35 @@ public class PreMatchAnalysisController {
     @FXML private Label lblEvBack2;
     @FXML private Label lblEvLay2;
 
-    // --- FXML Market Odds: Under/Over 2.5 ---
+    // --- FXML Market Odds: Under/Over (0.5 to 4.5) ---
+    @FXML private Label lblProbUnder05;
+    @FXML private Label lblFairOddsUnder05;
+    @FXML private TextField txtBackUnder05;
+    @FXML private TextField txtLayUnder05;
+    @FXML private Label lblEvBackUnder05;
+    @FXML private Label lblEvLayUnder05;
+
+    @FXML private Label lblProbOver05;
+    @FXML private Label lblFairOddsOver05;
+    @FXML private TextField txtBackOver05;
+    @FXML private TextField txtLayOver05;
+    @FXML private Label lblEvBackOver05;
+    @FXML private Label lblEvLayOver05;
+
+    @FXML private Label lblProbUnder15;
+    @FXML private Label lblFairOddsUnder15;
+    @FXML private TextField txtBackUnder15;
+    @FXML private TextField txtLayUnder15;
+    @FXML private Label lblEvBackUnder15;
+    @FXML private Label lblEvLayUnder15;
+
+    @FXML private Label lblProbOver15;
+    @FXML private Label lblFairOddsOver15;
+    @FXML private TextField txtBackOver15;
+    @FXML private TextField txtLayOver15;
+    @FXML private Label lblEvBackOver15;
+    @FXML private Label lblEvLayOver15;
+
     @FXML private Label lblProbUnder25;
     @FXML private Label lblFairOddsUnder25;
     @FXML private TextField txtBackUnder25;
@@ -126,6 +156,34 @@ public class PreMatchAnalysisController {
     @FXML private TextField txtLayOver25;
     @FXML private Label lblEvBackOver25;
     @FXML private Label lblEvLayOver25;
+
+    @FXML private Label lblProbUnder35;
+    @FXML private Label lblFairOddsUnder35;
+    @FXML private TextField txtBackUnder35;
+    @FXML private TextField txtLayUnder35;
+    @FXML private Label lblEvBackUnder35;
+    @FXML private Label lblEvLayUnder35;
+
+    @FXML private Label lblProbOver35;
+    @FXML private Label lblFairOddsOver35;
+    @FXML private TextField txtBackOver35;
+    @FXML private TextField txtLayOver35;
+    @FXML private Label lblEvBackOver35;
+    @FXML private Label lblEvLayOver35;
+
+    @FXML private Label lblProbUnder45;
+    @FXML private Label lblFairOddsUnder45;
+    @FXML private TextField txtBackUnder45;
+    @FXML private TextField txtLayUnder45;
+    @FXML private Label lblEvBackUnder45;
+    @FXML private Label lblEvLayUnder45;
+
+    @FXML private Label lblProbOver45;
+    @FXML private Label lblFairOddsOver45;
+    @FXML private TextField txtBackOver45;
+    @FXML private TextField txtLayOver45;
+    @FXML private Label lblEvBackOver45;
+    @FXML private Label lblEvLayOver45;
 
     // --- FXML Market Odds: BTTS ---
     @FXML private Label lblProbBttsYes;
@@ -153,11 +211,13 @@ public class PreMatchAnalysisController {
                                       ManageMatchUseCase manageMatchUseCase,
                                       ManageMarketOddsUseCase manageMarketOddsUseCase,
                                       ManageSettingsUseCase manageSettingsUseCase,
+                                      ManageCompetitionUseCase manageCompetitionUseCase,
                                       SpringFXMLLoader springFXMLLoader) {
         this.calculatePreMatchInferenceUseCase = Objects.requireNonNull(calculatePreMatchInferenceUseCase, "CalculatePreMatchInferenceUseCase must not be null");
         this.manageMatchUseCase = Objects.requireNonNull(manageMatchUseCase, "ManageMatchUseCase must not be null");
         this.manageMarketOddsUseCase = Objects.requireNonNull(manageMarketOddsUseCase, "ManageMarketOddsUseCase must not be null");
         this.manageSettingsUseCase = Objects.requireNonNull(manageSettingsUseCase, "ManageSettingsUseCase must not be null");
+        this.manageCompetitionUseCase = Objects.requireNonNull(manageCompetitionUseCase, "ManageCompetitionUseCase must not be null");
         this.springFXMLLoader = Objects.requireNonNull(springFXMLLoader, "SpringFXMLLoader must not be null");
     }
 
@@ -167,7 +227,6 @@ public class PreMatchAnalysisController {
         configureMatchDropdown();
         configureSliderBindings();
         configureInputListeners();
-        loadAvailableMatches();
     }
 
     private void configureMatchDropdown() {
@@ -175,7 +234,11 @@ public class PreMatchAnalysisController {
             @Override
             public String toString(MatchDetailsDTO match) {
                 return (match != null) ?
-                        String.format("%s vs %s (%s)", match.homeTeamName(), match.awayTeamName(), match.competitionCode()) : "";
+                        String.format("[%s] %s vs %s (%s)",
+                                formatDateTime(match.matchDateTime()),
+                                match.homeTeamName(),
+                                match.awayTeamName(),
+                                match.matchState().name()) : "";
             }
 
             @Override
@@ -223,7 +286,11 @@ public class PreMatchAnalysisController {
         // Text fields listeners for real-time EV updates
         List<TextField> allTextFields = List.of(
                 txtBack1, txtLay1, txtBackX, txtLayX, txtBack2, txtLay2,
+                txtBackUnder05, txtLayUnder05, txtBackOver05, txtLayOver05,
+                txtBackUnder15, txtLayUnder15, txtBackOver15, txtLayOver15,
                 txtBackUnder25, txtLayUnder25, txtBackOver25, txtLayOver25,
+                txtBackUnder35, txtLayUnder35, txtBackOver35, txtLayOver35,
+                txtBackUnder45, txtLayUnder45, txtBackOver45, txtLayOver45,
                 txtBackBttsYes, txtLayBttsYes, txtBackBttsNo, txtLayBttsNo
         );
 
@@ -232,30 +299,25 @@ public class PreMatchAnalysisController {
         }
     }
 
-    private void loadAvailableMatches() {
-        try {
-            List<MatchDetailsDTO> matches = manageMatchUseCase.getAllMatchDetails();
-            comboMatchSelector.setItems(FXCollections.observableArrayList(matches));
-            if (!matches.isEmpty()) {
-                comboMatchSelector.getSelectionModel().selectFirst();
-            }
-        } catch (Exception e) {
-            log.warn("Could not preload matches for pre-match analysis", e);
-        }
-    }
-
     /**
-     * Sets the active competition and season scope to populate match selector.
+     * Sets the active competition and season scope to populate match selector with pre-match eligible fixtures.
      */
     public void setScope(int competitionId, int seasonId) {
         try {
-            List<MatchDetailsDTO> matches = manageMatchUseCase.getMatchDetailsByCompetitionAndSeason(competitionId, seasonId);
+            List<MatchDetailsDTO> matches = manageMatchUseCase.getPreMatchEligibleMatches(competitionId, seasonId);
             comboMatchSelector.setItems(FXCollections.observableArrayList(matches));
             if (!matches.isEmpty()) {
                 comboMatchSelector.getSelectionModel().selectFirst();
+            } else {
+                this.currentMatch = null;
+                lblMatchHeader.setText("Nessuna Partita Idonea");
+                lblMatchInfo.setText("Nessuna partita idonea all'analisi pre-match (SCHEDULED / POSTPONED) trovata per la competizione selezionata.");
+                lblStatus.setText("Nessuna partita programmata o posticipata disponibile.");
+                setFormControlsDisabled(true);
             }
         } catch (Exception e) {
-            log.warn("Could not load matches for competition ID {} and season ID {}", competitionId, seasonId, e);
+            log.warn("Could not load eligible pre-match fixtures for competition ID {} and season ID {}", competitionId, seasonId, e);
+            lblStatus.setText("Errore nel caricamento delle partite: " + e.getMessage());
         }
     }
 
@@ -266,14 +328,43 @@ public class PreMatchAnalysisController {
      */
     public void loadMatchDetails(MatchDetailsDTO match) {
         if (match == null) return;
-        this.currentMatch = match;
-        this.isUpdatingUi = true;
 
-        try {
+        // Guard condition: enforce pre-match eligibility invariant
+        if (!match.matchState().allowsPreMatchAnalysis()) {
+            this.currentMatch = match;
             lblMatchHeader.setText(String.format("%s vs %s", match.homeTeamName(), match.awayTeamName()));
             lblMatchInfo.setText(String.format("%s | %s (CET) | Stato: %s",
                     match.competitionName(),
                     formatDateTime(match.matchDateTime()),
+                    match.matchState().name()));
+            lblStatus.setText(String.format("La partita selezionata (%s vs %s) non è idonea per l'analisi pre-match. Stato attuale: %s.",
+                    match.homeTeamName(), match.awayTeamName(), match.matchState().name()));
+            setFormControlsDisabled(true);
+            return;
+        }
+
+        this.currentMatch = match;
+        this.isUpdatingUi = true;
+        setFormControlsDisabled(false);
+        lblStatus.setText("");
+
+        try {
+            double baseHomeAdv = manageMatchUseCase.getDynamicHomeAdvantage(match.competitionId(), match.seasonId());
+            boolean isManualHa = false;
+            if (manageCompetitionUseCase != null) {
+                try {
+                    isManualHa = manageCompetitionUseCase.getCompetitionById(match.competitionId()).hasManualHomeAdvantage();
+                } catch (Exception ignored) {
+                    // Fallback to dynamic if lookup fails
+                }
+            }
+            String haLabel = String.format("Fattore Campo: x%.2f (%s)", baseHomeAdv, isManualHa ? "Manuale" : "Dinamico");
+
+            lblMatchHeader.setText(String.format("%s vs %s", match.homeTeamName(), match.awayTeamName()));
+            lblMatchInfo.setText(String.format("%s | %s (CET) | %s | Stato: %s",
+                    match.competitionName(),
+                    formatDateTime(match.matchDateTime()),
+                    haLabel,
                     match.matchState().name()));
 
             lblDixonColesRho.setText(String.format("%.4f", match.dixonColesRho()));
@@ -305,6 +396,20 @@ public class PreMatchAnalysisController {
         recalculateInference();
     }
 
+    private void setFormControlsDisabled(boolean disabled) {
+        if (btnSaveOdds != null) btnSaveOdds.setDisable(disabled);
+        if (btnResetModifiers != null) btnResetModifiers.setDisable(disabled);
+        if (sliderModAttHome != null) sliderModAttHome.setDisable(disabled);
+        if (sliderModDefHome != null) sliderModDefHome.setDisable(disabled);
+        if (sliderModAttAway != null) sliderModAttAway.setDisable(disabled);
+        if (sliderModDefAway != null) sliderModDefAway.setDisable(disabled);
+        if (chkMustWinHome != null) chkMustWinHome.setDisable(disabled);
+        if (chkMustWinAway != null) chkMustWinAway.setDisable(disabled);
+        if (chkLowUrgencyHome != null) chkLowUrgencyHome.setDisable(disabled);
+        if (chkLowUrgencyAway != null) chkLowUrgencyAway.setDisable(disabled);
+        if (chkNeutralVenue != null) chkNeutralVenue.setDisable(disabled);
+    }
+
     private void setBackAwayOdds(Double oddsAway) {
         if (oddsAway != null) {
             txtBack2.setText(String.format("%.2f", oddsAway));
@@ -323,11 +428,35 @@ public class PreMatchAnalysisController {
                     } else if ("2".equalsIgnoreCase(odds.getOutcome())) {
                         setOddsFields(txtBack2, txtLay2, odds);
                     }
+                } else if (odds.getMarketType() == MarketType.UNDER_OVER_05) {
+                    if ("UNDER".equalsIgnoreCase(odds.getOutcome())) {
+                        setOddsFields(txtBackUnder05, txtLayUnder05, odds);
+                    } else if ("OVER".equalsIgnoreCase(odds.getOutcome())) {
+                        setOddsFields(txtBackOver05, txtLayOver05, odds);
+                    }
+                } else if (odds.getMarketType() == MarketType.UNDER_OVER_15) {
+                    if ("UNDER".equalsIgnoreCase(odds.getOutcome())) {
+                        setOddsFields(txtBackUnder15, txtLayUnder15, odds);
+                    } else if ("OVER".equalsIgnoreCase(odds.getOutcome())) {
+                        setOddsFields(txtBackOver15, txtLayOver15, odds);
+                    }
                 } else if (odds.getMarketType() == MarketType.UNDER_OVER_25) {
                     if ("UNDER".equalsIgnoreCase(odds.getOutcome())) {
                         setOddsFields(txtBackUnder25, txtLayUnder25, odds);
                     } else if ("OVER".equalsIgnoreCase(odds.getOutcome())) {
                         setOddsFields(txtBackOver25, txtLayOver25, odds);
+                    }
+                } else if (odds.getMarketType() == MarketType.UNDER_OVER_35) {
+                    if ("UNDER".equalsIgnoreCase(odds.getOutcome())) {
+                        setOddsFields(txtBackUnder35, txtLayUnder35, odds);
+                    } else if ("OVER".equalsIgnoreCase(odds.getOutcome())) {
+                        setOddsFields(txtBackOver35, txtLayOver35, odds);
+                    }
+                } else if (odds.getMarketType() == MarketType.UNDER_OVER_45) {
+                    if ("UNDER".equalsIgnoreCase(odds.getOutcome())) {
+                        setOddsFields(txtBackUnder45, txtLayUnder45, odds);
+                    } else if ("OVER".equalsIgnoreCase(odds.getOutcome())) {
+                        setOddsFields(txtBackOver45, txtLayOver45, odds);
                     }
                 } else if (odds.getMarketType() == MarketType.BTTS) {
                     if ("YES".equalsIgnoreCase(odds.getOutcome())) {
@@ -388,7 +517,8 @@ public class PreMatchAnalysisController {
             // 4. Assemble market odds list from input fields
             List<MarketOdds> oddsList = assembleCurrentMarketOddsList();
 
-            double homeAdvantageRatio = chkNeutralVenue.isSelected() ? 1.0 : org.nepe.inference.domain.TeamStrengthCalculator.DEFAULT_HOME_ADVANTAGE;
+            double baseHomeAdvantage = manageMatchUseCase.getDynamicHomeAdvantage(currentMatch.competitionId(), currentMatch.seasonId());
+            double homeAdvantageRatio = chkNeutralVenue.isSelected() ? 1.0 : baseHomeAdvantage;
 
             PreMatchInferenceQuery query = new PreMatchInferenceQuery(
                     homeHistory,
@@ -413,12 +543,18 @@ public class PreMatchAnalysisController {
             updatePredictionUi(result.draw(), lblProbX, lblFairOddsX, lblEvBackX, lblEvLayX);
             updatePredictionUi(result.awayWin(), lblProb2, lblFairOdds2, lblEvBack2, lblEvLay2);
 
-            // Update Under/Over 2.5 Market UI
-            if (result.underOverPredictions().size() >= 6) {
-                MarketPrediction u25 = result.underOverPredictions().get(4);
-                MarketPrediction o25 = result.underOverPredictions().get(5);
-                updatePredictionUi(u25, lblProbUnder25, lblFairOddsUnder25, lblEvBackUnder25, lblEvLayUnder25);
-                updatePredictionUi(o25, lblProbOver25, lblFairOddsOver25, lblEvBackOver25, lblEvLayOver25);
+            // Update Under/Over Markets UI (0.5 to 4.5)
+            if (result.underOverPredictions().size() >= 10) {
+                updatePredictionUi(result.underOverPredictions().get(0), lblProbUnder05, lblFairOddsUnder05, lblEvBackUnder05, lblEvLayUnder05);
+                updatePredictionUi(result.underOverPredictions().get(1), lblProbOver05, lblFairOddsOver05, lblEvBackOver05, lblEvLayOver05);
+                updatePredictionUi(result.underOverPredictions().get(2), lblProbUnder15, lblFairOddsUnder15, lblEvBackUnder15, lblEvLayUnder15);
+                updatePredictionUi(result.underOverPredictions().get(3), lblProbOver15, lblFairOddsOver15, lblEvBackOver15, lblEvLayOver15);
+                updatePredictionUi(result.underOverPredictions().get(4), lblProbUnder25, lblFairOddsUnder25, lblEvBackUnder25, lblEvLayUnder25);
+                updatePredictionUi(result.underOverPredictions().get(5), lblProbOver25, lblFairOddsOver25, lblEvBackOver25, lblEvLayOver25);
+                updatePredictionUi(result.underOverPredictions().get(6), lblProbUnder35, lblFairOddsUnder35, lblEvBackUnder35, lblEvLayUnder35);
+                updatePredictionUi(result.underOverPredictions().get(7), lblProbOver35, lblFairOddsOver35, lblEvBackOver35, lblEvLayOver35);
+                updatePredictionUi(result.underOverPredictions().get(8), lblProbUnder45, lblFairOddsUnder45, lblEvBackUnder45, lblEvLayUnder45);
+                updatePredictionUi(result.underOverPredictions().get(9), lblProbOver45, lblFairOddsOver45, lblEvBackOver45, lblEvLayOver45);
             }
 
             // Update BTTS Market UI
@@ -481,8 +617,16 @@ public class PreMatchAnalysisController {
         addOddsIfPresent(list, mId, MarketType.MATCH_ODDS, "X", txtBackX, txtLayX);
         addOddsIfPresent(list, mId, MarketType.MATCH_ODDS, "2", txtBack2, txtLay2);
 
+        addOddsIfPresent(list, mId, MarketType.UNDER_OVER_05, "UNDER", txtBackUnder05, txtLayUnder05);
+        addOddsIfPresent(list, mId, MarketType.UNDER_OVER_05, "OVER", txtBackOver05, txtLayOver05);
+        addOddsIfPresent(list, mId, MarketType.UNDER_OVER_15, "UNDER", txtBackUnder15, txtLayUnder15);
+        addOddsIfPresent(list, mId, MarketType.UNDER_OVER_15, "OVER", txtBackOver15, txtLayOver15);
         addOddsIfPresent(list, mId, MarketType.UNDER_OVER_25, "UNDER", txtBackUnder25, txtLayUnder25);
         addOddsIfPresent(list, mId, MarketType.UNDER_OVER_25, "OVER", txtBackOver25, txtLayOver25);
+        addOddsIfPresent(list, mId, MarketType.UNDER_OVER_35, "UNDER", txtBackUnder35, txtLayUnder35);
+        addOddsIfPresent(list, mId, MarketType.UNDER_OVER_35, "OVER", txtBackOver35, txtLayOver35);
+        addOddsIfPresent(list, mId, MarketType.UNDER_OVER_45, "UNDER", txtBackUnder45, txtLayUnder45);
+        addOddsIfPresent(list, mId, MarketType.UNDER_OVER_45, "OVER", txtBackOver45, txtLayOver45);
 
         addOddsIfPresent(list, mId, MarketType.BTTS, "YES", txtBackBttsYes, txtLayBttsYes);
         addOddsIfPresent(list, mId, MarketType.BTTS, "NO", txtBackBttsNo, txtLayBttsNo);
@@ -522,7 +666,7 @@ public class PreMatchAnalysisController {
 
     @FXML
     public void handleSaveMarketOdds(ActionEvent event) {
-        if (currentMatch == null) return;
+        if (currentMatch == null || !currentMatch.matchState().allowsPreMatchAnalysis()) return;
 
         try {
             int matchId = currentMatch.matchId();
@@ -532,8 +676,16 @@ public class PreMatchAnalysisController {
             addSaveCommand(commands, matchId, MarketType.MATCH_ODDS, "X", txtBackX, txtLayX);
             addSaveCommand(commands, matchId, MarketType.MATCH_ODDS, "2", txtBack2, txtLay2);
 
+            addSaveCommand(commands, matchId, MarketType.UNDER_OVER_05, "UNDER", txtBackUnder05, txtLayUnder05);
+            addSaveCommand(commands, matchId, MarketType.UNDER_OVER_05, "OVER", txtBackOver05, txtLayOver05);
+            addSaveCommand(commands, matchId, MarketType.UNDER_OVER_15, "UNDER", txtBackUnder15, txtLayUnder15);
+            addSaveCommand(commands, matchId, MarketType.UNDER_OVER_15, "OVER", txtBackOver15, txtLayOver15);
             addSaveCommand(commands, matchId, MarketType.UNDER_OVER_25, "UNDER", txtBackUnder25, txtLayUnder25);
             addSaveCommand(commands, matchId, MarketType.UNDER_OVER_25, "OVER", txtBackOver25, txtLayOver25);
+            addSaveCommand(commands, matchId, MarketType.UNDER_OVER_35, "UNDER", txtBackUnder35, txtLayUnder35);
+            addSaveCommand(commands, matchId, MarketType.UNDER_OVER_35, "OVER", txtBackOver35, txtLayOver35);
+            addSaveCommand(commands, matchId, MarketType.UNDER_OVER_45, "UNDER", txtBackUnder45, txtLayUnder45);
+            addSaveCommand(commands, matchId, MarketType.UNDER_OVER_45, "OVER", txtBackOver45, txtLayOver45);
 
             addSaveCommand(commands, matchId, MarketType.BTTS, "YES", txtBackBttsYes, txtLayBttsYes);
             addSaveCommand(commands, matchId, MarketType.BTTS, "NO", txtBackBttsNo, txtLayBttsNo);

@@ -36,10 +36,11 @@
                     <VBox spacing="8.0" HBox.hgrow="ALWAYS">
                         <TableView fx:id="tblCompetitions" VBox.vgrow="ALWAYS">
                             <columns>
-                                <TableColumn fx:id="colCompCode" text="Codice Div" prefWidth="100.0"/>
-                                <TableColumn fx:id="colCompName" text="Nome Campionato" prefWidth="200.0"/>
-                                <TableColumn fx:id="colCompCountry" text="Nazione" prefWidth="140.0"/>
-                                <TableColumn fx:id="colCompRho" text="ρ Dixon-Coles" prefWidth="130.0"/>
+                                <TableColumn fx:id="colCompCode" text="Codice Div" prefWidth="90.0"/>
+                                <TableColumn fx:id="colCompName" text="Nome Campionato" prefWidth="180.0"/>
+                                <TableColumn fx:id="colCompCountry" text="Nazione" prefWidth="120.0"/>
+                                <TableColumn fx:id="colCompRho" text="ρ Dixon-Coles" prefWidth="110.0"/>
+                                <TableColumn fx:id="colCompHomeAdv" text="Home Advantage" prefWidth="140.0"/>
                             </columns>
                             <placeholder>
                                 <Label text="Nessuna competizione memorizzata." styleClass="label-muted"/>
@@ -70,6 +71,15 @@
                             <Label text="Coefficiente Dixon-Coles (ρ):" styleClass="label-muted"/>
                             <TextField fx:id="txtCompRho" promptText="es. -0.1200"/>
                             <Label text="Default standard: -0.1200 (corregge punteggi bassi 0-0, 1-1)" styleClass="label-muted" style="-fx-font-size: 11px;"/>
+                        </VBox>
+
+                        <VBox spacing="6.0">
+                            <Label text="Home Advantage (Fattore Campo):" styleClass="label-muted"/>
+                            <HBox spacing="8.0" alignment="CENTER_LEFT">
+                                <TextField fx:id="txtCompHomeAdv" promptText="es. 1.25" prefWidth="100.0" disable="true"/>
+                                <CheckBox fx:id="chkAutoHomeAdv" text="Calcolo Automatico" selected="true"/>
+                            </HBox>
+                            <Label text="Default: Calcolo dinamico automatico multi-stagione via Bayes Shrinkage" styleClass="label-muted" style="-fx-font-size: 11px;"/>
                         </VBox>
 
                         <Separator opacity="0.3"/>

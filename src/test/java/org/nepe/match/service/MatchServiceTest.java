@@ -289,6 +289,56 @@ class MatchServiceTest {
             assertThat(all).hasSize(1);
             assertThat(all.get(0).matchId()).isEqualTo(1);
         }
+
+        @Test
+        @DisplayName("getPreMatchEligibleMatches() should return only SCHEDULED and POSTPONED matches")
+        void shouldReturnOnlyScheduledAndPostponedMatchesForPreMatchAnalysis() {
+            MatchDetailsDTO scheduled = createMatchDetailsDto(1, MatchState.SCHEDULED, COMP_ID, SEASON_ID);
+            MatchDetailsDTO postponed = createMatchDetailsDto(2, MatchState.POSTPONED, COMP_ID, SEASON_ID);
+            MatchDetailsDTO live = createMatchDetailsDto(3, MatchState.LIVE, COMP_ID, SEASON_ID);
+            MatchDetailsDTO finished = createMatchDetailsDto(4, MatchState.FINISHED, COMP_ID, SEASON_ID);
+            MatchDetailsDTO cancelled = createMatchDetailsDto(5, MatchState.CANCELLED, COMP_ID, SEASON_ID);
+            // Match from another competition (SCHEDULED) - must be ignored
+            MatchDetailsDTO otherComp = createMatchDetailsDto(6, MatchState.SCHEDULED, 999, SEASON_ID);
+
+            matchDetailsRepository.storage.put(1, scheduled);
+            matchDetailsRepository.storage.put(2, postponed);
+            matchDetailsRepository.storage.put(3, live);
+            matchDetailsRepository.storage.put(4, finished);
+            matchDetailsRepository.storage.put(5, cancelled);
+            matchDetailsRepository.storage.put(6, otherComp);
+
+            List<MatchDetailsDTO> eligible = service.getPreMatchEligibleMatches(COMP_ID, SEASON_ID);
+
+            assertThat(eligible).hasSize(2);
+            assertThat(eligible).extracting(MatchDetailsDTO::matchId).containsExactlyInAnyOrder(1, 2);
+            assertThat(eligible).extracting(MatchDetailsDTO::matchState).containsOnly(MatchState.SCHEDULED, MatchState.POSTPONED);
+        }
+
+        @Test
+        @DisplayName("getPreMatchEligibleMatches() should return empty list when no eligible matches exist")
+        void shouldReturnEmptyListWhenNoEligibleMatchesExist() {
+            MatchDetailsDTO finished = createMatchDetailsDto(1, MatchState.FINISHED, COMP_ID, SEASON_ID);
+            matchDetailsRepository.storage.put(1, finished);
+
+            List<MatchDetailsDTO> eligible = service.getPreMatchEligibleMatches(COMP_ID, SEASON_ID);
+
+            assertThat(eligible).isEmpty();
+        }
+
+        private MatchDetailsDTO createMatchDetailsDto(int matchId, MatchState state, int compId, int seasonId) {
+            return new MatchDetailsDTO(
+                    matchId, KICKOFF.plusSeconds(matchId * 3600L), state, false,
+                    state == MatchState.FINISHED ? 2 : null,
+                    state == MatchState.FINISHED ? 1 : null,
+                    null, null, null, null, 0, 0,
+                    null, null, 2.10, 3.40, 3.50,
+                    false, false, false, false, false, 1.0, 1.0, 1.0, 1.0, 0,
+                    compId, "I1", "Serie A", "Italy", -0.12,
+                    seasonId, "2025/2026",
+                    HOME_TEAM_ID, "Inter", AWAY_TEAM_ID, "Milan"
+            );
+        }
     }
 
     @Nested
@@ -417,6 +467,108 @@ class MatchServiceTest {
             double avgXg = service.getLeagueAverageXgPerTeam(COMP_ID, SEASON_ID);
 
             assertThat(avgXg).isEqualTo(1.50);
+        }
+    }
+
+    @Nested
+    @DisplayName("getDynamicHomeAdvantage() Tests")
+    class GetDynamicHomeAdvantageTests {
+
+        @Test
+        @DisplayName("Should return manual Home Advantage when configured on competition")
+        void shouldReturnManualOverrideWhenConfigured() {
+            Competition comp = competitionRepository.findById(COMP_ID).orElseThrow();
+            comp.updateHomeAdvantage(1.28);
+            competitionRepository.save(comp);
+
+            double ha = service.getDynamicHomeAdvantage(COMP_ID, SEASON_ID);
+
+            assertThat(ha).isEqualTo(1.28);
+        }
+
+        @Test
+        @DisplayName("Should return default 1.20 when no matches and no previous season")
+        void shouldReturnDefaultWhenNoMatchesAndNoPriorSeason() {
+            double ha = service.getDynamicHomeAdvantage(COMP_ID, SEASON_ID);
+
+            assertThat(ha).isEqualTo(1.20);
+        }
+
+        @Test
+        @DisplayName("Should return previous season HA when current season has 0 matches (M=0)")
+        void shouldReturnPriorSeasonHaWhenNoCurrentMatches() {
+            // Setup previous season 2024/2025
+            Season prevSeason = Season.create("2024/2025");
+            prevSeason.assignId(2);
+            seasonRepository.save(prevSeason);
+
+            // Add finished matches to previous season: home xG 20.0, away xG 15.0 -> HA = 20/15 = 1.3333
+            Match prevMatch = new Match(
+                    null, 2, COMP_ID, HOME_TEAM_ID, AWAY_TEAM_ID,
+                    KICKOFF.minusSeconds(86400L * 30), MatchState.FINISHED, false,
+                    new org.nepe.match.domain.MatchStatistics(2, 1, 10, 8, 4, 3, 0, 0, 2.0, 1.5),
+                    MatchModifiers.defaultModifiers(), 2.0, 3.2, 3.5, 90
+            );
+            matchRepository.save(prevMatch);
+
+            double ha = service.getDynamicHomeAdvantage(COMP_ID, SEASON_ID);
+
+            assertThat(ha).isCloseTo(2.0 / 1.5, org.assertj.core.data.Offset.offset(0.001));
+        }
+
+        @Test
+        @DisplayName("Should blend prior and current season via Empirical Bayes Shrinkage with 40 matches")
+        void shouldBlendPriorAndCurrentSeasonViaShrinkage() {
+            // Previous season: HA = 1.30 (home xG 13.0, away xG 10.0)
+            Season prevSeason = Season.create("2024/2025");
+            prevSeason.assignId(2);
+            seasonRepository.save(prevSeason);
+
+            Match prevMatch = new Match(
+                    null, 2, COMP_ID, HOME_TEAM_ID, AWAY_TEAM_ID,
+                    KICKOFF.minusSeconds(86400L * 30), MatchState.FINISHED, false,
+                    new org.nepe.match.domain.MatchStatistics(1, 1, 10, 8, 4, 3, 0, 0, 1.30, 1.00),
+                    MatchModifiers.defaultModifiers(), 2.0, 3.2, 3.5, 90
+            );
+            matchRepository.save(prevMatch);
+
+            // Current season: 40 finished matches with HA_current = 1.10 (home xG 1.10, away xG 1.00 each)
+            for (int i = 0; i < 40; i++) {
+                Match m = new Match(
+                        null, SEASON_ID, COMP_ID, HOME_TEAM_ID, AWAY_TEAM_ID,
+                        KICKOFF.plusSeconds(86400L * i), MatchState.FINISHED, false,
+                        new org.nepe.match.domain.MatchStatistics(1, 1, 10, 8, 4, 3, 0, 0, 1.10, 1.00),
+                        MatchModifiers.defaultModifiers(), 2.0, 3.2, 3.5, 90
+                );
+                matchRepository.save(m);
+            }
+
+            // w(40) = 40 / (40 + 40) = 0.50
+            // HA = 0.50 * 1.30 + 0.50 * 1.10 = 1.20
+            double ha = service.getDynamicHomeAdvantage(COMP_ID, SEASON_ID);
+
+            assertThat(ha).isCloseTo(1.20, org.assertj.core.data.Offset.offset(0.001));
+        }
+
+        @Test
+        @DisplayName("Should clamp Home Advantage within [1.00, 1.60]")
+        void shouldClampHomeAdvantage() {
+            // Extreme home advantage in previous season (e.g. 2.5) -> must be clamped to 1.60
+            Season prevSeason = Season.create("2024/2025");
+            prevSeason.assignId(2);
+            seasonRepository.save(prevSeason);
+
+            Match prevMatch = new Match(
+                    null, 2, COMP_ID, HOME_TEAM_ID, AWAY_TEAM_ID,
+                    KICKOFF.minusSeconds(86400L * 30), MatchState.FINISHED, false,
+                    new org.nepe.match.domain.MatchStatistics(5, 0, 20, 2, 10, 0, 0, 0, 2.50, 0.50),
+                    MatchModifiers.defaultModifiers(), 2.0, 3.2, 3.5, 90
+            );
+            matchRepository.save(prevMatch);
+
+            double ha = service.getDynamicHomeAdvantage(COMP_ID, SEASON_ID);
+
+            assertThat(ha).isEqualTo(1.60);
         }
     }
 

@@ -1,8 +1,12 @@
 package org.nepe.match.service;
 
+import org.nepe.competition.domain.Competition;
+import org.nepe.competition.domain.Season;
 import org.nepe.competition.port.out.CompetitionRepositoryPort;
 import org.nepe.competition.port.out.SeasonRepositoryPort;
 import org.nepe.competition.port.out.TeamRepositoryPort;
+import org.nepe.inference.domain.TeamStrengthCalculator;
+import org.nepe.inference.domain.XgEstimator;
 import org.nepe.match.domain.Match;
 import org.nepe.match.domain.MatchState;
 import org.nepe.match.domain.MatchStatistics;
@@ -194,6 +198,15 @@ public class MatchService implements ManageMatchUseCase {
 
     @Override
     @Transactional(readOnly = true)
+    public List<MatchDetailsDTO> getPreMatchEligibleMatches(int competitionId, int seasonId) {
+        return matchDetailsRepositoryPort.findDetailsByCompetitionAndSeason(competitionId, seasonId)
+                .stream()
+                .filter(dto -> dto.matchState() != null && dto.matchState().allowsPreMatchAnalysis())
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MatchDetailsDTO> getAllMatchDetails() {
         return matchDetailsRepositoryPort.findAllDetails();
     }
@@ -267,7 +280,86 @@ public class MatchService implements ManageMatchUseCase {
         return Math.max(0.5, avg);
     }
 
-    private org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance mapToPerformance(Match m, int teamId, boolean fromPreviousSeason) {
+    @Override
+    @Transactional(readOnly = true)
+    public double getDynamicHomeAdvantage(int competitionId, int seasonId) {
+        Competition competition = competitionRepositoryPort.findById(competitionId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        String.format("Competition with ID %d not found.", competitionId)
+                ));
+
+        if (competition.hasManualHomeAdvantage()) {
+            return competition.getHomeAdvantage();
+        }
+
+        // 1. Calculate HA_current on finished matches of active season
+        List<Match> currentMatches = matchRepositoryPort.findFinishedMatchesByCompetitionAndSeason(competitionId, seasonId);
+        int currentCount = currentMatches.size();
+        double haCurrent = TeamStrengthCalculator.DEFAULT_HOME_ADVANTAGE;
+
+        if (currentCount > 0) {
+            double sumHomeXg = 0.0;
+            double sumAwayXg = 0.0;
+            for (Match m : currentMatches) {
+                sumHomeXg += resolveXg(
+                        m.getStatistics().getManualHomeXg(),
+                        m.getStatistics().getHomeShots(),
+                        m.getStatistics().getHomeShotsOnTarget(),
+                        m.getStatistics().getHomeScore()
+                );
+                sumAwayXg += resolveXg(
+                        m.getStatistics().getManualAwayXg(),
+                        m.getStatistics().getAwayShots(),
+                        m.getStatistics().getAwayShotsOnTarget(),
+                        m.getStatistics().getAwayScore()
+                );
+            }
+            if (sumAwayXg > 0.0) {
+                haCurrent = sumHomeXg / sumAwayXg;
+            }
+        }
+
+        // 2. Calculate HA_prior on previous season (if available)
+        double haPrior = TeamStrengthCalculator.DEFAULT_HOME_ADVANTAGE;
+        Optional<Season> currentSeasonOpt = seasonRepositoryPort.findById(seasonId);
+        if (currentSeasonOpt.isPresent()) {
+            String prevSeasonName = currentSeasonOpt.get().previous().getName();
+            Optional<Season> prevSeasonOpt = seasonRepositoryPort.findByName(prevSeasonName);
+            if (prevSeasonOpt.isPresent()) {
+                List<Match> prevMatches = matchRepositoryPort.findFinishedMatchesByCompetitionAndSeason(competitionId, prevSeasonOpt.get().getId());
+                if (!prevMatches.isEmpty()) {
+                    double prevHomeXg = 0.0;
+                    double prevAwayXg = 0.0;
+                    for (Match m : prevMatches) {
+                        prevHomeXg += resolveXg(
+                                m.getStatistics().getManualHomeXg(),
+                                m.getStatistics().getHomeShots(),
+                                m.getStatistics().getHomeShotsOnTarget(),
+                                m.getStatistics().getHomeScore()
+                        );
+                        prevAwayXg += resolveXg(
+                                m.getStatistics().getManualAwayXg(),
+                                m.getStatistics().getAwayShots(),
+                                m.getStatistics().getAwayShotsOnTarget(),
+                                m.getStatistics().getAwayScore()
+                        );
+                    }
+                    if (prevAwayXg > 0.0) {
+                        haPrior = prevHomeXg / prevAwayXg;
+                    }
+                }
+            }
+        }
+
+        // 3. Apply Empirical Bayes Shrinkage: w(M) = M / (M + 40)
+        double weight = (double) currentCount / (currentCount + 40.0);
+        double haEstimate = ((1.0 - weight) * haPrior) + (weight * haCurrent);
+
+        // 4. Safety Clamping in [1.00, 1.60]
+        return Math.max(1.00, Math.min(1.60, haEstimate));
+    }
+
+    private TeamStrengthCalculator.MatchPerformance mapToPerformance(Match m, int teamId, boolean fromPreviousSeason) {
         boolean isHome = m.getHomeTeamId().equals(teamId);
         double xgScored;
         double xgConceded;
@@ -292,12 +384,12 @@ public class MatchService implements ManageMatchUseCase {
                     m.getStatistics().getHomeScore());
         }
 
-        return new org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance(xgScored, xgConceded, fromPreviousSeason);
+        return new TeamStrengthCalculator.MatchPerformance(xgScored, xgConceded, fromPreviousSeason);
     }
 
     private double resolveXg(Double manualXg, Integer totalShots, Integer shotsOnTarget, Integer goals) {
-        return org.nepe.inference.domain.XgEstimator.resolveEffectiveXg(manualXg, totalShots, shotsOnTarget, goals)
-                .orElse(org.nepe.inference.domain.TeamStrengthCalculator.DEFAULT_LEAGUE_AVG_XG);
+        return XgEstimator.resolveEffectiveXg(manualXg, totalShots, shotsOnTarget, goals)
+                .orElse(TeamStrengthCalculator.DEFAULT_LEAGUE_AVG_XG);
     }
 
     @Override

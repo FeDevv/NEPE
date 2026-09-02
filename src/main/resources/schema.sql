@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS competitions (
     code VARCHAR(10) NOT NULL UNIQUE,
     name VARCHAR(100) NOT NULL,
     country VARCHAR(50) NOT NULL,
-    dixon_coles_rho DECIMAL(5,4) NOT NULL DEFAULT -0.1200
+    dixon_coles_rho DECIMAL(5,4) NOT NULL DEFAULT -0.1200,
+    home_advantage DECIMAL(4,2) NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 2. Tabella Squadre (Anagrafica ufficiale visualizzata in GUI)

@@ -26,11 +26,21 @@
             <Separator opacity="0.2"/>
 
             <!-- Navigation Buttons -->
-            <Button fx:id="btnNavDashboard" text="📊 Palinsesto" styleClass="nav-button, nav-button-active" maxWidth="Infinity" onAction="#handleNavDashboard"/>
-            <Button fx:id="btnNavPreMatch" text="🎯 Analisi Pre-Match" styleClass="nav-button" maxWidth="Infinity" onAction="#handleNavPreMatch"/>
-            <Button fx:id="btnNavLive" text="⚡ Console Live" styleClass="nav-button" maxWidth="Infinity" onAction="#handleNavLive"/>
-            <Button fx:id="btnNavCompetition" text="🏆 Anagrafiche" styleClass="nav-button" maxWidth="Infinity" onAction="#handleNavCompetition"/>
-            <Button fx:id="btnNavSettings" text="⚙️ Impostazioni" styleClass="nav-button" maxWidth="Infinity" onAction="#handleNavSettings"/>
+            <Button fx:id="btnNavDashboard" text="📊 Palinsesto" styleClass="nav-button, nav-button-active" maxWidth="Infinity" onAction="#handleNavDashboard">
+                <tooltip><Tooltip text="Visualizza il palinsesto partite"/></tooltip>
+            </Button>
+            <Button fx:id="btnNavPreMatch" text="🎯 Analisi Pre-Match" styleClass="nav-button" maxWidth="Infinity" onAction="#handleNavPreMatch">
+                <tooltip><Tooltip text="Analisi quote, Dixon-Coles ed Expected Value"/></tooltip>
+            </Button>
+            <Button fx:id="btnNavLive" text="⚡ Console Live" styleClass="nav-button" maxWidth="Infinity" onAction="#handleNavLive">
+                <tooltip><Tooltip text="Console di monitoraggio eventi e probabilità in tempo reale"/></tooltip>
+            </Button>
+            <Button fx:id="btnNavCompetition" text="🏆 Anagrafiche" styleClass="nav-button" maxWidth="Infinity" onAction="#handleNavCompetition">
+                <tooltip><Tooltip text="Gestione campionati, squadre e alias"/></tooltip>
+            </Button>
+            <Button fx:id="btnNavSettings" text="⚙️ Impostazioni" styleClass="nav-button" maxWidth="Infinity" onAction="#handleNavSettings">
+                <tooltip><Tooltip text="Configurazione parametri e preferenze globali"/></tooltip>
+            </Button>
 
             <Region VBox.vgrow="ALWAYS"/>
 
@@ -40,36 +50,58 @@
 
     <!-- Main Content Area -->
     <center>
-        <VBox styleClass="content-pane" spacing="16.0">
+        <VBox styleClass="content-pane" spacing="14.0">
             <padding>
                 <Insets top="16.0" right="20.0" bottom="16.0" left="20.0"/>
             </padding>
 
-            <!-- Top Header & Action Controls Bar -->
-            <HBox spacing="12.0" alignment="CENTER_LEFT">
-                <Label text="Competizione:" styleClass="section-header"/>
-                <ComboBox fx:id="comboCompetition" prefWidth="180.0" promptText="Seleziona Campionato..."/>
+            <!-- Top Header & Filter Controls Container (2-Row Responsive Layout) -->
+            <VBox spacing="10.0">
+                <!-- Row 1: Competition & Season Selectors (Left) + Match State Filters (Right) -->
+                <HBox spacing="10.0" alignment="CENTER_LEFT">
+                    <Label text="Competizione:" styleClass="section-header"/>
+                    <ComboBox fx:id="comboCompetition" prefWidth="190.0" promptText="Seleziona Campionato..."/>
 
-                <Label text="Stagione:" styleClass="section-header"/>
-                <ComboBox fx:id="comboSeason" prefWidth="140.0" promptText="Seleziona Stagione..."/>
+                    <Label text="Stagione:" styleClass="section-header"/>
+                    <ComboBox fx:id="comboSeason" prefWidth="130.0" promptText="Seleziona Stagione..."/>
 
-                <Separator orientation="VERTICAL"/>
+                    <Region HBox.hgrow="ALWAYS"/>
 
-                <!-- Match State Filter Buttons -->
-                <HBox spacing="6.0" alignment="CENTER_LEFT">
-                    <Button fx:id="btnFilterAll" text="Tutte" styleClass="button, btn-primary" onAction="#handleFilterAll"/>
-                    <Button fx:id="btnFilterScheduled" text="Programmate" styleClass="button" onAction="#handleFilterScheduled"/>
-                    <Button fx:id="btnFilterLive" text="Live" styleClass="button" onAction="#handleFilterLive"/>
-                    <Button fx:id="btnFilterFinished" text="Terminate" styleClass="button" onAction="#handleFilterFinished"/>
+                    <!-- Match State Filter Buttons (Right-aligned) -->
+                    <HBox spacing="6.0" alignment="CENTER_RIGHT">
+                        <Button fx:id="btnFilterAll" text="Tutte" styleClass="button, btn-primary" onAction="#handleFilterAll">
+                            <tooltip><Tooltip text="Mostra tutte le partite del palinsesto"/></tooltip>
+                        </Button>
+                        <Button fx:id="btnFilterScheduled" text="Programmate" styleClass="button" onAction="#handleFilterScheduled">
+                            <tooltip><Tooltip text="Filtra solo partite programmate"/></tooltip>
+                        </Button>
+                        <Button fx:id="btnFilterLive" text="Live" styleClass="button" onAction="#handleFilterLive">
+                            <tooltip><Tooltip text="Filtra solo partite in corso"/></tooltip>
+                        </Button>
+                        <Button fx:id="btnFilterFinished" text="Terminate" styleClass="button" onAction="#handleFilterFinished">
+                            <tooltip><Tooltip text="Filtra solo partite concluse"/></tooltip>
+                        </Button>
+                    </HBox>
                 </HBox>
 
-                <Region HBox.hgrow="ALWAYS"/>
+                <!-- Row 2: Summary Counter & Action Buttons -->
+                <HBox spacing="12.0" alignment="CENTER_LEFT">
+                    <Label fx:id="lblSummary" text="Partite caricate: 0" styleClass="label-muted"/>
 
-                <!-- Primary Action Buttons -->
-                <Button fx:id="btnImportCsv" text="📂 Importa CSV" styleClass="button, btn-primary" onAction="#handleImportCsv"/>
-                <Button fx:id="btnAddMatch" text="➕ Aggiungi Match" styleClass="button" onAction="#handleAddMatch"/>
-                <Button fx:id="btnRefresh" text="🔄 Aggiorna" styleClass="button" onAction="#handleRefresh"/>
-            </HBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+
+                    <!-- Primary Action Buttons -->
+                    <Button fx:id="btnImportCsv" text="📂 Importa CSV" styleClass="button, btn-primary" onAction="#handleImportCsv">
+                        <tooltip><Tooltip text="Carica file CSV da Football-Data"/></tooltip>
+                    </Button>
+                    <Button fx:id="btnAddMatch" text="➕ Aggiungi Match" styleClass="button" onAction="#handleAddMatch">
+                        <tooltip><Tooltip text="Aggiungi una nuova partita manualmente"/></tooltip>
+                    </Button>
+                    <Button fx:id="btnRefresh" text="🔄 Aggiorna" styleClass="button" onAction="#handleRefresh">
+                        <tooltip><Tooltip text="Ricarica i dati e ricalcola le probabilità"/></tooltip>
+                    </Button>
+                </HBox>
+            </VBox>
 
             <!-- Matches Table -->
             <VBox VBox.vgrow="ALWAYS" spacing="8.0">
@@ -92,8 +124,6 @@
 
             <!-- Bottom Status Footer -->
             <HBox spacing="16.0" alignment="CENTER_LEFT">
-                <Label fx:id="lblSummary" text="Partite caricate: 0" styleClass="label-muted"/>
-                <Region HBox.hgrow="ALWAYS"/>
                 <Label fx:id="lblMessage" text="" styleClass="label-muted"/>
             </HBox>
         </VBox>

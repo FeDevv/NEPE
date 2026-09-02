@@ -32,7 +32,8 @@ public class CompetitionMapper {
                 domain.getCode(),
                 domain.getName(),
                 domain.getCountry(),
-                domain.getDixonColesRho()
+                domain.getDixonColesRho(),
+                domain.getHomeAdvantage()
         );
     }
 
@@ -52,7 +53,8 @@ public class CompetitionMapper {
                 jpa.getCode(),
                 jpa.getName(),
                 jpa.getCountry(),
-                jpa.getDixonColesRho()
+                jpa.getDixonColesRho(),
+                jpa.getHomeAdvantage()
         );
     }
 

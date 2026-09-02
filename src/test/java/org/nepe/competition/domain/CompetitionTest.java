@@ -44,6 +44,15 @@ class CompetitionTest {
         }
 
         @Test
+        @DisplayName("Should create competition with custom Home Advantage")
+        void shouldCreateWithCustomHomeAdvantage() {
+            Competition comp = Competition.create("I1", "Serie A", "Italy", -0.12, 1.25);
+
+            assertThat(comp.hasManualHomeAdvantage()).isTrue();
+            assertThat(comp.getHomeAdvantage()).isEqualTo(1.25);
+        }
+
+        @Test
         @DisplayName("Should normalize whitespace and code casing")
         void shouldNormalizeStrings() {
             Competition comp = Competition.create("  d1  ", "  Bundesliga  ", "  Germany  ");
@@ -51,6 +60,8 @@ class CompetitionTest {
             assertThat(comp.getCode()).isEqualTo("D1");
             assertThat(comp.getName()).isEqualTo("Bundesliga");
             assertThat(comp.getCountry()).isEqualTo("Germany");
+            assertThat(comp.hasManualHomeAdvantage()).isFalse();
+            assertThat(comp.getHomeAdvantage()).isNull();
         }
     }
 
@@ -59,16 +70,24 @@ class CompetitionTest {
     class MutationTests {
 
         @Test
-        @DisplayName("Should update details and Dixon-Coles rho")
-        void shouldUpdateDetailsAndRho() {
+        @DisplayName("Should update details, Dixon-Coles rho, and Home Advantage")
+        void shouldUpdateDetailsAndRhoAndHomeAdvantage() {
             Competition comp = Competition.create("I1", "Serie A", "Italy");
 
             comp.updateDetails("Serie A TIM", "Italia");
             comp.updateDixonColesRho(-0.1350);
+            comp.updateHomeAdvantage(1.30);
 
             assertThat(comp.getName()).isEqualTo("Serie A TIM");
             assertThat(comp.getCountry()).isEqualTo("Italia");
             assertThat(comp.getDixonColesRho()).isCloseTo(-0.1350, within(EPSILON));
+            assertThat(comp.hasManualHomeAdvantage()).isTrue();
+            assertThat(comp.getHomeAdvantage()).isEqualTo(1.30);
+
+            // Reset back to automatic / null
+            comp.updateHomeAdvantage(null);
+            assertThat(comp.hasManualHomeAdvantage()).isFalse();
+            assertThat(comp.getHomeAdvantage()).isNull();
         }
 
         @Test
@@ -126,6 +145,26 @@ class CompetitionTest {
                     .isInstanceOf(DomainValidationException.class);
             assertThatThrownBy(() -> Competition.create("I1", "Serie A", "Italy", Double.NaN))
                     .isInstanceOf(DomainValidationException.class);
+        }
+
+        @Test
+        @DisplayName("Should throw when Home Advantage is outside [1.0, 2.0] or non-finite")
+        void shouldThrowOnInvalidHomeAdvantage() {
+            assertThatThrownBy(() -> Competition.create("I1", "Serie A", "Italy", -0.12, 0.99))
+                    .isInstanceOf(DomainValidationException.class)
+                    .hasMessageContaining("Home advantage must be between");
+
+            assertThatThrownBy(() -> Competition.create("I1", "Serie A", "Italy", -0.12, 2.01))
+                    .isInstanceOf(DomainValidationException.class)
+                    .hasMessageContaining("Home advantage must be between");
+
+            assertThatThrownBy(() -> Competition.create("I1", "Serie A", "Italy", -0.12, Double.NaN))
+                    .isInstanceOf(DomainValidationException.class)
+                    .hasMessageContaining("Home advantage must be a valid finite number");
+
+            assertThatThrownBy(() -> Competition.create("I1", "Serie A", "Italy", -0.12, Double.POSITIVE_INFINITY))
+                    .isInstanceOf(DomainValidationException.class)
+                    .hasMessageContaining("Home advantage must be a valid finite number");
         }
     }
 

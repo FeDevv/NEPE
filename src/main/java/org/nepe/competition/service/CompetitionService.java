@@ -52,7 +52,8 @@ public class CompetitionService implements ManageCompetitionUseCase {
                 command.code(),
                 command.name(),
                 command.country(),
-                rho
+                rho,
+                command.homeAdvantage()
         );
 
         return competitionRepositoryPort.save(competition);
@@ -72,6 +73,7 @@ public class CompetitionService implements ManageCompetitionUseCase {
 
         competition.updateDetails(command.name(), command.country());
         competition.updateDixonColesRho(command.dixonColesRho());
+        competition.updateHomeAdvantage(command.homeAdvantage());
 
         return competitionRepositoryPort.save(competition);
     }

@@ -37,6 +37,9 @@ public class CompetitionJpaEntity {
     @Column(name = "dixon_coles_rho", nullable = false)
     private double dixonColesRho;
 
+    @Column(name = "home_advantage")
+    private Double homeAdvantage;
+
     /**
      * Default no-args constructor required by JPA / Hibernate.
      */
@@ -47,18 +50,33 @@ public class CompetitionJpaEntity {
      * Constructor for creating a new entity before persistence (without an ID).
      */
     public CompetitionJpaEntity(String code, String name, String country, double dixonColesRho) {
-        this(null, code, name, country, dixonColesRho);
+        this(null, code, name, country, dixonColesRho, null);
+    }
+
+    /**
+     * Constructor for creating a new entity before persistence with optional home advantage.
+     */
+    public CompetitionJpaEntity(String code, String name, String country, double dixonColesRho, Double homeAdvantage) {
+        this(null, code, name, country, dixonColesRho, homeAdvantage);
+    }
+
+    /**
+     * Constructor for reconstruction without home advantage.
+     */
+    public CompetitionJpaEntity(Integer id, String code, String name, String country, double dixonColesRho) {
+        this(id, code, name, country, dixonColesRho, null);
     }
 
     /**
      * Full constructor for reconstruction or mapping from the domain.
      */
-    public CompetitionJpaEntity(Integer id, String code, String name, String country, double dixonColesRho) {
+    public CompetitionJpaEntity(Integer id, String code, String name, String country, double dixonColesRho, Double homeAdvantage) {
         this.id = id;
         this.code = code;
         this.name = name;
         this.country = country;
         this.dixonColesRho = dixonColesRho;
+        this.homeAdvantage = homeAdvantage;
     }
 
     // --- Getters and Setters ---
@@ -103,6 +121,14 @@ public class CompetitionJpaEntity {
         this.dixonColesRho = dixonColesRho;
     }
 
+    public Double getHomeAdvantage() {
+        return homeAdvantage;
+    }
+
+    public void setHomeAdvantage(Double homeAdvantage) {
+        this.homeAdvantage = homeAdvantage;
+    }
+
     // --- Identity, Equality and Diagnostics ---
 
     @Override
@@ -132,6 +158,7 @@ public class CompetitionJpaEntity {
                 ", name='" + name + '\'' +
                 ", country='" + country + '\'' +
                 ", dixonColesRho=" + dixonColesRho +
+                ", homeAdvantage=" + homeAdvantage +
                 '}';
     }
 }

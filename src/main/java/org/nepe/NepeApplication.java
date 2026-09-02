@@ -17,3 +17,6 @@ public class NepeApplication {
         Application.launch(JavaFxApplication.class, args);
     }
 }
+
+
+// quando inserisco un match, ho un dropdown che mi mostra TUTTE le squadre presenti nel DB, dovremmo invece mostrare solo quelle della competizione.

@@ -53,11 +53,14 @@ public class CompetitionViewController {
     @FXML private TableColumn<Competition, String> colCompName;
     @FXML private TableColumn<Competition, String> colCompCountry;
     @FXML private TableColumn<Competition, String> colCompRho;
+    @FXML private TableColumn<Competition, String> colCompHomeAdv;
 
     @FXML private TextField txtCompCode;
     @FXML private TextField txtCompName;
     @FXML private TextField txtCompCountry;
     @FXML private TextField txtCompRho;
+    @FXML private TextField txtCompHomeAdv;
+    @FXML private CheckBox chkAutoHomeAdv;
     @FXML private Button btnClearCompForm;
     @FXML private Button btnSaveComp;
 
@@ -105,7 +108,21 @@ public class CompetitionViewController {
         configureTeamsTable();
         configureAliasesTable();
         configureDropdowns();
+        configureFormListeners();
         loadAllData();
+    }
+
+    private void configureFormListeners() {
+        if (chkAutoHomeAdv != null) {
+            chkAutoHomeAdv.selectedProperty().addListener((obs, oldVal, newVal) -> {
+                if (txtCompHomeAdv != null) {
+                    txtCompHomeAdv.setDisable(newVal);
+                    if (newVal) {
+                        txtCompHomeAdv.setText("");
+                    }
+                }
+            });
+        }
     }
 
     // --- Tab 1: Competitions Setup ---
@@ -114,7 +131,12 @@ public class CompetitionViewController {
         colCompCode.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getCode()));
         colCompName.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getName()));
         colCompCountry.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getCountry()));
-        colCompRho.setCellValueFactory(data -> new SimpleStringProperty(String.format("%.4f", data.getValue().getDixonColesRho())));
+        colCompRho.setCellValueFactory(data -> new SimpleStringProperty(String.format(java.util.Locale.US, "%.4f", data.getValue().getDixonColesRho())));
+        colCompHomeAdv.setCellValueFactory(data -> new SimpleStringProperty(
+                data.getValue().hasManualHomeAdvantage()
+                        ? String.format(java.util.Locale.US, "%.2f (Manuale)", data.getValue().getHomeAdvantage())
+                        : "Automatico"
+        ));
 
         tblCompetitions.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             this.selectedCompetition = newVal;
@@ -123,7 +145,20 @@ public class CompetitionViewController {
                 txtCompCode.setDisable(true); // Code is unique key, cannot edit code
                 txtCompName.setText(newVal.getName());
                 txtCompCountry.setText(newVal.getCountry());
-                txtCompRho.setText(String.format("%.4f", newVal.getDixonColesRho()));
+                txtCompRho.setText(String.format(java.util.Locale.US, "%.4f", newVal.getDixonColesRho()));
+                if (newVal.hasManualHomeAdvantage()) {
+                    if (chkAutoHomeAdv != null) chkAutoHomeAdv.setSelected(false);
+                    if (txtCompHomeAdv != null) {
+                        txtCompHomeAdv.setDisable(false);
+                        txtCompHomeAdv.setText(String.format(java.util.Locale.US, "%.2f", newVal.getHomeAdvantage()));
+                    }
+                } else {
+                    if (chkAutoHomeAdv != null) chkAutoHomeAdv.setSelected(true);
+                    if (txtCompHomeAdv != null) {
+                        txtCompHomeAdv.setDisable(true);
+                        txtCompHomeAdv.setText("");
+                    }
+                }
             }
         });
     }
@@ -251,13 +286,27 @@ public class CompetitionViewController {
             }
         }
 
+        Double homeAdvantage = null;
+        if (chkAutoHomeAdv != null && !chkAutoHomeAdv.isSelected() && txtCompHomeAdv != null) {
+            String haStr = txtCompHomeAdv.getText();
+            if (haStr != null && !haStr.isBlank()) {
+                try {
+                    homeAdvantage = Double.parseDouble(haStr.trim().replace(',', '.'));
+                } catch (NumberFormatException e) {
+                    lblStatus.setText("Valore di Home Advantage non valido.");
+                    return;
+                }
+            }
+        }
+
         try {
             if (selectedCompetition != null) {
                 manageCompetitionUseCase.updateCompetition(new UpdateCompetitionCommand(
                         selectedCompetition.getId(),
                         name.trim(),
                         country.trim(),
-                        rho
+                        rho,
+                        homeAdvantage
                 ));
                 lblStatus.setText("Competizione aggiornata con successo!");
             } else {
@@ -269,7 +318,8 @@ public class CompetitionViewController {
                         code.trim().toUpperCase(),
                         name.trim(),
                         country.trim(),
-                        rho
+                        rho,
+                        homeAdvantage
                 ));
                 lblStatus.setText("Nuova competizione creata con successo!");
             }
@@ -290,6 +340,13 @@ public class CompetitionViewController {
         txtCompName.setText("");
         txtCompCountry.setText("");
         txtCompRho.setText(String.format(java.util.Locale.US, "%.4f", Competition.DEFAULT_DIXON_COLES_RHO));
+        if (chkAutoHomeAdv != null) {
+            chkAutoHomeAdv.setSelected(true);
+        }
+        if (txtCompHomeAdv != null) {
+            txtCompHomeAdv.setText("");
+            txtCompHomeAdv.setDisable(true);
+        }
     }
 
     // --- Tab 2 Action Handlers ---

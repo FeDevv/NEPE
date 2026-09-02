@@ -2,8 +2,10 @@ package org.nepe.bootstrap;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import org.nepe.NepeApplication;
 import org.slf4j.Logger;
@@ -32,6 +34,7 @@ public class JavaFxApplication extends Application {
     private static final String APPLICATION_TITLE = "NEPE - Nexus Exchange Prediction Engine";
     private static final double MIN_WIDTH = 1100.0;
     private static final double MIN_HEIGHT = 700.0;
+    private static final double AUTO_MAXIMIZE_THRESHOLD_WIDTH = 1440.0;
 
     private ConfigurableApplicationContext applicationContext;
 
@@ -67,6 +70,14 @@ public class JavaFxApplication extends Application {
         primaryStage.setMinWidth(MIN_WIDTH);
         primaryStage.setMinHeight(MIN_HEIGHT);
         primaryStage.setScene(scene);
+
+        Rectangle2D visualBounds = Screen.getPrimary().getVisualBounds();
+        if (visualBounds != null && visualBounds.getWidth() <= AUTO_MAXIMIZE_THRESHOLD_WIDTH) {
+            log.info("Compact display detected (visualBounds width: {}px <= {}px). Auto-maximizing primary stage.",
+                    visualBounds.getWidth(), AUTO_MAXIMIZE_THRESHOLD_WIDTH);
+            primaryStage.setMaximized(true);
+        }
+
         primaryStage.setOnCloseRequest(event -> {
             log.info("Primary stage close requested by user. Terminating JavaFX application.");
             Platform.exit();

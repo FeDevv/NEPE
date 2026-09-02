@@ -93,21 +93,43 @@ public class LiveConsoleController {
     @FXML private HBox boxGreenUpBanner;
     @FXML private Label lblGreenUpText;
 
-    // --- FXML Residual Probability Grid ---
+    // --- FXML Residual Probability Grid: 1X2 & BTTS ---
     @FXML private Label lblResidualRates;
     @FXML private Label lblLiveProb1;
     @FXML private Label lblLiveProbX;
     @FXML private Label lblLiveProb2;
-    @FXML private Label lblLiveProbUnder25;
-    @FXML private Label lblLiveProbOver25;
     @FXML private Label lblLiveProbBtts;
 
     @FXML private Label lblLiveFairOdds1;
     @FXML private Label lblLiveFairOddsX;
     @FXML private Label lblLiveFairOdds2;
-    @FXML private Label lblLiveFairOddsUnder25;
-    @FXML private Label lblLiveFairOddsOver25;
     @FXML private Label lblLiveFairOddsBtts;
+
+    // --- FXML Residual Probability Grid: Under/Over 0.5 - 4.5 ---
+    @FXML private Label lblLiveProbUnder05;
+    @FXML private Label lblLiveFairOddsUnder05;
+    @FXML private Label lblLiveProbOver05;
+    @FXML private Label lblLiveFairOddsOver05;
+
+    @FXML private Label lblLiveProbUnder15;
+    @FXML private Label lblLiveFairOddsUnder15;
+    @FXML private Label lblLiveProbOver15;
+    @FXML private Label lblLiveFairOddsOver15;
+
+    @FXML private Label lblLiveProbUnder25;
+    @FXML private Label lblLiveFairOddsUnder25;
+    @FXML private Label lblLiveProbOver25;
+    @FXML private Label lblLiveFairOddsOver25;
+
+    @FXML private Label lblLiveProbUnder35;
+    @FXML private Label lblLiveFairOddsUnder35;
+    @FXML private Label lblLiveProbOver35;
+    @FXML private Label lblLiveFairOddsOver35;
+
+    @FXML private Label lblLiveProbUnder45;
+    @FXML private Label lblLiveFairOddsUnder45;
+    @FXML private Label lblLiveProbOver45;
+    @FXML private Label lblLiveFairOddsOver45;
 
     // --- FXML Events Chronology Log & Status ---
     @FXML private ListView<String> lstEventsLog;
@@ -354,9 +376,17 @@ public class LiveConsoleController {
             updateLivePrediction(result.finalDraw(), lblLiveProbX, lblLiveFairOddsX);
             updateLivePrediction(result.finalAwayWin(), lblLiveProb2, lblLiveFairOdds2);
 
-            if (result.underOverPredictions().size() >= 6) {
+            if (result.underOverPredictions().size() >= 10) {
+                updateLivePrediction(result.underOverPredictions().get(0), lblLiveProbUnder05, lblLiveFairOddsUnder05);
+                updateLivePrediction(result.underOverPredictions().get(1), lblLiveProbOver05, lblLiveFairOddsOver05);
+                updateLivePrediction(result.underOverPredictions().get(2), lblLiveProbUnder15, lblLiveFairOddsUnder15);
+                updateLivePrediction(result.underOverPredictions().get(3), lblLiveProbOver15, lblLiveFairOddsOver15);
                 updateLivePrediction(result.underOverPredictions().get(4), lblLiveProbUnder25, lblLiveFairOddsUnder25);
                 updateLivePrediction(result.underOverPredictions().get(5), lblLiveProbOver25, lblLiveFairOddsOver25);
+                updateLivePrediction(result.underOverPredictions().get(6), lblLiveProbUnder35, lblLiveFairOddsUnder35);
+                updateLivePrediction(result.underOverPredictions().get(7), lblLiveProbOver35, lblLiveFairOddsOver35);
+                updateLivePrediction(result.underOverPredictions().get(8), lblLiveProbUnder45, lblLiveFairOddsUnder45);
+                updateLivePrediction(result.underOverPredictions().get(9), lblLiveProbOver45, lblLiveFairOddsOver45);
             }
 
             updateLivePrediction(result.bttsYes(), lblLiveProbBtts, lblLiveFairOddsBtts);

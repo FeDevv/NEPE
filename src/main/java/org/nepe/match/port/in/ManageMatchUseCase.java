@@ -101,6 +101,16 @@ public interface ManageMatchUseCase {
     List<MatchDetailsDTO> getMatchDetailsByState(int competitionId, int seasonId, MatchState state);
 
     /**
+     * Retrieves all match details eligible for pre-match analysis (SCHEDULED and POSTPONED)
+     * within a specific competition and season.
+     *
+     * @param competitionId competition identifier
+     * @param seasonId      season identifier
+     * @return list of eligible {@link MatchDetailsDTO} projections
+     */
+    List<MatchDetailsDTO> getPreMatchEligibleMatches(int competitionId, int seasonId);
+
+    /**
      * Retrieves all match details across all competitions and seasons, ordered chronologically.
      *
      * @return list of all {@link MatchDetailsDTO} projections
@@ -132,6 +142,16 @@ public interface ManageMatchUseCase {
      * @return average xG per team (e.g. 1.35)
      */
     double getLeagueAverageXgPerTeam(int competitionId, int seasonId);
+
+    /**
+     * Calculates the dynamic Home Advantage ratio for a competition and season using
+     * multi-season Empirical Bayes Shrinkage, with fallback to manual competition override if configured.
+     *
+     * @param competitionId competition identifier
+     * @param seasonId      active season identifier
+     * @return dynamic or manual home advantage multiplier (e.g. 1.20)
+     */
+    double getDynamicHomeAdvantage(int competitionId, int seasonId);
 
     /**
      * Deletes a match by its database ID.

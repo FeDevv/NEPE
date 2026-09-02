@@ -15,12 +15,15 @@ public class Competition {
     public static final double DEFAULT_DIXON_COLES_RHO = -0.1200;
     public static final double MIN_RHO = -1.0;
     public static final double MAX_RHO = 1.0;
+    public static final double MIN_HOME_ADVANTAGE = 1.0;
+    public static final double MAX_HOME_ADVANTAGE = 2.0;
 
     private Integer id;
     private String code;
     private String name;
     private String country;
     private double dixonColesRho;
+    private Double homeAdvantage;
 
     /**
      * Factory method for creating a new Competition without a persisted ID and with default Dixon-Coles rho.
@@ -31,7 +34,7 @@ public class Competition {
      * @return a new validated {@link Competition} instance
      */
     public static Competition create(String code, String name, String country) {
-        return new Competition(null, code, name, country, DEFAULT_DIXON_COLES_RHO);
+        return new Competition(null, code, name, country, DEFAULT_DIXON_COLES_RHO, null);
     }
 
     /**
@@ -44,23 +47,46 @@ public class Competition {
      * @return a new validated {@link Competition} instance
      */
     public static Competition create(String code, String name, String country, double dixonColesRho) {
-        return new Competition(null, code, name, country, dixonColesRho);
+        return new Competition(null, code, name, country, dixonColesRho, null);
+    }
+
+    /**
+     * Factory method for creating a new Competition with a custom Dixon-Coles rho and optional manual Home Advantage.
+     *
+     * @param code          unique Football-Data competition code
+     * @param name          descriptive league name
+     * @param country       host country
+     * @param dixonColesRho custom Dixon-Coles correlation coefficient
+     * @param homeAdvantage optional manual Home Advantage override (null for auto-calculation)
+     * @return a new validated {@link Competition} instance
+     */
+    public static Competition create(String code, String name, String country, double dixonColesRho, Double homeAdvantage) {
+        return new Competition(null, code, name, country, dixonColesRho, homeAdvantage);
+    }
+
+    /**
+     * Full constructor for domain reconstruction without home advantage override (defaults to null / automatic).
+     */
+    public Competition(Integer id, String code, String name, String country, double dixonColesRho) {
+        this(id, code, name, country, dixonColesRho, null);
     }
 
     /**
      * Full constructor for domain reconstruction (e.g., when loaded from persistence).
      */
-    public Competition(Integer id, String code, String name, String country, double dixonColesRho) {
+    public Competition(Integer id, String code, String name, String country, double dixonColesRho, Double homeAdvantage) {
         validateCode(code);
         validateName(name);
         validateCountry(country);
         validateDixonColesRho(dixonColesRho);
+        validateHomeAdvantage(homeAdvantage);
 
         this.id = id;
         this.code = code.trim().toUpperCase();
         this.name = name.trim();
         this.country = country.trim();
         this.dixonColesRho = dixonColesRho;
+        this.homeAdvantage = homeAdvantage;
     }
 
     // --- Domain Business Logic & State Mutations ---
@@ -75,6 +101,15 @@ public class Competition {
     public void updateDixonColesRho(double dixonColesRho) {
         validateDixonColesRho(dixonColesRho);
         this.dixonColesRho = dixonColesRho;
+    }
+
+    public void updateHomeAdvantage(Double homeAdvantage) {
+        validateHomeAdvantage(homeAdvantage);
+        this.homeAdvantage = homeAdvantage;
+    }
+
+    public boolean hasManualHomeAdvantage() {
+        return homeAdvantage != null;
     }
 
     public void assignId(Integer id) {
@@ -127,6 +162,21 @@ public class Competition {
         }
     }
 
+    private static void validateHomeAdvantage(Double homeAdvantage) {
+        if (homeAdvantage == null) {
+            return;
+        }
+        if (Double.isNaN(homeAdvantage) || Double.isInfinite(homeAdvantage)) {
+            throw new DomainValidationException("Home advantage must be a valid finite number.");
+        }
+        if (homeAdvantage < MIN_HOME_ADVANTAGE || homeAdvantage > MAX_HOME_ADVANTAGE) {
+            throw new DomainValidationException(
+                    String.format("Home advantage must be between %.2f and %.2f (received: %.2f).",
+                            MIN_HOME_ADVANTAGE, MAX_HOME_ADVANTAGE, homeAdvantage)
+            );
+        }
+    }
+
     // --- Getters ---
 
     public Integer getId() {
@@ -147,6 +197,10 @@ public class Competition {
 
     public double getDixonColesRho() {
         return dixonColesRho;
+    }
+
+    public Double getHomeAdvantage() {
+        return homeAdvantage;
     }
 
     // --- Identity & Equality based on unique business key (code) ---
@@ -172,6 +226,7 @@ public class Competition {
                 ", name='" + name + '\'' +
                 ", country='" + country + '\'' +
                 ", dixonColesRho=" + dixonColesRho +
+                ", homeAdvantage=" + homeAdvantage +
                 '}';
     }
 }

@@ -161,9 +161,9 @@
                         </GridPane>
                     </VBox>
 
-                    <!-- Market 2: Under / Over 2.5 Goals -->
+                    <!-- Market 2: Under / Over (0.5 to 4.5 Goals) -->
                     <VBox styleClass="card" spacing="10.0">
-                        <Label text="⚽ Under / Over 2.5 Gol" styleClass="card-title"/>
+                        <Label text="⚽ Mercati Under / Over (0.5 - 4.5 Gol)" styleClass="card-title"/>
                         <GridPane fx:id="gridUnderOver" hgap="10.0" vgap="8.0">
                             <columnConstraints>
                                 <ColumnConstraints prefWidth="80.0"/>
@@ -175,23 +175,99 @@
                                 <ColumnConstraints prefWidth="140.0"/>
                             </columnConstraints>
 
-                            <!-- Under 2.5 -->
-                            <Label text="Under 2.5" styleClass="label-strong" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                            <Label fx:id="lblProbUnder25" text="-" styleClass="prob-text" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-                            <Label fx:id="lblFairOddsUnder25" text="-" styleClass="odds-text" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
-                            <TextField fx:id="txtBackUnder25" promptText="es. 1.85" prefWidth="90.0" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
-                            <TextField fx:id="txtLayUnder25" promptText="es. 1.88" prefWidth="90.0" GridPane.rowIndex="0" GridPane.columnIndex="4"/>
-                            <Label fx:id="lblEvBackUnder25" text="-" GridPane.rowIndex="0" GridPane.columnIndex="5"/>
-                            <Label fx:id="lblEvLayUnder25" text="-" GridPane.rowIndex="0" GridPane.columnIndex="6"/>
+                            <!-- Headers -->
+                            <Label text="Esito" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                            <Label text="Prob. Reale" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                            <Label text="Quota Equa" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+                            <Label text="Quota Punta" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+                            <Label text="Quota Banca" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="4"/>
+                            <Label text="EV Punta Netto" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="5"/>
+                            <Label text="EV Banca (Rischio)" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="6"/>
 
-                            <!-- Over 2.5 -->
-                            <Label text="Over 2.5" styleClass="label-strong" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                            <Label fx:id="lblProbOver25" text="-" styleClass="prob-text" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-                            <Label fx:id="lblFairOddsOver25" text="-" styleClass="odds-text" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
-                            <TextField fx:id="txtBackOver25" promptText="es. 2.05" prefWidth="90.0" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
-                            <TextField fx:id="txtLayOver25" promptText="es. 2.10" prefWidth="90.0" GridPane.rowIndex="1" GridPane.columnIndex="4"/>
-                            <Label fx:id="lblEvBackOver25" text="-" GridPane.rowIndex="1" GridPane.columnIndex="5"/>
-                            <Label fx:id="lblEvLayOver25" text="-" GridPane.rowIndex="1" GridPane.columnIndex="6"/>
+                            <!-- Under / Over 0.5 -->
+                            <Label text="Under 0.5" styleClass="label-strong" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProbUnder05" text="-" styleClass="prob-text" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOddsUnder05" text="-" styleClass="odds-text" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBackUnder05" promptText="es. 8.50" prefWidth="90.0" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLayUnder05" promptText="es. 9.00" prefWidth="90.0" GridPane.rowIndex="1" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBackUnder05" text="-" GridPane.rowIndex="1" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLayUnder05" text="-" GridPane.rowIndex="1" GridPane.columnIndex="6"/>
+
+                            <Label text="Over 0.5" styleClass="label-strong" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProbOver05" text="-" styleClass="prob-text" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOddsOver05" text="-" styleClass="odds-text" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBackOver05" promptText="es. 1.08" prefWidth="90.0" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLayOver05" promptText="es. 1.10" prefWidth="90.0" GridPane.rowIndex="2" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBackOver05" text="-" GridPane.rowIndex="2" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLayOver05" text="-" GridPane.rowIndex="2" GridPane.columnIndex="6"/>
+
+                            <!-- Under / Over 1.5 -->
+                            <Label text="Under 1.5" styleClass="label-strong" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProbUnder15" text="-" styleClass="prob-text" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOddsUnder15" text="-" styleClass="odds-text" GridPane.rowIndex="3" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBackUnder15" promptText="es. 3.20" prefWidth="90.0" GridPane.rowIndex="3" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLayUnder15" promptText="es. 3.35" prefWidth="90.0" GridPane.rowIndex="3" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBackUnder15" text="-" GridPane.rowIndex="3" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLayUnder15" text="-" GridPane.rowIndex="3" GridPane.columnIndex="6"/>
+
+                            <Label text="Over 1.5" styleClass="label-strong" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProbOver15" text="-" styleClass="prob-text" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOddsOver15" text="-" styleClass="odds-text" GridPane.rowIndex="4" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBackOver15" promptText="es. 1.35" prefWidth="90.0" GridPane.rowIndex="4" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLayOver15" promptText="es. 1.38" prefWidth="90.0" GridPane.rowIndex="4" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBackOver15" text="-" GridPane.rowIndex="4" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLayOver15" text="-" GridPane.rowIndex="4" GridPane.columnIndex="6"/>
+
+                            <!-- Under / Over 2.5 -->
+                            <Label text="Under 2.5" styleClass="label-strong" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProbUnder25" text="-" styleClass="prob-text" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOddsUnder25" text="-" styleClass="odds-text" GridPane.rowIndex="5" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBackUnder25" promptText="es. 1.85" prefWidth="90.0" GridPane.rowIndex="5" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLayUnder25" promptText="es. 1.88" prefWidth="90.0" GridPane.rowIndex="5" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBackUnder25" text="-" GridPane.rowIndex="5" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLayUnder25" text="-" GridPane.rowIndex="5" GridPane.columnIndex="6"/>
+
+                            <Label text="Over 2.5" styleClass="label-strong" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProbOver25" text="-" styleClass="prob-text" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOddsOver25" text="-" styleClass="odds-text" GridPane.rowIndex="6" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBackOver25" promptText="es. 2.05" prefWidth="90.0" GridPane.rowIndex="6" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLayOver25" promptText="es. 2.10" prefWidth="90.0" GridPane.rowIndex="6" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBackOver25" text="-" GridPane.rowIndex="6" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLayOver25" text="-" GridPane.rowIndex="6" GridPane.columnIndex="6"/>
+
+                            <!-- Under / Over 3.5 -->
+                            <Label text="Under 3.5" styleClass="label-strong" GridPane.rowIndex="7" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProbUnder35" text="-" styleClass="prob-text" GridPane.rowIndex="7" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOddsUnder35" text="-" styleClass="odds-text" GridPane.rowIndex="7" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBackUnder35" promptText="es. 1.30" prefWidth="90.0" GridPane.rowIndex="7" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLayUnder35" promptText="es. 1.33" prefWidth="90.0" GridPane.rowIndex="7" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBackUnder35" text="-" GridPane.rowIndex="7" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLayUnder35" text="-" GridPane.rowIndex="7" GridPane.columnIndex="6"/>
+
+                            <Label text="Over 3.5" styleClass="label-strong" GridPane.rowIndex="8" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProbOver35" text="-" styleClass="prob-text" GridPane.rowIndex="8" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOddsOver35" text="-" styleClass="odds-text" GridPane.rowIndex="8" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBackOver35" promptText="es. 3.60" prefWidth="90.0" GridPane.rowIndex="8" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLayOver35" promptText="es. 3.80" prefWidth="90.0" GridPane.rowIndex="8" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBackOver35" text="-" GridPane.rowIndex="8" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLayOver35" text="-" GridPane.rowIndex="8" GridPane.columnIndex="6"/>
+
+                            <!-- Under / Over 4.5 -->
+                            <Label text="Under 4.5" styleClass="label-strong" GridPane.rowIndex="9" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProbUnder45" text="-" styleClass="prob-text" GridPane.rowIndex="9" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOddsUnder45" text="-" styleClass="odds-text" GridPane.rowIndex="9" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBackUnder45" promptText="es. 1.12" prefWidth="90.0" GridPane.rowIndex="9" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLayUnder45" promptText="es. 1.15" prefWidth="90.0" GridPane.rowIndex="9" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBackUnder45" text="-" GridPane.rowIndex="9" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLayUnder45" text="-" GridPane.rowIndex="9" GridPane.columnIndex="6"/>
+
+                            <Label text="Over 4.5" styleClass="label-strong" GridPane.rowIndex="10" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblProbOver45" text="-" styleClass="prob-text" GridPane.rowIndex="10" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblFairOddsOver45" text="-" styleClass="odds-text" GridPane.rowIndex="10" GridPane.columnIndex="2"/>
+                            <TextField fx:id="txtBackOver45" promptText="es. 6.50" prefWidth="90.0" GridPane.rowIndex="10" GridPane.columnIndex="3"/>
+                            <TextField fx:id="txtLayOver45" promptText="es. 7.00" prefWidth="90.0" GridPane.rowIndex="10" GridPane.columnIndex="4"/>
+                            <Label fx:id="lblEvBackOver45" text="-" GridPane.rowIndex="10" GridPane.columnIndex="5"/>
+                            <Label fx:id="lblEvLayOver45" text="-" GridPane.rowIndex="10" GridPane.columnIndex="6"/>
                         </GridPane>
                     </VBox>
 
