@@ -137,10 +137,12 @@ public class Match {
             throw new LiveTradingException("Cannot postpone a completed or cancelled match.");
         }
         this.state = MatchState.POSTPONED;
+        markAsManuallyEdited();
     }
 
     public void cancelMatch() {
         this.state = MatchState.CANCELLED;
+        markAsManuallyEdited();
     }
 
     public void reschedule(Instant newDateTime) {

@@ -44,6 +44,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Driving Inbound Adapter (JavaFX Controller) for the central Application Dashboard.
@@ -217,32 +218,67 @@ public class DashboardController {
             private final Button btnAnalyze = new Button("🎯 Pre-Match");
             private final Button btnLive = new Button("⚡ Live");
             private final Button btnStats = new Button("✏️ Statistiche");
-            private final HBox container = new HBox(6, btnAnalyze, btnLive, btnStats);
+            private final MenuButton btnMore = new MenuButton("⚙️");
+            private final MenuItem itemPostpone = new MenuItem("⏸️ Rinvia Partita");
+            private final MenuItem itemCancel = new MenuItem("❌ Annulla Partita");
+            private final MenuItem itemDelete = new MenuItem("🗑️ Elimina Partita");
+            private final HBox container = new HBox(6, btnAnalyze, btnLive, btnStats, btnMore);
+
+            private MatchDetailsDTO getMatchAtRow() {
+                int index = getIndex();
+                if (index >= 0 && getTableView() != null && getTableView().getItems() != null && index < getTableView().getItems().size()) {
+                    return getTableView().getItems().get(index);
+                }
+                return null;
+            }
 
             {
                 btnAnalyze.getStyleClass().addAll("button", "btn-sm", "btn-primary");
                 btnLive.getStyleClass().addAll("button", "btn-sm", "btn-danger");
                 btnStats.getStyleClass().addAll("button", "btn-sm");
+                btnMore.getStyleClass().addAll("button", "btn-sm");
+                btnMore.getItems().addAll(itemPostpone, itemCancel, new SeparatorMenuItem(), itemDelete);
                 container.setAlignment(Pos.CENTER);
 
                 btnAnalyze.setOnAction(event -> {
-                    MatchDetailsDTO match = getTableView().getItems().get(getIndex());
+                    MatchDetailsDTO match = getMatchAtRow();
                     if (match != null && match.matchState().allowsPreMatchAnalysis()) {
                         openPreMatchAnalysis(match.matchId());
                     }
                 });
 
                 btnLive.setOnAction(event -> {
-                    MatchDetailsDTO match = getTableView().getItems().get(getIndex());
+                    MatchDetailsDTO match = getMatchAtRow();
                     if (match != null && match.matchState().allowsLiveTrading()) {
                         openLiveConsole(match.matchId());
                     }
                 });
 
                 btnStats.setOnAction(event -> {
-                    MatchDetailsDTO match = getTableView().getItems().get(getIndex());
-                    if (match != null) {
+                    MatchDetailsDTO match = getMatchAtRow();
+                    if (match != null && match.matchState() != MatchState.CANCELLED) {
                         openEditMatchStatsDialog(match);
+                    }
+                });
+
+                itemPostpone.setOnAction(event -> {
+                    MatchDetailsDTO match = getMatchAtRow();
+                    if (match != null) {
+                        handlePostponeMatch(match);
+                    }
+                });
+
+                itemCancel.setOnAction(event -> {
+                    MatchDetailsDTO match = getMatchAtRow();
+                    if (match != null) {
+                        handleCancelMatch(match);
+                    }
+                });
+
+                itemDelete.setOnAction(event -> {
+                    MatchDetailsDTO match = getMatchAtRow();
+                    if (match != null) {
+                        handleDeleteMatch(match);
                     }
                 });
             }
@@ -253,10 +289,13 @@ public class DashboardController {
                 if (empty) {
                     setGraphic(null);
                 } else {
-                    MatchDetailsDTO match = getTableView().getItems().get(getIndex());
+                    MatchDetailsDTO match = getMatchAtRow();
                     if (match != null) {
                         btnAnalyze.setDisable(!match.matchState().allowsPreMatchAnalysis());
                         btnLive.setDisable(!match.matchState().allowsLiveTrading());
+                        btnStats.setDisable(match.matchState() == MatchState.CANCELLED);
+                        itemPostpone.setDisable(match.matchState().isTerminal() || match.matchState() == MatchState.POSTPONED);
+                        itemCancel.setDisable(match.matchState() == MatchState.CANCELLED);
                         setGraphic(container);
                     } else {
                         setGraphic(null);
@@ -864,6 +903,81 @@ public class DashboardController {
         } catch (Exception e) {
             log.error("Failed to navigate to view: {}", fxmlPath, e);
             showErrorAlert("Errore Navigazione", "Impossibile caricare la schermata: " + e.getMessage());
+        }
+    }
+
+    public void handlePostponeMatch(MatchDetailsDTO match) {
+        if (match == null) return;
+        lblMessage.setText("");
+
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Conferma Rinvio Partita");
+        confirmAlert.setHeaderText("Rinvio partita");
+        confirmAlert.setContentText(String.format("Vuoi contrassegnare la partita '%s' come RINVIATA (POSTPONED)?",
+                match.getFixtureLabel()));
+
+        Optional<ButtonType> result = confirmAlert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                manageMatchUseCase.markAsPostponed(match.matchId());
+                syntheticEvCache.clear();
+                reloadMatches();
+                lblMessage.setText("Partita " + match.getFixtureLabel() + " contrassegnata come RINVIATA.");
+            } catch (NepeException e) {
+                log.warn("Failed to postpone match {}: {}", match.matchId(), e.getMessage());
+                lblMessage.setText("Errore rinvio: " + e.getMessage());
+                showErrorAlert("Impossibile rinviare la partita", e.getMessage());
+            }
+        }
+    }
+
+    public void handleCancelMatch(MatchDetailsDTO match) {
+        if (match == null) return;
+        lblMessage.setText("");
+
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Conferma Annullamento Partita");
+        confirmAlert.setHeaderText("Annullamento partita");
+        confirmAlert.setContentText(String.format("Vuoi contrassegnare la partita '%s' come ANNULLATA (CANCELLED)?",
+                match.getFixtureLabel()));
+
+        Optional<ButtonType> result = confirmAlert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                manageMatchUseCase.markAsCancelled(match.matchId());
+                syntheticEvCache.clear();
+                reloadMatches();
+                lblMessage.setText("Partita " + match.getFixtureLabel() + " contrassegnata come ANNULLATA.");
+            } catch (NepeException e) {
+                log.warn("Failed to cancel match {}: {}", match.matchId(), e.getMessage());
+                lblMessage.setText("Errore annullamento: " + e.getMessage());
+                showErrorAlert("Impossibile annullare la partita", e.getMessage());
+            }
+        }
+    }
+
+    public void handleDeleteMatch(MatchDetailsDTO match) {
+        if (match == null) return;
+        lblMessage.setText("");
+
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Conferma Eliminazione Partita");
+        confirmAlert.setHeaderText("Eliminazione definitiva partita");
+        confirmAlert.setContentText(String.format("Sei sicuro di voler eliminare definitivamente la partita '%s' (%s)? L'operazione non è reversibile.",
+                match.getFixtureLabel(), formatDateTime(match.matchDateTime())));
+
+        Optional<ButtonType> result = confirmAlert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                manageMatchUseCase.deleteMatch(match.matchId());
+                syntheticEvCache.clear();
+                reloadMatches();
+                lblMessage.setText("Partita " + match.getFixtureLabel() + " eliminata con successo.");
+            } catch (NepeException e) {
+                log.warn("Failed to delete match {}: {}", match.matchId(), e.getMessage());
+                lblMessage.setText("Errore eliminazione: " + e.getMessage());
+                showErrorAlert("Impossibile eliminare la partita", e.getMessage());
+            }
         }
     }
 

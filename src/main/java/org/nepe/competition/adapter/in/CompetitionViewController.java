@@ -23,6 +23,7 @@ import org.springframework.stereotype.Controller;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Driving Inbound Adapter (JavaFX Controller) for managing Master Anagraphics.
@@ -63,6 +64,7 @@ public class CompetitionViewController {
     @FXML private CheckBox chkAutoHomeAdv;
     @FXML private Button btnClearCompForm;
     @FXML private Button btnSaveComp;
+    @FXML private Button btnDeleteComp;
 
     // --- FXML Tab 2: Teams ---
     @FXML private TextField txtTeamSearch;
@@ -74,6 +76,7 @@ public class CompetitionViewController {
     @FXML private TextField txtTeamName;
     @FXML private Button btnAddTeam;
     @FXML private Button btnRenameTeam;
+    @FXML private Button btnDeleteTeam;
 
     // --- FXML Tab 3: Aliases ---
     @FXML private TableView<TeamAlias> tblAliases;
@@ -110,6 +113,9 @@ public class CompetitionViewController {
         configureDropdowns();
         configureFormListeners();
         loadAllData();
+        if (btnDeleteComp != null) btnDeleteComp.setDisable(true);
+        if (btnDeleteTeam != null) btnDeleteTeam.setDisable(true);
+        if (btnDeleteAlias != null) btnDeleteAlias.setDisable(true);
     }
 
     private void configureFormListeners() {
@@ -140,6 +146,9 @@ public class CompetitionViewController {
 
         tblCompetitions.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             this.selectedCompetition = newVal;
+            if (btnDeleteComp != null) {
+                btnDeleteComp.setDisable(newVal == null);
+            }
             if (newVal != null) {
                 txtCompCode.setText(newVal.getCode());
                 txtCompCode.setDisable(true); // Code is unique key, cannot edit code
@@ -171,6 +180,9 @@ public class CompetitionViewController {
 
         tblTeams.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             this.selectedTeam = newVal;
+            if (btnDeleteTeam != null) {
+                btnDeleteTeam.setDisable(newVal == null);
+            }
             if (newVal != null) {
                 txtTeamName.setText(newVal.getName());
             }
@@ -195,6 +207,9 @@ public class CompetitionViewController {
 
         tblAliases.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             this.selectedAlias = newVal;
+            if (btnDeleteAlias != null) {
+                btnDeleteAlias.setDisable(newVal == null);
+            }
             if (newVal != null) {
                 txtAliasName.setText(newVal.getAliasName());
                 selectTeamInCombo(newVal.getTeamId());
@@ -347,6 +362,38 @@ public class CompetitionViewController {
             txtCompHomeAdv.setText("");
             txtCompHomeAdv.setDisable(true);
         }
+        if (btnDeleteComp != null) {
+            btnDeleteComp.setDisable(true);
+        }
+    }
+
+    @FXML
+    public void handleDeleteCompetition(ActionEvent event) {
+        lblStatus.setText("");
+        if (selectedCompetition == null) {
+            lblStatus.setText("Seleziona prima una competizione dalla tabella per eliminarla.");
+            return;
+        }
+
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Conferma Eliminazione Campionato");
+        confirmAlert.setHeaderText("Eliminazione definitiva competizione");
+        confirmAlert.setContentText(String.format("Sei sicuro di voler eliminare la competizione '%s' (%s)?",
+                selectedCompetition.getName(), selectedCompetition.getCode()));
+
+        Optional<ButtonType> result = confirmAlert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                manageCompetitionUseCase.deleteCompetition(selectedCompetition.getId());
+                lblStatus.setText("Competizione '" + selectedCompetition.getName() + "' eliminata con successo.");
+                handleClearCompForm(null);
+                reloadCompetitions();
+            } catch (NepeException e) {
+                log.warn("Cannot delete competition {}: {}", selectedCompetition.getId(), e.getMessage());
+                lblStatus.setText("Errore eliminazione: " + e.getMessage());
+                showErrorAlert("Impossibile eliminare il campionato", e.getMessage());
+            }
+        }
     }
 
     // --- Tab 2 Action Handlers ---
@@ -389,6 +436,41 @@ public class CompetitionViewController {
             reloadTeams();
         } catch (NepeException e) {
             lblStatus.setText("Errore: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void handleDeleteTeam(ActionEvent event) {
+        lblStatus.setText("");
+        if (selectedTeam == null) {
+            lblStatus.setText("Seleziona prima una squadra dalla tabella per eliminarla.");
+            return;
+        }
+
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Conferma Eliminazione Squadra");
+        confirmAlert.setHeaderText("Eliminazione definitiva squadra");
+        confirmAlert.setContentText(String.format("Sei sicuro di voler eliminare la squadra '%s' e tutti i relativi alias?",
+                selectedTeam.getName()));
+
+        Optional<ButtonType> result = confirmAlert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                manageTeamUseCase.deleteTeam(selectedTeam.getId());
+                lblStatus.setText("Squadra '" + selectedTeam.getName() + "' eliminata con successo.");
+                this.selectedTeam = null;
+                tblTeams.getSelectionModel().clearSelection();
+                txtTeamName.setText("");
+                if (btnDeleteTeam != null) {
+                    btnDeleteTeam.setDisable(true);
+                }
+                reloadTeams();
+                reloadAliases();
+            } catch (NepeException e) {
+                log.warn("Cannot delete team {}: {}", selectedTeam.getId(), e.getMessage());
+                lblStatus.setText("Errore eliminazione: " + e.getMessage());
+                showErrorAlert("Impossibile eliminare la squadra", e.getMessage());
+            }
         }
     }
 
@@ -459,5 +541,13 @@ public class CompetitionViewController {
         } catch (Exception e) {
             log.error("Failed to return to dashboard", e);
         }
+    }
+
+    private void showErrorAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 }

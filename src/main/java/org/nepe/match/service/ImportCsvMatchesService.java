@@ -183,8 +183,8 @@ public class ImportCsvMatchesService implements ImportCsvMatchesUseCase {
             if (existingMatchOpt.isPresent()) {
                 Match existing = existingMatchOpt.get();
 
-                // Protect manually edited matches from automated CSV overwrites, but backfill missing reference odds
-                if (existing.isManuallyEdited()) {
+                // Protect manually edited or cancelled/postponed matches from automated CSV overwrites, but backfill missing reference odds
+                if (existing.isManuallyEdited() || existing.getState() == MatchState.CANCELLED || existing.getState() == MatchState.POSTPONED) {
                     boolean oddsBackfilled = false;
                     Double currentH = existing.getOddsHome();
                     Double currentD = existing.getOddsDraw();
@@ -215,20 +215,25 @@ public class ImportCsvMatchesService implements ImportCsvMatchesUseCase {
                     }
 
                     if (isFinished) {
-                        MatchStatistics stats = new MatchStatistics(
-                                row.fthg(),
-                                row.ftag(),
-                                row.hs(),
-                                row.as(),
-                                row.hst(),
-                                row.ast(),
-                                row.hr(),
-                                row.ar(),
-                                null,
-                                null
-                        );
-                        existing.updateStatisticsFromFeed(stats);
-                        existing.finishMatch();
+                        if (existing.getState() != MatchState.CANCELLED) {
+                            MatchStatistics stats = new MatchStatistics(
+                                    row.fthg(),
+                                    row.ftag(),
+                                    row.hs(),
+                                    row.as(),
+                                    row.hst(),
+                                    row.ast(),
+                                    row.hr(),
+                                    row.ar(),
+                                    null,
+                                    null
+                            );
+                            existing.updateStatisticsFromFeed(stats);
+                            existing.finishMatch();
+                        } else {
+                            warnings.add(String.format("Row %d: Match '%s vs %s' is CANCELLED; skipping final score finalization.",
+                                    i + 1, homeTeam.getName(), awayTeam.getName()));
+                        }
                     }
 
                     if (row.oddsHome() != null || row.oddsDraw() != null || row.oddsAway() != null) {

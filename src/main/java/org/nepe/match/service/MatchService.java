@@ -151,6 +151,7 @@ public class MatchService implements ManageMatchUseCase {
     public Match markAsPostponed(int matchId) {
         Match match = findMatchOrThrow(matchId);
         match.postponeMatch();
+        match.markAsManuallyEdited();
         return matchRepositoryPort.save(match);
     }
 
@@ -159,6 +160,7 @@ public class MatchService implements ManageMatchUseCase {
     public Match markAsCancelled(int matchId) {
         Match match = findMatchOrThrow(matchId);
         match.cancelMatch();
+        match.markAsManuallyEdited();
         return matchRepositoryPort.save(match);
     }
 

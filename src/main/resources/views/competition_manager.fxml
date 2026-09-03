@@ -84,10 +84,13 @@
 
                         <Separator opacity="0.3"/>
 
-                        <HBox spacing="10.0" alignment="CENTER_RIGHT">
-                            <Button fx:id="btnClearCompForm" text="Pulisci" styleClass="button" onAction="#handleClearCompForm"/>
-                            <Button fx:id="btnSaveComp" text="💾 Salva / Aggiorna" styleClass="button, btn-primary" onAction="#handleSaveCompetition"/>
-                        </HBox>
+                        <VBox spacing="8.0">
+                            <HBox spacing="10.0" alignment="CENTER_RIGHT">
+                                <Button fx:id="btnClearCompForm" text="Pulisci" styleClass="button" onAction="#handleClearCompForm"/>
+                                <Button fx:id="btnSaveComp" text="💾 Salva / Aggiorna" styleClass="button, btn-primary" onAction="#handleSaveCompetition"/>
+                            </HBox>
+                            <Button fx:id="btnDeleteComp" text="🗑️ Elimina Campionato Selezionato" styleClass="button, btn-danger" maxWidth="Infinity" onAction="#handleDeleteCompetition"/>
+                        </VBox>
                     </VBox>
                 </HBox>
             </Tab>
@@ -128,6 +131,7 @@
                         <VBox spacing="8.0">
                             <Button fx:id="btnAddTeam" text="➕ Crea Nuova Squadra" styleClass="button, btn-primary" maxWidth="Infinity" onAction="#handleAddTeam"/>
                             <Button fx:id="btnRenameTeam" text="✏️ Rinomina Squadra Selezionata" styleClass="button" maxWidth="Infinity" onAction="#handleRenameTeam"/>
+                            <Button fx:id="btnDeleteTeam" text="🗑️ Elimina Squadra Selezionata" styleClass="button, btn-danger" maxWidth="Infinity" onAction="#handleDeleteTeam"/>
                         </VBox>
                     </VBox>
                 </HBox>

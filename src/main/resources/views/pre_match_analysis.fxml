@@ -27,6 +27,7 @@
 
             <Region HBox.hgrow="ALWAYS"/>
 
+            <Button fx:id="btnDeleteOdds" text="🗑️ Reset Quote Salvate" styleClass="button, btn-danger" onAction="#handleDeleteOdds"/>
             <Button fx:id="btnSaveOdds" text="💾 Salva Quote Exchange" styleClass="button, btn-primary" onAction="#handleSaveMarketOdds"/>
         </HBox>
     </top>

@@ -12,7 +12,9 @@ import org.nepe.competition.port.in.ManageSeasonUseCase;
 import org.nepe.competition.port.in.ManageTeamUseCase;
 import org.nepe.competition.port.out.CompetitionRepositoryPort;
 import org.nepe.match.domain.Match;
+import org.nepe.match.domain.MatchModifiers;
 import org.nepe.match.domain.MatchState;
+import org.nepe.match.domain.MatchStatistics;
 import org.nepe.match.port.in.ImportCsvResultDTO;
 import org.nepe.match.port.out.CsvParserPort;
 import org.nepe.match.port.out.MatchRepositoryPort;
@@ -256,6 +258,43 @@ class ImportCsvMatchesServiceTest {
             Match reloaded = matchRepository.findAll().get(0);
             // Must keep manual schedule of 15:00 UTC, NOT overwrite back to 19:45
             assertThat(reloaded.getMatchDateTime()).isEqualTo(manualReschedule);
+        }
+
+        @Test
+        @DisplayName("Should preserve CANCELLED match during re-import without throwing exception")
+        void shouldPreserveCancelledMatchDuringReimport() {
+            Match match = Match.createScheduled(1, 1, INTER_ID, MILAN_ID, Instant.parse("2025-09-20T19:45:00Z"), null, null, null);
+            match.assignId(1);
+            match.cancelMatch();
+            matchRepository.save(match);
+
+            RawCsvMatchRow row = new RawCsvMatchRow("I1", "20/09/2025", "19:45", "Inter", "Milan", 2, 0, 15, 5, 6, 2, 0, 0, 2.10, 3.40, 3.50);
+            csvParser.setRows(List.of(row));
+            ImportCsvResultDTO result = service.importCsvContent("dummy", "2025/2026");
+
+            assertThat(result.manualMatchesPreserved()).isEqualTo(1);
+            Match reloaded = matchRepository.findAll().get(0);
+            assertThat(reloaded.getState()).isEqualTo(MatchState.CANCELLED);
+        }
+
+        @Test
+        @DisplayName("Should preserve legacy CANCELLED match even if isManuallyEdited was false")
+        void shouldPreserveLegacyCancelledMatchWithoutManualFlag() {
+            Match match = new Match(
+                    1, 1, 1, INTER_ID, MILAN_ID, Instant.parse("2025-09-20T19:45:00Z"),
+                    MatchState.CANCELLED, false, MatchStatistics.empty(), MatchModifiers.defaultModifiers(),
+                    null, null, null, 0
+            );
+            matchRepository.save(match);
+
+            RawCsvMatchRow row = new RawCsvMatchRow("I1", "20/09/2025", "19:45", "Inter", "Milan", 2, 0, 15, 5, 6, 2, 0, 0, 2.10, 3.40, 3.50);
+            csvParser.setRows(List.of(row));
+            ImportCsvResultDTO result = service.importCsvContent("dummy", "2025/2026");
+
+            assertThat(result.manualMatchesPreserved()).isEqualTo(1);
+            assertThat(result.existingMatchesUpdated()).isEqualTo(0);
+            Match reloaded = matchRepository.findAll().get(0);
+            assertThat(reloaded.getState()).isEqualTo(MatchState.CANCELLED);
         }
 
         @Test

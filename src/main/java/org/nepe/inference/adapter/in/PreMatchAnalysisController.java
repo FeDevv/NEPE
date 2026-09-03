@@ -31,22 +31,16 @@ import org.springframework.stereotype.Controller;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.*;
 
 /**
  * Driving Inbound Adapter (JavaFX Controller) for Pre-Match Quantitative Analysis and Value Hunting.
  * <p>
  * Connects the JavaFX user interface to the {@link CalculatePreMatchInferenceUseCase}:
- * <ul>
- *     <li>Loads match fixtures and past exchange market quotes.</li>
- *     <li>Applies live sliders and tactical modifiers to offensive/defensive ratings.</li>
- *     <li>Renders bivariate Dixon-Coles probability distributions and fair bookmaker odds.</li>
- *     <li>Dynamically computes Betting Exchange Expected Values (EV Back, EV Lay, and Risk-Adjusted EV Lay).</li>
- *     <li>Highlights positive mathematical value opportunities (EV &gt; 0) with green pill badges.</li>
- * </ul>
+ * Evaluates true probabilities and Expected Value (EV+) across major exchange markets
+ * (1X2, Over/Under 0.5 to 4.5, Both Teams to Score) using Dixon-Coles and Poisson modeling.
  */
 @Controller
 public class PreMatchAnalysisController {
@@ -69,6 +63,7 @@ public class PreMatchAnalysisController {
     @FXML private Label lblMatchHeader;
     @FXML private Label lblMatchInfo;
     @FXML private Button btnSaveOdds;
+    @FXML private Button btnDeleteOdds;
 
     // --- FXML Goal Rates & Modifiers ---
     @FXML private Label lblLambdaHome;
@@ -398,6 +393,7 @@ public class PreMatchAnalysisController {
 
     private void setFormControlsDisabled(boolean disabled) {
         if (btnSaveOdds != null) btnSaveOdds.setDisable(disabled);
+        if (btnDeleteOdds != null) btnDeleteOdds.setDisable(disabled);
         if (btnResetModifiers != null) btnResetModifiers.setDisable(disabled);
         if (sliderModAttHome != null) sliderModAttHome.setDisable(disabled);
         if (sliderModDefHome != null) sliderModDefHome.setDisable(disabled);
@@ -725,6 +721,59 @@ public class PreMatchAnalysisController {
         Double lay = parseDoubleOrNull(l.getText());
         if (back != null || lay != null) {
             commands.add(new SaveMarketOddsCommand(matchId, type, outcome, back, lay));
+        }
+    }
+
+    @FXML
+    public void handleDeleteOdds(ActionEvent event) {
+        if (currentMatch == null) return;
+        lblStatus.setText("");
+
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Conferma Reset Quote Exchange");
+        confirmAlert.setHeaderText("Eliminazione quote exchange salvate");
+        confirmAlert.setContentText(String.format("Vuoi eliminare tutte le quote exchange salvate per la partita '%s vs %s'?",
+                currentMatch.homeTeamName(), currentMatch.awayTeamName()));
+
+        Optional<ButtonType> result = confirmAlert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                manageMarketOddsUseCase.deleteOddsForMatch(currentMatch.matchId());
+
+                isUpdatingUi = true;
+                try {
+                    clearAllMarketOddsFields();
+                    // Restore baseline reference odds from CSV/Match if present
+                    if (currentMatch.oddsHome() != null) txtBack1.setText(String.format(java.util.Locale.US, "%.2f", currentMatch.oddsHome()));
+                    if (currentMatch.oddsDraw() != null) txtBackX.setText(String.format(java.util.Locale.US, "%.2f", currentMatch.oddsDraw()));
+                    if (currentMatch.oddsAway() != null) txtBack2.setText(String.format(java.util.Locale.US, "%.2f", currentMatch.oddsAway()));
+                } finally {
+                    isUpdatingUi = false;
+                }
+
+                lblStatus.setText("Quote exchange salvate rimosse con successo dal database.");
+                recalculateInference();
+            } catch (NepeException e) {
+                log.warn("Failed to delete market odds for match {}: {}", currentMatch.matchId(), e.getMessage());
+                lblStatus.setText("Errore eliminazione quote: " + e.getMessage());
+            }
+        }
+    }
+
+    private void clearAllMarketOddsFields() {
+        TextField[] fields = {
+                txtBack1, txtLay1, txtBackX, txtLayX, txtBack2, txtLay2,
+                txtBackUnder05, txtLayUnder05, txtBackOver05, txtLayOver05,
+                txtBackUnder15, txtLayUnder15, txtBackOver15, txtLayOver15,
+                txtBackUnder25, txtLayUnder25, txtBackOver25, txtLayOver25,
+                txtBackUnder35, txtLayUnder35, txtBackOver35, txtLayOver35,
+                txtBackUnder45, txtLayUnder45, txtBackOver45, txtLayOver45,
+                txtBackBttsYes, txtLayBttsYes, txtBackBttsNo, txtLayBttsNo
+        };
+        for (TextField tf : fields) {
+            if (tf != null) {
+                tf.setText("");
+            }
         }
     }
 
