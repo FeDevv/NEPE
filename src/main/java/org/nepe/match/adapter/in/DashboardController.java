@@ -216,11 +216,13 @@ public class DashboardController {
         colActions.setCellFactory(column -> new TableCell<>() {
             private final Button btnAnalyze = new Button("🎯 Pre-Match");
             private final Button btnLive = new Button("⚡ Live");
-            private final HBox container = new HBox(6, btnAnalyze, btnLive);
+            private final Button btnStats = new Button("✏️ Statistiche");
+            private final HBox container = new HBox(6, btnAnalyze, btnLive, btnStats);
 
             {
                 btnAnalyze.getStyleClass().addAll("button", "btn-sm", "btn-primary");
                 btnLive.getStyleClass().addAll("button", "btn-sm", "btn-danger");
+                btnStats.getStyleClass().addAll("button", "btn-sm");
                 container.setAlignment(Pos.CENTER);
 
                 btnAnalyze.setOnAction(event -> {
@@ -234,6 +236,13 @@ public class DashboardController {
                     MatchDetailsDTO match = getTableView().getItems().get(getIndex());
                     if (match != null && match.matchState().allowsLiveTrading()) {
                         openLiveConsole(match.matchId());
+                    }
+                });
+
+                btnStats.setOnAction(event -> {
+                    MatchDetailsDTO match = getTableView().getItems().get(getIndex());
+                    if (match != null) {
+                        openEditMatchStatsDialog(match);
                     }
                 });
             }
@@ -809,6 +818,39 @@ public class DashboardController {
         } catch (Exception e) {
             log.error("Failed to open create match dialog", e);
             showErrorAlert("Errore Apertura Modale", "Impossibile aprire il dialogo di creazione partita: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean openEditMatchStatsDialog(MatchDetailsDTO match) {
+        if (match == null) return false;
+        try {
+            SpringFXMLLoader.ViewResult<Parent, EditMatchStatsController> view =
+                    springFXMLLoader.loadWithController("/views/edit_match_stats_popup.fxml");
+            view.controller().setMatch(match);
+
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle(String.format("Modifica Statistiche - %s vs %s", match.homeTeamName(), match.awayTeamName()));
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+            dialogStage.initOwner(tblMatches.getScene().getWindow());
+
+            Scene scene = new Scene(view.rootNode());
+            java.net.URL cssResource = getClass().getResource("/styles.css");
+            if (cssResource != null) {
+                scene.getStylesheets().add(cssResource.toExternalForm());
+            }
+            dialogStage.setScene(scene);
+            dialogStage.showAndWait();
+
+            if (view.controller().isStatsUpdated()) {
+                syntheticEvCache.clear();
+                reloadMatches();
+                return true;
+            }
+            return false;
+        } catch (Exception e) {
+            log.error("Failed to open edit match stats dialog", e);
+            showErrorAlert("Errore Apertura Modale", "Impossibile aprire la finestra di modifica statistiche: " + e.getMessage());
             return false;
         }
     }

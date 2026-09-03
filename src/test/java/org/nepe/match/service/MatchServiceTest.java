@@ -200,6 +200,7 @@ class MatchServiceTest {
                     2, 1,
                     14, 8,
                     6, 3,
+                    0, 1,
                     2.15, 0.85
             );
 
@@ -208,7 +209,13 @@ class MatchServiceTest {
             assertThat(updated.getStatistics().getHomeScore()).isEqualTo(2);
             assertThat(updated.getStatistics().getAwayScore()).isEqualTo(1);
             assertThat(updated.getStatistics().getHomeShots()).isEqualTo(14);
+            assertThat(updated.getStatistics().getAwayShots()).isEqualTo(8);
+            assertThat(updated.getStatistics().getHomeShotsOnTarget()).isEqualTo(6);
+            assertThat(updated.getStatistics().getAwayShotsOnTarget()).isEqualTo(3);
+            assertThat(updated.getStatistics().getHomeRedCards()).isEqualTo(0);
+            assertThat(updated.getStatistics().getAwayRedCards()).isEqualTo(1);
             assertThat(updated.getStatistics().getManualHomeXg()).isEqualTo(2.15);
+            assertThat(updated.getStatistics().getManualAwayXg()).isEqualTo(0.85);
             assertThat(updated.isManuallyEdited()).isTrue();
         }
     }

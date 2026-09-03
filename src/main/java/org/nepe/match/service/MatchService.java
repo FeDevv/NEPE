@@ -120,8 +120,12 @@ public class MatchService implements ManageMatchUseCase {
 
         Match match = findMatchOrThrow(command.matchId());
 
-        int currentHomeRedCards = match.getStatistics().getHomeRedCards();
-        int currentAwayRedCards = match.getStatistics().getAwayRedCards();
+        int homeRedCards = (command.homeRedCards() != null)
+                ? command.homeRedCards()
+                : match.getStatistics().getHomeRedCards();
+        int awayRedCards = (command.awayRedCards() != null)
+                ? command.awayRedCards()
+                : match.getStatistics().getAwayRedCards();
 
         MatchStatistics updatedStats = new MatchStatistics(
                 command.homeScore(),
@@ -130,8 +134,8 @@ public class MatchService implements ManageMatchUseCase {
                 command.awayShots(),
                 command.homeShotsOnTarget(),
                 command.awayShotsOnTarget(),
-                currentHomeRedCards,
-                currentAwayRedCards,
+                homeRedCards,
+                awayRedCards,
                 command.manualHomeXg(),
                 command.manualAwayXg()
         );

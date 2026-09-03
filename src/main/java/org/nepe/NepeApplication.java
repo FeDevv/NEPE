@@ -20,3 +20,5 @@ public class NepeApplication {
 
 
 // quando inserisco un match, ho un dropdown che mi mostra TUTTE le squadre presenti nel DB, dovremmo invece mostrare solo quelle della competizione.
+
+// nel calcolo della forza di una squadra, vengono usati i soli dati della squadra stessa, ossia i calcoli avvengono su partite passate di quella stessa squadra. (xG)

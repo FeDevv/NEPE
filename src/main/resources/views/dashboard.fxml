@@ -114,7 +114,7 @@
                         <TableColumn fx:id="colScore" text="Risultato" prefWidth="80.0"/>
                         <TableColumn fx:id="colOdds" text="Quote 1X2 Riferimento" prefWidth="160.0"/>
                         <TableColumn fx:id="colEvBadge" text="Segnale EV+" prefWidth="160.0"/>
-                        <TableColumn fx:id="colActions" text="Azioni" prefWidth="160.0"/>
+                        <TableColumn fx:id="colActions" text="Azioni" prefWidth="230.0"/>
                     </columns>
                     <placeholder>
                         <Label text="Nessuna partita disponibile per la competizione e i filtri selezionati." styleClass="label-muted"/>

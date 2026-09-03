@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/26"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.nepe.match.adapter.in.EditMatchStatsController"
+      styleClass="card"
+      spacing="14.0"
+      prefWidth="640.0">
+
+    <padding>
+        <Insets top="20.0" right="24.0" bottom="20.0" left="24.0"/>
+    </padding>
+
+    <!-- Header Section -->
+    <VBox spacing="4.0">
+        <Label text="✏️ Modifica Statistiche &amp; Override xG" styleClass="card-title"/>
+        <Label fx:id="lblMatchTitle" text="Squadra Casa vs Squadra Ospite" styleClass="label-strong" style="-fx-font-size: 14px; -fx-text-fill: #38bdf8;"/>
+        <Label fx:id="lblMatchInfo" text="Competizione | Data | Stato" styleClass="label-muted"/>
+    </VBox>
+
+    <Separator opacity="0.3"/>
+
+    <!-- Overwrite Protection Informative Banner -->
+    <HBox spacing="8.0" style="-fx-background-color: #1e293b; -fx-padding: 8 12; -fx-background-radius: 6; -fx-border-color: #334155; -fx-border-radius: 6; -fx-border-width: 1;">
+        <Label text="ℹ️" style="-fx-font-size: 13px;"/>
+        <Label text="Il salvataggio attiverà la protezione sovrascrittura (is_manually_edited=1), preservando i dati inseriti da futuri re-import CSV."
+               styleClass="label-muted" style="-fx-text-fill: #94a3b8; -fx-font-size: 11px;" wrapText="true"/>
+    </HBox>
+
+    <!-- Statistics Form Grid (2 Columns: Home vs Away) -->
+    <GridPane hgap="16.0" vgap="10.0">
+        <columnConstraints>
+            <ColumnConstraints prefWidth="170.0"/>
+            <ColumnConstraints prefWidth="200.0" hgrow="ALWAYS"/>
+            <ColumnConstraints prefWidth="200.0" hgrow="ALWAYS"/>
+        </columnConstraints>
+
+        <!-- Column Headers -->
+        <Label text="Metrica" styleClass="label-muted" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <Label fx:id="lblHomeHeader" text="Squadra Casa" styleClass="label-strong" style="-fx-alignment: CENTER;" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+        <Label fx:id="lblAwayHeader" text="Squadra Ospite" styleClass="label-strong" style="-fx-alignment: CENTER;" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+
+        <!-- Score Row -->
+        <Label text="Gol Segnati:" styleClass="label-strong" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <TextField fx:id="txtHomeScore" promptText="Gol Casa" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+        <TextField fx:id="txtAwayScore" promptText="Gol Ospite" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+
+        <!-- Total Shots Row -->
+        <Label text="Tiri Totali:" styleClass="label-strong" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+        <TextField fx:id="txtHomeShots" promptText="Tiri Casa" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+        <TextField fx:id="txtAwayShots" promptText="Tiri Ospite" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+
+        <!-- Shots on Target Row -->
+        <Label text="Tiri in Porta:" styleClass="label-strong" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+        <TextField fx:id="txtHomeShotsOnTarget" promptText="In Porta Casa" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+        <TextField fx:id="txtAwayShotsOnTarget" promptText="In Porta Ospite" GridPane.rowIndex="3" GridPane.columnIndex="2"/>
+
+        <!-- Red Cards Row -->
+        <Label text="Cartellini Rossi:" styleClass="label-strong" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+        <TextField fx:id="txtHomeRedCards" promptText="0" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+        <TextField fx:id="txtAwayRedCards" promptText="0" GridPane.rowIndex="4" GridPane.columnIndex="2"/>
+
+        <!-- Heuristic xG Preview Row -->
+        <Label text="xG Stimato (Tiri):" styleClass="label-muted" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+        <Label fx:id="lblPreviewHomeXg" text="-" styleClass="label-muted" style="-fx-font-weight: bold; -fx-text-fill: #a3e635;" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+        <Label fx:id="lblPreviewAwayXg" text="-" styleClass="label-muted" style="-fx-font-weight: bold; -fx-text-fill: #a3e635;" GridPane.rowIndex="5" GridPane.columnIndex="2"/>
+
+        <!-- Manual xG Override Row -->
+        <Label text="Override xG Manuale:" styleClass="label-strong" style="-fx-text-fill: #f59e0b;" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+        <TextField fx:id="txtManualHomeXg" promptText="es. 1.450 (Opzionale)" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
+        <TextField fx:id="txtManualAwayXg" promptText="es. 0.820 (Opzionale)" GridPane.rowIndex="6" GridPane.columnIndex="2"/>
+    </GridPane>
+
+    <!-- Error Feedback Label -->
+    <Label fx:id="lblError" text="" styleClass="label-muted" style="-fx-text-fill: #f87171; -fx-font-weight: bold;"/>
+
+    <Separator opacity="0.3"/>
+
+    <!-- Bottom Actions Bar -->
+    <HBox spacing="10.0" alignment="CENTER_RIGHT">
+        <Button fx:id="btnResetManualXg" text="🔄 Rimuovi Override xG" styleClass="button, btn-sm" onAction="#handleResetManualXg"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button fx:id="btnCancel" text="Annulla" styleClass="button" onAction="#handleCancel"/>
+        <Button fx:id="btnSave" text="💾 Salva Statistiche" styleClass="button, btn-primary" onAction="#handleSave"/>
+    </HBox>
+
+</VBox>

@@ -10,6 +10,8 @@ package org.nepe.match.port.in;
  * @param awayShots         total shots by Away team (nullable)
  * @param homeShotsOnTarget shots on target by Home team (nullable)
  * @param awayShotsOnTarget shots on target by Away team (nullable)
+ * @param homeRedCards      number of red cards received by Home team (nullable)
+ * @param awayRedCards      number of red cards received by Away team (nullable)
  * @param manualHomeXg      manual expected goals override for Home team (nullable)
  * @param manualAwayXg      manual expected goals override for Away team (nullable)
  */
@@ -21,6 +23,8 @@ public record UpdateMatchStatisticsCommand(
         Integer awayShots,
         Integer homeShotsOnTarget,
         Integer awayShotsOnTarget,
+        Integer homeRedCards,
+        Integer awayRedCards,
         Double manualHomeXg,
         Double manualAwayXg
 ) {
