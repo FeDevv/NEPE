@@ -142,6 +142,37 @@ public class TeamService implements ManageTeamUseCase {
         teamRepositoryPort.deleteById(id);
     }
 
+    // --- Competition Association Operations ---
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Team> getTeamsByCompetition(int competitionId) {
+        return teamRepositoryPort.findByCompetitionId(competitionId);
+    }
+
+    @Override
+    @Transactional
+    public void associateTeamToCompetition(int competitionId, int teamId) {
+        if (teamRepositoryPort.findById(teamId).isEmpty()) {
+            throw new EntityNotFoundException(
+                    String.format("Team with ID %d not found.", teamId)
+            );
+        }
+        teamRepositoryPort.associateTeamToCompetition(competitionId, teamId);
+    }
+
+    @Override
+    @Transactional
+    public void disassociateTeamFromCompetition(int competitionId, int teamId) {
+        teamRepositoryPort.disassociateTeamFromCompetition(competitionId, teamId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isTeamAssociatedWithCompetition(int competitionId, int teamId) {
+        return teamRepositoryPort.isTeamAssociatedWithCompetition(competitionId, teamId);
+    }
+
     // --- Alias Operations ---
 
     @Override

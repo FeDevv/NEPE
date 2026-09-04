@@ -22,11 +22,14 @@ import java.util.Optional;
 public class TeamRepositoryAdapter implements TeamRepositoryPort {
 
     private final SpringDataTeamRepository springDataRepository;
+    private final SpringDataCompetitionTeamRepository competitionTeamRepository;
     private final TeamMapper mapper;
 
     public TeamRepositoryAdapter(SpringDataTeamRepository springDataRepository,
+                                 SpringDataCompetitionTeamRepository competitionTeamRepository,
                                  TeamMapper mapper) {
         this.springDataRepository = Objects.requireNonNull(springDataRepository, "SpringDataTeamRepository must not be null");
+        this.competitionTeamRepository = Objects.requireNonNull(competitionTeamRepository, "SpringDataCompetitionTeamRepository must not be null");
         this.mapper = Objects.requireNonNull(mapper, "TeamMapper must not be null");
     }
 
@@ -109,5 +112,36 @@ public class TeamRepositoryAdapter implements TeamRepositoryPort {
     @Transactional(readOnly = true)
     public long count() {
         return springDataRepository.count();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Team> findByCompetitionId(int competitionId) {
+        List<TeamJpaEntity> entities = springDataRepository.findByCompetitionId(competitionId);
+        return mapper.toDomainList(entities);
+    }
+
+    @Override
+    @Transactional
+    public void associateTeamToCompetition(int competitionId, int teamId) {
+        if (!competitionTeamRepository.existsByCompetitionIdAndTeamId(competitionId, teamId)) {
+            try {
+                competitionTeamRepository.save(new CompetitionTeamJpaEntity(competitionId, teamId));
+            } catch (DataIntegrityViolationException ignored) {
+                // Link was created concurrently or already exists
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    public void disassociateTeamFromCompetition(int competitionId, int teamId) {
+        competitionTeamRepository.deleteByCompetitionIdAndTeamId(competitionId, teamId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isTeamAssociatedWithCompetition(int competitionId, int teamId) {
+        return competitionTeamRepository.existsByCompetitionIdAndTeamId(competitionId, teamId);
     }
 }

@@ -81,9 +81,32 @@ public class CreateMatchController {
     @FXML
     public void initialize() {
         configureDropdownConverters();
+        setupCompetitionSelectionListener();
         loadInitialDropdownData();
         dpMatchDate.setValue(LocalDate.now());
         txtMatchTime.setText("15:00");
+    }
+
+    private void setupCompetitionSelectionListener() {
+        comboCompetition.getSelectionModel().selectedItemProperty().addListener((obs, oldComp, newComp) -> {
+            updateTeamsForCompetition(newComp);
+        });
+    }
+
+    private void updateTeamsForCompetition(Competition competition) {
+        if (competition == null) {
+            comboHomeTeam.setItems(FXCollections.emptyObservableList());
+            comboAwayTeam.setItems(FXCollections.emptyObservableList());
+            return;
+        }
+        try {
+            List<Team> teams = manageTeamUseCase.getTeamsByCompetition(competition.getId());
+            comboHomeTeam.setItems(FXCollections.observableArrayList(teams));
+            comboAwayTeam.setItems(FXCollections.observableArrayList(teams));
+        } catch (Exception e) {
+            log.error("Failed to load teams for competition {}", competition.getId(), e);
+            lblError.setText("Errore caricamento squadre: " + e.getMessage());
+        }
     }
 
     private void configureDropdownConverters() {
@@ -133,6 +156,8 @@ public class CreateMatchController {
             comboCompetition.setItems(FXCollections.observableArrayList(competitions));
             if (!competitions.isEmpty()) {
                 comboCompetition.getSelectionModel().selectFirst();
+            } else {
+                updateTeamsForCompetition(null);
             }
 
             List<Season> seasons = manageSeasonUseCase.getAllSeasons();
@@ -140,10 +165,6 @@ public class CreateMatchController {
             if (!seasons.isEmpty()) {
                 comboSeason.getSelectionModel().selectFirst();
             }
-
-            List<Team> teams = manageTeamUseCase.getAllTeams();
-            comboHomeTeam.setItems(FXCollections.observableArrayList(teams));
-            comboAwayTeam.setItems(FXCollections.observableArrayList(teams));
         } catch (Exception e) {
             log.error("Failed to populate create match dialog dropdowns", e);
             lblError.setText("Errore caricamento dati: " + e.getMessage());
@@ -163,6 +184,7 @@ public class CreateMatchController {
             for (Competition c : comboCompetition.getItems()) {
                 if (c.getId() == competition.getId()) {
                     comboCompetition.getSelectionModel().select(c);
+                    updateTeamsForCompetition(c);
                     break;
                 }
             }

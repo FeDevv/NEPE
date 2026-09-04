@@ -39,6 +39,39 @@ public interface ManageTeamUseCase {
     List<Team> getAllTeams();
 
     /**
+     * Retrieves all teams associated with a specific competition, sorted alphabetically by name.
+     *
+     * @param competitionId target competition identifier
+     * @return list of {@link Team} instances associated with the competition
+     */
+    List<Team> getTeamsByCompetition(int competitionId);
+
+    /**
+     * Associates an existing team with a competition.
+     *
+     * @param competitionId target competition identifier
+     * @param teamId target team identifier
+     */
+    void associateTeamToCompetition(int competitionId, int teamId);
+
+    /**
+     * Disassociates a team from a competition.
+     *
+     * @param competitionId target competition identifier
+     * @param teamId target team identifier
+     */
+    void disassociateTeamFromCompetition(int competitionId, int teamId);
+
+    /**
+     * Checks whether a team is currently associated with a competition.
+     *
+     * @param competitionId target competition identifier
+     * @param teamId target team identifier
+     * @return true if associated, false otherwise
+     */
+    boolean isTeamAssociatedWithCompetition(int competitionId, int teamId);
+
+    /**
      * Searches teams whose name contains the specified query substring (case-insensitive).
      *
      * @param query search query

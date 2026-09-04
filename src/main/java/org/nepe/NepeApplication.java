@@ -17,7 +17,3 @@ public class NepeApplication {
         Application.launch(JavaFxApplication.class, args);
     }
 }
-
-
-// quando inserisco un match, ho un dropdown che mi mostra TUTTE le squadre presenti nel DB, dovremmo invece mostrare solo quelle della competizione.
-// quando ho più competizioni (e.g. E0, I1) e vado su pre match, quando torno al palinsesto mi porta in automatico sulla schermata della prima cometizione, per esempio E0, anche se il pre match era di I1

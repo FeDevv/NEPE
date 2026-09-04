@@ -27,6 +27,16 @@ CREATE TABLE IF NOT EXISTS team_aliases (
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 3b. Tabella Associazione Competizioni - Squadre (Relazione Many-to-Many)
+CREATE TABLE IF NOT EXISTS competition_teams (
+    competition_id INT NOT NULL,
+    team_id INT NOT NULL,
+    PRIMARY KEY (competition_id, team_id),
+    FOREIGN KEY (competition_id) REFERENCES competitions(id) ON DELETE CASCADE,
+    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+    INDEX idx_comp_teams_team (team_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 4. Tabella Stagioni (Formato YYYY/YYYY es. 2025/2026)
 CREATE TABLE IF NOT EXISTS seasons (
     id INT AUTO_INCREMENT PRIMARY KEY,

@@ -68,13 +68,17 @@ public class CompetitionViewController {
 
     // --- FXML Tab 2: Teams ---
     @FXML private TextField txtTeamSearch;
+    @FXML private ComboBox<Competition> comboFilterCompetition;
     @FXML private Button btnClearTeamSearch;
     @FXML private TableView<Team> tblTeams;
     @FXML private TableColumn<Team, Number> colTeamId;
     @FXML private TableColumn<Team, String> colTeamName;
 
     @FXML private TextField txtTeamName;
+    @FXML private ComboBox<Competition> comboTeamCompetition;
     @FXML private Button btnAddTeam;
+    @FXML private Button btnAssociateTeam;
+    @FXML private Button btnDisassociateTeam;
     @FXML private Button btnRenameTeam;
     @FXML private Button btnDeleteTeam;
 
@@ -115,6 +119,9 @@ public class CompetitionViewController {
         loadAllData();
         if (btnDeleteComp != null) btnDeleteComp.setDisable(true);
         if (btnDeleteTeam != null) btnDeleteTeam.setDisable(true);
+        if (btnRenameTeam != null) btnRenameTeam.setDisable(true);
+        if (btnAssociateTeam != null) btnAssociateTeam.setDisable(true);
+        if (btnDisassociateTeam != null) btnDisassociateTeam.setDisable(true);
         if (btnDeleteAlias != null) btnDeleteAlias.setDisable(true);
     }
 
@@ -183,19 +190,26 @@ public class CompetitionViewController {
             if (btnDeleteTeam != null) {
                 btnDeleteTeam.setDisable(newVal == null);
             }
+            if (btnRenameTeam != null) {
+                btnRenameTeam.setDisable(newVal == null);
+            }
+            if (btnAssociateTeam != null) {
+                btnAssociateTeam.setDisable(newVal == null);
+            }
+            if (btnDisassociateTeam != null) {
+                btnDisassociateTeam.setDisable(newVal == null);
+            }
             if (newVal != null) {
                 txtTeamName.setText(newVal.getName());
             }
         });
 
-        txtTeamSearch.textProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal == null || newVal.isBlank()) {
-                reloadTeams();
-            } else {
-                List<Team> filtered = manageTeamUseCase.searchTeams(newVal.trim());
-                tblTeams.setItems(FXCollections.observableArrayList(filtered));
-            }
-        });
+        if (txtTeamSearch != null) {
+            txtTeamSearch.textProperty().addListener((obs, oldVal, newVal) -> refreshTeamsTable());
+        }
+        if (comboFilterCompetition != null) {
+            comboFilterCompetition.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> refreshTeamsTable());
+        }
     }
 
     // --- Tab 3: Aliases Setup ---
@@ -229,6 +243,34 @@ public class CompetitionViewController {
                 return null;
             }
         });
+
+        if (comboTeamCompetition != null) {
+            comboTeamCompetition.setConverter(new StringConverter<>() {
+                @Override
+                public String toString(Competition c) {
+                    return (c != null) ? c.getName() + " (" + c.getCode() + ")" : "";
+                }
+
+                @Override
+                public Competition fromString(String string) {
+                    return null;
+                }
+            });
+        }
+
+        if (comboFilterCompetition != null) {
+            comboFilterCompetition.setConverter(new StringConverter<>() {
+                @Override
+                public String toString(Competition c) {
+                    return (c != null) ? c.getName() + " (" + c.getCode() + ")" : "Tutti i campionati";
+                }
+
+                @Override
+                public Competition fromString(String string) {
+                    return null;
+                }
+            });
+        }
     }
 
     private void selectTeamInCombo(int teamId) {
@@ -252,19 +294,66 @@ public class CompetitionViewController {
         try {
             List<Competition> list = manageCompetitionUseCase.getAllCompetitions();
             tblCompetitions.setItems(FXCollections.observableArrayList(list));
+
+            if (comboTeamCompetition != null) {
+                Competition prev = comboTeamCompetition.getValue();
+                comboTeamCompetition.setItems(FXCollections.observableArrayList(list));
+                if (prev != null && list.contains(prev)) {
+                    comboTeamCompetition.setValue(prev);
+                } else if (!list.isEmpty()) {
+                    comboTeamCompetition.getSelectionModel().selectFirst();
+                }
+            }
+
+            if (comboFilterCompetition != null) {
+                Competition prevFilter = comboFilterCompetition.getValue();
+                ObservableList<Competition> filterItems = FXCollections.observableArrayList();
+                filterItems.add(null);
+                filterItems.addAll(list);
+                comboFilterCompetition.setItems(filterItems);
+                if (prevFilter != null && list.contains(prevFilter)) {
+                    comboFilterCompetition.setValue(prevFilter);
+                } else {
+                    comboFilterCompetition.getSelectionModel().selectFirst();
+                }
+            }
         } catch (Exception e) {
             log.error("Failed to load competitions", e);
         }
     }
 
-    private void reloadTeams() {
+    private void refreshTeamsTable() {
         try {
-            List<Team> list = manageTeamUseCase.getAllTeams();
-            tblTeams.setItems(FXCollections.observableArrayList(list));
-            comboAliasTargetTeam.setItems(FXCollections.observableArrayList(list));
+            Competition filterComp = (comboFilterCompetition != null) ? comboFilterCompetition.getValue() : null;
+            String search = (txtTeamSearch != null) ? txtTeamSearch.getText() : null;
+
+            List<Team> baseList;
+            if (filterComp != null) {
+                baseList = manageTeamUseCase.getTeamsByCompetition(filterComp.getId());
+            } else {
+                baseList = manageTeamUseCase.getAllTeams();
+            }
+
+            if (search != null && !search.isBlank()) {
+                String query = search.trim().toLowerCase();
+                baseList = baseList.stream()
+                        .filter(t -> t.getName().toLowerCase().contains(query))
+                        .toList();
+            }
+
+            tblTeams.setItems(FXCollections.observableArrayList(baseList));
+
+            List<Team> allTeams = manageTeamUseCase.getAllTeams();
+            if (comboAliasTargetTeam != null) {
+                comboAliasTargetTeam.setItems(FXCollections.observableArrayList(allTeams));
+            }
         } catch (Exception e) {
             log.error("Failed to load teams", e);
         }
+    }
+
+    private void reloadTeams() {
+        refreshTeamsTable();
     }
 
     private void reloadAliases() {
@@ -408,9 +497,72 @@ public class CompetitionViewController {
         }
 
         try {
-            manageTeamUseCase.createTeam(new CreateTeamCommand(name.trim()));
+            Team createdTeam = manageTeamUseCase.createTeam(new CreateTeamCommand(name.trim()));
+            Competition targetComp = (comboTeamCompetition != null) ? comboTeamCompetition.getValue() : null;
+            if (targetComp != null) {
+                manageTeamUseCase.associateTeamToCompetition(targetComp.getId(), createdTeam.getId());
+                lblStatus.setText(String.format("Squadra '%s' creata e associata a '%s' con successo!",
+                        createdTeam.getName(), targetComp.getName()));
+            } else {
+                lblStatus.setText("Squadra '" + createdTeam.getName() + "' creata con successo (senza associazione).");
+            }
             txtTeamName.setText("");
-            lblStatus.setText("Squadra '" + name.trim() + "' creata con successo!");
+            reloadTeams();
+        } catch (NepeException e) {
+            lblStatus.setText("Errore: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void handleAssociateTeam(ActionEvent event) {
+        lblStatus.setText("");
+        if (selectedTeam == null) {
+            lblStatus.setText("Seleziona prima una squadra dalla tabella.");
+            return;
+        }
+        Competition targetComp = (comboTeamCompetition != null) ? comboTeamCompetition.getValue() : null;
+        if (targetComp == null) {
+            lblStatus.setText("Seleziona un campionato a cui associare la squadra.");
+            return;
+        }
+
+        try {
+            if (manageTeamUseCase.isTeamAssociatedWithCompetition(targetComp.getId(), selectedTeam.getId())) {
+                lblStatus.setText(String.format("La squadra '%s' è già associata a '%s'.",
+                        selectedTeam.getName(), targetComp.getName()));
+                return;
+            }
+            manageTeamUseCase.associateTeamToCompetition(targetComp.getId(), selectedTeam.getId());
+            lblStatus.setText(String.format("Squadra '%s' associata a '%s' con successo!",
+                    selectedTeam.getName(), targetComp.getName()));
+            reloadTeams();
+        } catch (NepeException e) {
+            lblStatus.setText("Errore: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void handleDisassociateTeam(ActionEvent event) {
+        lblStatus.setText("");
+        if (selectedTeam == null) {
+            lblStatus.setText("Seleziona prima una squadra dalla tabella.");
+            return;
+        }
+        Competition targetComp = (comboTeamCompetition != null) ? comboTeamCompetition.getValue() : null;
+        if (targetComp == null) {
+            lblStatus.setText("Seleziona il campionato da cui rimuovere l'associazione.");
+            return;
+        }
+
+        try {
+            if (!manageTeamUseCase.isTeamAssociatedWithCompetition(targetComp.getId(), selectedTeam.getId())) {
+                lblStatus.setText(String.format("La squadra '%s' non è associata a '%s'.",
+                        selectedTeam.getName(), targetComp.getName()));
+                return;
+            }
+            manageTeamUseCase.disassociateTeamFromCompetition(targetComp.getId(), selectedTeam.getId());
+            lblStatus.setText(String.format("Squadra '%s' rimossa da '%s' con successo!",
+                    selectedTeam.getName(), targetComp.getName()));
             reloadTeams();
         } catch (NepeException e) {
             lblStatus.setText("Errore: " + e.getMessage());
@@ -461,9 +613,10 @@ public class CompetitionViewController {
                 this.selectedTeam = null;
                 tblTeams.getSelectionModel().clearSelection();
                 txtTeamName.setText("");
-                if (btnDeleteTeam != null) {
-                    btnDeleteTeam.setDisable(true);
-                }
+                if (btnDeleteTeam != null) btnDeleteTeam.setDisable(true);
+                if (btnRenameTeam != null) btnRenameTeam.setDisable(true);
+                if (btnAssociateTeam != null) btnAssociateTeam.setDisable(true);
+                if (btnDisassociateTeam != null) btnDisassociateTeam.setDisable(true);
                 reloadTeams();
                 reloadAliases();
             } catch (NepeException e) {
@@ -476,7 +629,12 @@ public class CompetitionViewController {
 
     @FXML
     public void handleClearTeamSearch(ActionEvent event) {
-        txtTeamSearch.setText("");
+        if (txtTeamSearch != null) {
+            txtTeamSearch.setText("");
+        }
+        if (comboFilterCompetition != null) {
+            comboFilterCompetition.getSelectionModel().selectFirst();
+        }
         reloadTeams();
     }
 

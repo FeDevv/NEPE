@@ -580,18 +580,29 @@ public class PreMatchAnalysisController {
                 lblEvBack.getStyleClass().removeAll("badge-ev-positive");
             }
 
-            // EV Lay (Risk-Adjusted)
+            // EV Lay (Risk-Adjusted as primary text, Classic EV Lay in tooltip)
             if (pred.evEvaluation().evLayRiskAdjusted() != null) {
                 double evLayRisk = pred.evEvaluation().evLayRiskAdjusted();
                 lblEvLay.setText(String.format("%+.1f%%", evLayRisk * 100.0));
                 applyEvStyling(lblEvLay, evLayRisk);
+
+                Double evLayClassic = pred.evEvaluation().evLay();
+                if (evLayClassic != null) {
+                    String tooltipText = String.format("EV Banca (Rischio / Liability): %+.1f%%\nEV Banca Classico (Stake vinta): %+.1f%%",
+                            evLayRisk * 100.0, evLayClassic * 100.0);
+                    lblEvLay.setTooltip(new Tooltip(tooltipText));
+                } else {
+                    lblEvLay.setTooltip(null);
+                }
             } else {
                 lblEvLay.setText("-");
+                lblEvLay.setTooltip(null);
                 lblEvLay.getStyleClass().removeAll("badge-ev-positive");
             }
         } else {
             lblEvBack.setText("-");
             lblEvLay.setText("-");
+            lblEvLay.setTooltip(null);
             lblEvBack.getStyleClass().removeAll("badge-ev-positive");
             lblEvLay.getStyleClass().removeAll("badge-ev-positive");
         }

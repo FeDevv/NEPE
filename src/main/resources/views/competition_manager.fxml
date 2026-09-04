@@ -100,10 +100,11 @@
                 <HBox spacing="16.0" style="-fx-padding: 16 0 0 0;">
                     <!-- Teams Table (Left, expands) -->
                     <VBox spacing="10.0" HBox.hgrow="ALWAYS">
-                        <!-- Search Bar -->
+                        <!-- Search Bar & Competition Filter -->
                         <HBox spacing="10.0" alignment="CENTER_LEFT">
-                            <TextField fx:id="txtTeamSearch" promptText="🔍 Cerca squadra per nome..." prefWidth="300.0"/>
-                            <Button fx:id="btnClearTeamSearch" text="Annulla Filtro" styleClass="button" onAction="#handleClearTeamSearch"/>
+                            <TextField fx:id="txtTeamSearch" promptText="🔍 Cerca squadra per nome..." prefWidth="250.0"/>
+                            <ComboBox fx:id="comboFilterCompetition" prefWidth="220.0" promptText="Filtra per campionato..."/>
+                            <Button fx:id="btnClearTeamSearch" text="Mostra Tutte" styleClass="button" onAction="#handleClearTeamSearch"/>
                         </HBox>
 
                         <TableView fx:id="tblTeams" VBox.vgrow="ALWAYS">
@@ -126,10 +127,19 @@
                             <TextField fx:id="txtTeamName" promptText="es. Inter"/>
                         </VBox>
 
+                        <VBox spacing="6.0">
+                            <Label text="Campionato di Riferimento:" styleClass="label-muted"/>
+                            <ComboBox fx:id="comboTeamCompetition" prefWidth="320.0" promptText="Seleziona campionato..."/>
+                        </VBox>
+
                         <Separator opacity="0.3"/>
 
                         <VBox spacing="8.0">
                             <Button fx:id="btnAddTeam" text="➕ Crea Nuova Squadra" styleClass="button, btn-primary" maxWidth="Infinity" onAction="#handleAddTeam"/>
+                            <HBox spacing="8.0">
+                                <Button fx:id="btnAssociateTeam" text="🔗 Associa a Campionato" styleClass="button" maxWidth="Infinity" HBox.hgrow="ALWAYS" onAction="#handleAssociateTeam"/>
+                                <Button fx:id="btnDisassociateTeam" text="❌ Rimuovi" styleClass="button" onAction="#handleDisassociateTeam"/>
+                            </HBox>
                             <Button fx:id="btnRenameTeam" text="✏️ Rinomina Squadra Selezionata" styleClass="button" maxWidth="Infinity" onAction="#handleRenameTeam"/>
                             <Button fx:id="btnDeleteTeam" text="🗑️ Elimina Squadra Selezionata" styleClass="button, btn-danger" maxWidth="Infinity" onAction="#handleDeleteTeam"/>
                         </VBox>

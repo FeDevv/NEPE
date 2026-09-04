@@ -25,9 +25,11 @@ import org.nepe.shared.exception.EntityNotFoundException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -775,6 +777,7 @@ class MatchServiceTest {
 
     private static class InMemoryTeamRepository implements TeamRepositoryPort {
         private final Map<Integer, Team> storage = new HashMap<>();
+        private final Map<Integer, Set<Integer>> competitionTeams = new HashMap<>();
 
         @Override
         public Team save(Team team) {
@@ -810,11 +813,36 @@ class MatchServiceTest {
         @Override
         public void deleteById(int id) {
             storage.remove(id);
+            competitionTeams.values().forEach(set -> set.remove(id));
         }
 
         @Override
         public long count() {
             return storage.size();
+        }
+
+        @Override
+        public List<Team> findByCompetitionId(int competitionId) {
+            Set<Integer> teamIds = competitionTeams.getOrDefault(competitionId, Set.of());
+            return storage.values().stream().filter(t -> teamIds.contains(t.getId())).toList();
+        }
+
+        @Override
+        public void associateTeamToCompetition(int competitionId, int teamId) {
+            competitionTeams.computeIfAbsent(competitionId, k -> new HashSet<>()).add(teamId);
+        }
+
+        @Override
+        public void disassociateTeamFromCompetition(int competitionId, int teamId) {
+            Set<Integer> teams = competitionTeams.get(competitionId);
+            if (teams != null) {
+                teams.remove(teamId);
+            }
+        }
+
+        @Override
+        public boolean isTeamAssociatedWithCompetition(int competitionId, int teamId) {
+            return competitionTeams.getOrDefault(competitionId, Set.of()).contains(teamId);
         }
     }
 }

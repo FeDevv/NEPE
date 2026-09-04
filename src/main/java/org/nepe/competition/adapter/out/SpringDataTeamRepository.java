@@ -1,6 +1,8 @@
 package org.nepe.competition.adapter.out;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -46,4 +48,14 @@ public interface SpringDataTeamRepository extends JpaRepository<TeamJpaEntity, I
      * @return list of matching teams ordered by name
      */
     List<TeamJpaEntity> findByNameContainingIgnoreCaseOrderByNameAsc(String query);
+
+    /**
+     * Retrieves all teams associated with a specific competition via the competition_teams junction table,
+     * ordered alphabetically by name in ascending order.
+     *
+     * @param competitionId competition database identifier
+     * @return list of matching teams ordered by name
+     */
+    @Query("SELECT t FROM TeamJpaEntity t JOIN CompetitionTeamJpaEntity ct ON t.id = ct.teamId WHERE ct.competitionId = :competitionId ORDER BY t.name ASC")
+    List<TeamJpaEntity> findByCompetitionId(@Param("competitionId") int competitionId);
 }

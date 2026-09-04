@@ -170,6 +170,10 @@ public class ImportCsvMatchesService implements ImportCsvMatchesUseCase {
             Team homeTeam = manageTeamUseCase.resolveTeamByRawName(row.homeTeamRaw());
             Team awayTeam = manageTeamUseCase.resolveTeamByRawName(row.awayTeamRaw());
 
+            // Ensure both teams are associated with this competition in the catalog
+            manageTeamUseCase.associateTeamToCompetition(comp.getId(), homeTeam.getId());
+            manageTeamUseCase.associateTeamToCompetition(comp.getId(), awayTeam.getId());
+
             // 4. Upsert Matching against Database (Matching by Teams and same UTC Calendar Day)
             Optional<Match> existingMatchOpt = matchRepositoryPort.findByTeamsAndDateRange(
                     homeTeam.getId(),

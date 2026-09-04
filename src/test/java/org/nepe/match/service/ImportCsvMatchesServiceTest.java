@@ -25,10 +25,13 @@ import org.nepe.shared.exception.DataImportException;
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -146,6 +149,19 @@ class ImportCsvMatchesServiceTest {
 
             Match scheduledMatch = savedMatches.stream().filter(m -> m.getState() == MatchState.SCHEDULED).findFirst().orElseThrow();
             assertThat(scheduledMatch.getCurrentMinute()).isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("Should automatically associate imported teams to the competition")
+        void shouldAssociateTeamsToCompetitionOnImport() {
+            RawCsvMatchRow row = new RawCsvMatchRow("I1", "20/09/2025", "19:45", "Inter", "Milan", 2, 1, 14, 10, 5, 3, 0, 1, 2.10, 3.40, 3.50);
+            csvParser.setRows(List.of(row));
+
+            service.importCsvContent("dummy", "2025/2026");
+
+            Competition comp = competitionRepository.findByCode("I1").orElseThrow();
+            List<Team> associatedTeams = teamUseCase.getTeamsByCompetition(comp.getId());
+            assertThat(associatedTeams).extracting(Team::getName).containsExactlyInAnyOrder("Inter", "Milan");
         }
 
         @Test
@@ -540,6 +556,7 @@ class ImportCsvMatchesServiceTest {
 
     private static class FakeTeamUseCase implements ManageTeamUseCase {
         private final Map<Integer, Team> storage = new HashMap<>();
+        private final Map<Integer, Set<Integer>> competitionTeams = new HashMap<>();
         private int seq = 1;
 
         public void saveTeam(Team team) {
@@ -592,6 +609,33 @@ class ImportCsvMatchesServiceTest {
         }
 
         @Override
+        public List<Team> getTeamsByCompetition(int competitionId) {
+            Set<Integer> teamIds = competitionTeams.getOrDefault(competitionId, Set.of());
+            return storage.values().stream()
+                    .filter(t -> teamIds.contains(t.getId()))
+                    .sorted(Comparator.comparing(Team::getName, String.CASE_INSENSITIVE_ORDER))
+                    .toList();
+        }
+
+        @Override
+        public void associateTeamToCompetition(int competitionId, int teamId) {
+            competitionTeams.computeIfAbsent(competitionId, k -> new HashSet<>()).add(teamId);
+        }
+
+        @Override
+        public void disassociateTeamFromCompetition(int competitionId, int teamId) {
+            Set<Integer> teams = competitionTeams.get(competitionId);
+            if (teams != null) {
+                teams.remove(teamId);
+            }
+        }
+
+        @Override
+        public boolean isTeamAssociatedWithCompetition(int competitionId, int teamId) {
+            return competitionTeams.getOrDefault(competitionId, Set.of()).contains(teamId);
+        }
+
+        @Override
         public List<Team> searchTeams(String query) {
             return List.of();
         }
@@ -609,6 +653,7 @@ class ImportCsvMatchesServiceTest {
         @Override
         public void deleteTeam(int id) {
             storage.remove(id);
+            competitionTeams.values().forEach(set -> set.remove(id));
         }
 
         @Override

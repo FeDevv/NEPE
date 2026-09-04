@@ -73,4 +73,37 @@ public interface TeamRepositoryPort {
      * @return total count
      */
     long count();
+
+    /**
+     * Retrieves all teams associated with a specific competition, ordered alphabetically by name.
+     *
+     * @param competitionId competition database identifier
+     * @return list of matching {@link Team} entities
+     */
+    List<Team> findByCompetitionId(int competitionId);
+
+    /**
+     * Associates a team with a competition if the link does not already exist.
+     *
+     * @param competitionId competition database identifier
+     * @param teamId        team database identifier
+     */
+    void associateTeamToCompetition(int competitionId, int teamId);
+
+    /**
+     * Removes the association between a team and a competition.
+     *
+     * @param competitionId competition database identifier
+     * @param teamId        team database identifier
+     */
+    void disassociateTeamFromCompetition(int competitionId, int teamId);
+
+    /**
+     * Checks if a team is currently associated with a competition.
+     *
+     * @param competitionId competition database identifier
+     * @param teamId        team database identifier
+     * @return {@code true} if the association exists, {@code false} otherwise
+     */
+    boolean isTeamAssociatedWithCompetition(int competitionId, int teamId);
 }
