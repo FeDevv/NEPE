@@ -1,3 +1,56 @@
-1. quando ho più competizioni (e.g. E0, I1) e vado su pre match, quando torno al palinsesto mi porta in automatico sulla schermata della prima cometizione, per esempio E0, anche se il pre match era di I1
-2. funziona il live? quando una partita diventa Live? non mi sembra ci sia modo per rendere una partita live
-3. il popup di associazione delle squadre (quando si importa il CSV) deve avere il dropdown che mostra solo le squadre della competizione corrente (e.g. non associerò mai arsenal ad atalanta)
+# =============================================================================
+# NEPE - Elenco Ticket e Anomalie Rilevate (Testing Manuale & Audit)
+# =============================================================================
+
+## Ticket 1: Sblocco Transizione Partita in LIVE da Dashboard
+* **File coinvolti:** `org.nepe.match.adapter.in.DashboardController`, `org.nepe.match.adapter.in.LiveConsoleController`
+* **Problema:** Nella Dashboard, il pulsante per accedere alla Console Live (`btnLive`) è disabilitato se il match non è già in stato `LIVE` (`!match.matchState().allowsLiveTrading()`). Tuttavia, i match importati da CSV o creati manualmente nascono in stato `SCHEDULED`, e l'azione per avviare il live (`btnStartLive` / `startLiveTrading()`) si trova all'interno della Console Live. Di conseguenza, l'utente si trova in un deadlock e non può mai rendere live una partita dalla GUI.
+* **Soluzione:** 
+  1. Nella Dashboard, consentire l'apertura della Console Live anche per match in stato `SCHEDULED` (`isLive() || isScheduled()`), permettendo al trader di predisporre la console prima del fischio d'inizio.
+  2. In alternativa o in aggiunta, prevedere un'azione rapida "Avvia Live" direttamente dal menu contestuale della Dashboard.
+
+---
+
+## Ticket 2: Filtro per Competizione nel Popup di Mappatura Alias
+* **File coinvolti:** `org.nepe.competition.adapter.in.AliasMappingController`
+* **Problema:** Quando il parser CSV rileva una squadra sconosciuta, il popup modale di associazione carica tutte le squadre censite nel database (`manageTeamUseCase.getAllTeams()`). Mostrare centinaia di squadre di tutti i campionati (es. squadre di Premier League durante l'import della Serie A) rende la ricerca dispersiva e poco intuitiva.
+* **Soluzione:** Poiché il popup conosce già il codice della competizione corrente (`competitionCode`), pre-filtrare di default le squadre appartenenti a quel campionato, aggiungendo un toggle o checkbox "Mostra tutte le squadre" per i casi limite (es. squadre neopromosse o amichevoli).
+
+---
+
+## Ticket 3: Risoluzione Voce Ambigua Dropdown Campionati in Creazione/Filtro Squadre
+* **File coinvolti:** `org.nepe.competition.adapter.in.CompetitionViewController`, `competition_manager.fxml`
+* **Problema:** Nella scheda "Gestione Squadre", il dropdown per filtrare per campionato (`comboFilterCompetition`) inserisce un elemento `null` per indicare "Tutti i campionati", generando ambiguità con il placeholder `promptText="Filtra per campionato..."`. Inoltre, nel form a destra per la creazione/associazione squadra (`comboTeamCompetition`), la selezione deve essere chiara e non confusa con i filtri di tabella.
+* **Soluzione:** Separare nettamente il testo di prompt informativo dalle voci effettivamente selezionabili nei rispettivi ComboBox, garantendo etichette chiare ed esplicite ("Tutti i campionati", "Seleziona campionato...").
+
+---
+
+## Ticket 4: Miglioramento Scheda Mappatura Alias (UX & Visualizzazione Squadra Ufficiale)
+* **File coinvolti:** `org.nepe.competition.adapter.in.CompetitionViewController`, `competition_manager.fxml`
+* **Problema:** Nel terzo tab ("Mappatura Alias"), la tabella `tblAliases` visualizza solo l'ID numerico della squadra di destinazione (`colAliasTeamId`), costringendo l'utente a decifrare identificativi numerici. Inoltre mancano una barra di ricerca per nome alias/squadra e un filtro per campionato simili a quelli presenti nel tab "Gestione Squadre".
+* **Soluzione:** 
+  1. Visualizzare nella colonna della tabella il nome ufficiale della squadra invece dell'ID numerico grezzo.
+  2. Aggiungere filtro di ricerca testuale per individuare rapidamente gli alias.
+  3. Allineare il layout visivo e i controlli a quelli della scheda creazione squadre per coerenza UX.
+
+---
+
+## Ticket 5: Refactoring Costanti Hardcoded e Formula EV Sintetico nella Dashboard
+* **File coinvolti:** `org.nepe.match.adapter.in.DashboardController`
+* **Problema:** Nel metodo `calculateSyntheticEv` di `DashboardController`, i valori euristici (`0.03`, `1.5`, `0.6`, `0.5`) sono inseriti come magic numbers nel codice, e la formula dell'EV Back è riscritta a mano per 3 volte duplicando la logica di dominio.
+* **Soluzione:** Estrarre le costanti nominali (`SYNTHETIC_EV_THRESHOLD = 0.03`, ecc.) e delegare il calcolo dell'EV direttamente a `EvCalculator.calculateEvBack(...)`.
+
+---
+
+## Ticket 6: Allineamento Documentazione Tecnica (Recency Weighting e Schema Database)
+* **File coinvolti:** `docs/theoretical_foundations.md`, `docs/database_design.md`, `docs/gui_design.md`
+* **Problema:** 
+  1. `theoretical_foundations.md` cita come esempio una formula esponenziale di decadimento, mentre l'algoritmo deterministico approvato in `AGENTS.md` e implementato nel codice è lineare rank-based.
+  2. `database_design.md` omette la tabella Many-to-Many `competition_teams` e la colonna `home_advantage` presenti in `schema.sql`.
+  3. `gui_design.md` non include i popup modali `create_match_popup.fxml` ed `edit_match_stats_popup.fxml`.
+* **Soluzione:** Sincronizzare la documentazione con il codice sorgente e con `AGENTS.md`.
+
+---
+
+## Ticket 7: Chiarire testo bottone
+nella schermata di gestione delle squadre, per disaccoppiare una squadra da un campionato abbiamo il bottone "rimuovi". risulta forse poco chiaro (?).

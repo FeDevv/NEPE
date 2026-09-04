@@ -20,6 +20,7 @@ import org.nepe.match.port.in.ManageMarketOddsUseCase;
 import org.nepe.match.port.in.ManageMatchUseCase;
 import org.nepe.match.port.in.SaveMarketOddsCommand;
 import org.nepe.match.port.in.UpdateMatchCommand;
+import org.nepe.match.adapter.in.DashboardController;
 import org.nepe.match.port.out.MatchDetailsDTO;
 import org.nepe.settings.domain.AppSettings;
 import org.nepe.settings.port.in.ManageSettingsUseCase;
@@ -200,6 +201,8 @@ public class PreMatchAnalysisController {
     // --- Current State ---
     private MatchDetailsDTO currentMatch;
     private AppSettings currentSettings;
+    private Integer scopeCompetitionId;
+    private Integer scopeSeasonId;
     private boolean isUpdatingUi = false;
 
     public PreMatchAnalysisController(CalculatePreMatchInferenceUseCase calculatePreMatchInferenceUseCase,
@@ -298,6 +301,8 @@ public class PreMatchAnalysisController {
      * Sets the active competition and season scope to populate match selector with pre-match eligible fixtures.
      */
     public void setScope(int competitionId, int seasonId) {
+        this.scopeCompetitionId = competitionId;
+        this.scopeSeasonId = seasonId;
         try {
             List<MatchDetailsDTO> matches = manageMatchUseCase.getPreMatchEligibleMatches(competitionId, seasonId);
             comboMatchSelector.setItems(FXCollections.observableArrayList(matches));
@@ -323,6 +328,8 @@ public class PreMatchAnalysisController {
      */
     public void loadMatchDetails(MatchDetailsDTO match) {
         if (match == null) return;
+        this.scopeCompetitionId = match.competitionId();
+        this.scopeSeasonId = match.seasonId();
 
         // Guard condition: enforce pre-match eligibility invariant
         if (!match.matchState().allowsPreMatchAnalysis()) {
@@ -791,13 +798,25 @@ public class PreMatchAnalysisController {
     @FXML
     public void handleBackToDashboard(ActionEvent event) {
         try {
-            Parent root = springFXMLLoader.load("/views/dashboard.fxml");
+            SpringFXMLLoader.ViewResult<Parent, DashboardController> view =
+                    springFXMLLoader.loadWithController("/views/dashboard.fxml");
+            if (scopeCompetitionId != null || scopeSeasonId != null) {
+                view.controller().selectCompetitionAndSeason(scopeCompetitionId, scopeSeasonId);
+            }
             Stage stage = (Stage) btnBackToDashboard.getScene().getWindow();
-            stage.getScene().setRoot(root);
+            stage.getScene().setRoot(view.rootNode());
             stage.setTitle("NEPE - Nexus Exchange Prediction Engine");
         } catch (Exception e) {
             log.error("Failed to return to dashboard", e);
         }
+    }
+
+    public Integer getScopeCompetitionId() {
+        return scopeCompetitionId;
+    }
+
+    public Integer getScopeSeasonId() {
+        return scopeSeasonId;
     }
 
     // --- Utility Helpers ---

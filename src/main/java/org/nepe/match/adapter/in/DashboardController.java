@@ -111,6 +111,7 @@ public class DashboardController {
     // --- State Management ---
     private MatchState currentFilterState = null;
     private Season currentSeason;
+    private Competition currentCompetition;
     private Integer selectedMatchIdForNavigation = null;
 
     public DashboardController(ManageMatchUseCase manageMatchUseCase,
@@ -320,6 +321,7 @@ public class DashboardController {
 
         comboCompetition.getSelectionModel().selectedItemProperty().addListener((obs, oldComp, newComp) -> {
             if (newComp != null) {
+                this.currentCompetition = newComp;
                 syntheticEvCache.clear();
                 reloadMatches();
             }
@@ -367,8 +369,11 @@ public class DashboardController {
             List<Competition> competitions = manageCompetitionUseCase.getAllCompetitions();
             comboCompetition.setItems(FXCollections.observableArrayList(competitions));
 
-            if (!competitions.isEmpty()) {
+            if (currentCompetition != null && competitions.contains(currentCompetition)) {
+                comboCompetition.getSelectionModel().select(currentCompetition);
+            } else if (!competitions.isEmpty()) {
                 comboCompetition.getSelectionModel().selectFirst();
+                this.currentCompetition = comboCompetition.getSelectionModel().getSelectedItem();
             } else {
                 lblMessage.setText("Nessuna competizione trovata nel database. Crea una competizione o importa un file CSV.");
             }
@@ -381,15 +386,23 @@ public class DashboardController {
     // --- Match Query & Filtering ---
 
     public void reloadMatches() {
-        Competition selectedComp = comboCompetition.getSelectionModel().getSelectedItem();
-        Season selectedSeason = comboSeason.getSelectionModel().getSelectedItem();
+        if (comboCompetition == null || comboSeason == null) {
+            return;
+        }
+        Competition selectedComp = (comboCompetition.getSelectionModel() != null) ? comboCompetition.getSelectionModel().getSelectedItem() : null;
+        Season selectedSeason = (comboSeason.getSelectionModel() != null) ? comboSeason.getSelectionModel().getSelectedItem() : null;
         if (selectedComp == null || selectedSeason == null) {
-            tblMatches.setItems(FXCollections.emptyObservableList());
-            lblSummary.setText("Partite caricate: 0");
+            if (tblMatches != null) {
+                tblMatches.setItems(FXCollections.emptyObservableList());
+            }
+            if (lblSummary != null) {
+                lblSummary.setText("Partite caricate: 0");
+            }
             return;
         }
 
         this.currentSeason = selectedSeason;
+        this.currentCompetition = selectedComp;
 
         try {
             List<MatchDetailsDTO> matches;
@@ -400,15 +413,64 @@ public class DashboardController {
             }
 
             ObservableList<MatchDetailsDTO> observableList = FXCollections.observableArrayList(matches);
-            tblMatches.setItems(observableList);
-            lblSummary.setText(String.format("Partite caricate: %d (Competizione: %s | Stagione: %s)", matches.size(), selectedComp.getName(), selectedSeason.getName()));
-            lblMessage.setText("");
+            if (tblMatches != null) {
+                tblMatches.setItems(observableList);
+            }
+            if (lblSummary != null) {
+                lblSummary.setText(String.format("Partite caricate: %d (Competizione: %s | Stagione: %s)", matches.size(), selectedComp.getName(), selectedSeason.getName()));
+            }
+            if (lblMessage != null) {
+                lblMessage.setText("");
+            }
 
             // Compute EV signals asynchronously on a Java 25 Virtual Thread to prevent UI thread stuttering
             computeSyntheticEvSignalsAsync(matches);
         } catch (Exception e) {
             log.error("Error reloading matches", e);
-            lblMessage.setText("Errore nel caricamento delle partite: " + e.getMessage());
+            if (lblMessage != null) {
+                lblMessage.setText("Errore nel caricamento delle partite: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Programmatically selects the specified competition and season in the dashboard dropdowns
+     * and triggers a reload of fixture data.
+     *
+     * @param competitionId target competition ID, or null to retain current
+     * @param seasonId      target season ID, or null to retain current
+     */
+    public void selectCompetitionAndSeason(Integer competitionId, Integer seasonId) {
+        boolean seasonChanged = false;
+        if (seasonId != null && comboSeason != null && comboSeason.getItems() != null) {
+            for (Season season : comboSeason.getItems()) {
+                if (season.getId() == seasonId) {
+                    if (!season.equals(comboSeason.getSelectionModel().getSelectedItem())) {
+                        comboSeason.getSelectionModel().select(season);
+                        seasonChanged = true;
+                    }
+                    this.currentSeason = season;
+                    break;
+                }
+            }
+        }
+
+        boolean competitionChanged = false;
+        if (competitionId != null && comboCompetition != null && comboCompetition.getItems() != null) {
+            for (Competition comp : comboCompetition.getItems()) {
+                if (comp.getId() == competitionId) {
+                    if (!comp.equals(comboCompetition.getSelectionModel().getSelectedItem())) {
+                        comboCompetition.getSelectionModel().select(comp);
+                        competitionChanged = true;
+                    }
+                    this.currentCompetition = comp;
+                    break;
+                }
+            }
+        }
+
+        if (!seasonChanged && !competitionChanged) {
+            reloadMatches();
         }
     }
 
@@ -1015,5 +1077,13 @@ public class DashboardController {
 
     public Integer getSelectedMatchIdForNavigation() {
         return selectedMatchIdForNavigation;
+    }
+
+    public Competition getCurrentCompetition() {
+        return currentCompetition;
+    }
+
+    public Season getCurrentSeason() {
+        return currentSeason;
     }
 }

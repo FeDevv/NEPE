@@ -70,5 +70,7 @@ class PreMatchAnalysisControllerTest {
         );
 
         assertThat(controller).isNotNull();
+        assertThat(controller.getScopeCompetitionId()).isNull();
+        assertThat(controller.getScopeSeasonId()).isNull();
     }
 }

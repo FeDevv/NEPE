@@ -137,6 +137,8 @@ public class LiveConsoleController {
 
     // --- Live State ---
     private MatchDetailsDTO currentMatch;
+    private Integer scopeCompetitionId;
+    private Integer scopeSeasonId;
     private int currentHomeScore = 0;
     private int currentAwayScore = 0;
     private int currentHomeRedCards = 0;
@@ -230,6 +232,8 @@ public class LiveConsoleController {
      * Sets the active competition and season scope to populate live match selector.
      */
     public void setScope(int competitionId, int seasonId) {
+        this.scopeCompetitionId = competitionId;
+        this.scopeSeasonId = seasonId;
         try {
             List<MatchDetailsDTO> liveMatches = manageMatchUseCase.getMatchDetailsByState(competitionId, seasonId, MatchState.LIVE);
             comboLiveMatchSelector.setItems(FXCollections.observableArrayList(liveMatches));
@@ -249,6 +253,8 @@ public class LiveConsoleController {
     public void loadMatchDetails(MatchDetailsDTO match) {
         if (match == null) return;
         this.currentMatch = match;
+        this.scopeCompetitionId = match.competitionId();
+        this.scopeSeasonId = match.seasonId();
 
         lblHomeTeamName.setText(match.homeTeamName());
         lblAwayTeamName.setText(match.awayTeamName());
@@ -530,13 +536,25 @@ public class LiveConsoleController {
     @FXML
     public void handleBackToDashboard(ActionEvent event) {
         try {
-            Parent root = springFXMLLoader.load("/views/dashboard.fxml");
+            SpringFXMLLoader.ViewResult<Parent, DashboardController> view =
+                    springFXMLLoader.loadWithController("/views/dashboard.fxml");
+            if (scopeCompetitionId != null || scopeSeasonId != null) {
+                view.controller().selectCompetitionAndSeason(scopeCompetitionId, scopeSeasonId);
+            }
             Stage stage = (Stage) btnBackToDashboard.getScene().getWindow();
-            stage.getScene().setRoot(root);
+            stage.getScene().setRoot(view.rootNode());
             stage.setTitle("NEPE - Nexus Exchange Prediction Engine");
         } catch (Exception e) {
             log.error("Failed to return to dashboard", e);
         }
+    }
+
+    public Integer getScopeCompetitionId() {
+        return scopeCompetitionId;
+    }
+
+    public Integer getScopeSeasonId() {
+        return scopeSeasonId;
     }
 
     private static String formatDateTime(Instant instant) {

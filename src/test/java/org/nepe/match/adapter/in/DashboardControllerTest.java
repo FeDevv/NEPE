@@ -78,5 +78,27 @@ class DashboardControllerTest {
 
         assertThat(controller).isNotNull();
         assertThat(controller.getSelectedMatchIdForNavigation()).isNull();
+        assertThat(controller.getCurrentCompetition()).isNull();
+        assertThat(controller.getCurrentSeason()).isNull();
+    }
+
+    @Test
+    @DisplayName("selectCompetitionAndSeason should handle uninitialized UI controls safely without throwing NPE")
+    void shouldHandleSelectCompetitionAndSeasonSafelyWhenUninitialized() {
+        DashboardController controller = new DashboardController(
+                manageMatchUseCase,
+                manageCompetitionUseCase,
+                manageSeasonUseCase,
+                importCsvMatchesUseCase,
+                calculatePreMatchInferenceUseCase,
+                manageSettingsUseCase,
+                springFXMLLoader
+        );
+
+        controller.selectCompetitionAndSeason(1, 2);
+        controller.selectCompetitionAndSeason(null, null);
+
+        assertThat(controller.getCurrentCompetition()).isNull();
+        assertThat(controller.getCurrentSeason()).isNull();
     }
 }
