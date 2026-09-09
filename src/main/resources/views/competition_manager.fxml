@@ -103,7 +103,11 @@
                         <!-- Search Bar & Competition Filter -->
                         <HBox spacing="10.0" alignment="CENTER_LEFT">
                             <TextField fx:id="txtTeamSearch" promptText="🔍 Cerca squadra per nome..." prefWidth="250.0"/>
-                            <ComboBox fx:id="comboFilterCompetition" prefWidth="220.0" promptText="Filtra per campionato..."/>
+                            <ComboBox fx:id="comboFilterCompetition" prefWidth="220.0" promptText="Filtra per campionato...">
+                                <tooltip>
+                                    <Tooltip text="Filtra le squadre per campionato o visualizza tutte le leghe"/>
+                                </tooltip>
+                            </ComboBox>
                             <Button fx:id="btnClearTeamSearch" text="Mostra Tutte" styleClass="button" onAction="#handleClearTeamSearch"/>
                         </HBox>
 
@@ -129,7 +133,11 @@
 
                         <VBox spacing="6.0">
                             <Label text="Campionato di Riferimento:" styleClass="label-muted"/>
-                            <ComboBox fx:id="comboTeamCompetition" prefWidth="320.0" promptText="Seleziona campionato..."/>
+                            <ComboBox fx:id="comboTeamCompetition" prefWidth="320.0" promptText="Seleziona campionato (opzionale)...">
+                                <tooltip>
+                                    <Tooltip text="Campionato di riferimento da associare alla squadra"/>
+                                </tooltip>
+                            </ComboBox>
                         </VBox>
 
                         <Separator opacity="0.3"/>

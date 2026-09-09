@@ -9,7 +9,7 @@
       fx:controller="org.nepe.competition.adapter.in.AliasMappingController"
       styleClass="card"
       spacing="16.0"
-      prefWidth="520.0" prefHeight="400.0">
+      prefWidth="540.0" prefHeight="430.0">
 
     <padding>
         <Insets top="20.0" right="24.0" bottom="20.0" left="24.0"/>
@@ -38,7 +38,11 @@
                 </toggleGroup>
             </RadioButton>
             <HBox spacing="8.0" alignment="CENTER_LEFT">
-                <ComboBox fx:id="comboExistingTeams" prefWidth="380.0" promptText="Seleziona squadra dal database..."/>
+                <TextField fx:id="txtSearchTeam" promptText="🔍 Cerca squadra per nome..." HBox.hgrow="ALWAYS"/>
+                <CheckBox fx:id="chkShowAllTeams" text="Mostra tutte le squadre"/>
+            </HBox>
+            <HBox spacing="8.0" alignment="CENTER_LEFT">
+                <ComboBox fx:id="comboExistingTeams" maxWidth="Infinity" HBox.hgrow="ALWAYS" promptText="Seleziona squadra dal database..."/>
             </HBox>
         </VBox>
 

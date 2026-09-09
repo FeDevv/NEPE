@@ -40,6 +40,18 @@ public class CompetitionViewController {
 
     private static final Logger log = LoggerFactory.getLogger(CompetitionViewController.class);
 
+    /**
+     * Label displayed in the competition filter ComboBox for the sentinel "All Competitions" option.
+     */
+    public static final String ALL_COMPETITIONS_LABEL = "🌐 Tutti i campionati";
+
+    /**
+     * Sentinel Competition instance representing "All Competitions" in the teams table filter.
+     */
+    public static final Competition ALL_COMPETITIONS = new Competition(
+            -1, "ALL", "Tutti i campionati", "Global", Competition.DEFAULT_DIXON_COLES_RHO, null
+    );
+
     private final ManageCompetitionUseCase manageCompetitionUseCase;
     private final ManageTeamUseCase manageTeamUseCase;
     private final SpringFXMLLoader springFXMLLoader;
@@ -262,7 +274,13 @@ public class CompetitionViewController {
             comboFilterCompetition.setConverter(new StringConverter<>() {
                 @Override
                 public String toString(Competition c) {
-                    return (c != null) ? c.getName() + " (" + c.getCode() + ")" : "Tutti i campionati";
+                    if (c == null) {
+                        return "";
+                    }
+                    if (c.equals(ALL_COMPETITIONS)) {
+                        return ALL_COMPETITIONS_LABEL;
+                    }
+                    return c.getName() + " (" + c.getCode() + ")";
                 }
 
                 @Override
@@ -300,18 +318,18 @@ public class CompetitionViewController {
                 comboTeamCompetition.setItems(FXCollections.observableArrayList(list));
                 if (prev != null && list.contains(prev)) {
                     comboTeamCompetition.setValue(prev);
-                } else if (!list.isEmpty()) {
-                    comboTeamCompetition.getSelectionModel().selectFirst();
+                } else {
+                    comboTeamCompetition.getSelectionModel().clearSelection();
                 }
             }
 
             if (comboFilterCompetition != null) {
                 Competition prevFilter = comboFilterCompetition.getValue();
                 ObservableList<Competition> filterItems = FXCollections.observableArrayList();
-                filterItems.add(null);
+                filterItems.add(ALL_COMPETITIONS);
                 filterItems.addAll(list);
                 comboFilterCompetition.setItems(filterItems);
-                if (prevFilter != null && list.contains(prevFilter)) {
+                if (prevFilter != null && filterItems.contains(prevFilter)) {
                     comboFilterCompetition.setValue(prevFilter);
                 } else {
                     comboFilterCompetition.getSelectionModel().selectFirst();
@@ -328,7 +346,7 @@ public class CompetitionViewController {
             String search = (txtTeamSearch != null) ? txtTeamSearch.getText() : null;
 
             List<Team> baseList;
-            if (filterComp != null) {
+            if (filterComp != null && !filterComp.equals(ALL_COMPETITIONS)) {
                 baseList = manageTeamUseCase.getTeamsByCompetition(filterComp.getId());
             } else {
                 baseList = manageTeamUseCase.getAllTeams();

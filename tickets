@@ -13,7 +13,7 @@
 
 ---
 
-## Ticket 2: Filtro per Competizione e Ricerca Rapida nel Popup di Mappatura Alias
+## Ticket 2: Filtro per Competizione e Ricerca Rapida nel Popup di Mappatura Alias [COMPLETED]
 * **Gravità:** `MINOR` (Degrado usabilità: ricerca dispersiva in liste ampie o dropdown vuoto in leghe nuove)
 * **Effort Atteso:** `LOW`
 * **File coinvolti:** `org.nepe.competition.adapter.in.AliasMappingController`, `src/main/resources/views/alias_mapping_dialog.fxml`, `org.nepe.competition.port.in.ManageCompetitionUseCase`
@@ -25,7 +25,7 @@
 
 ---
 
-## Ticket 3: Risoluzione Voce Ambigua Dropdown Campionati in Creazione/Filtro Squadre
+## Ticket 3: Risoluzione Voce Ambigua Dropdown Campionati in Creazione/Filtro Squadre [COMPLETED]
 * **Gravità:** `MINOR` (Inconsistenza visiva ComboBox tra promptText ed elemento nullo)
 * **Effort Atteso:** `LOW`
 * **File coinvolti:** `org.nepe.competition.adapter.in.CompetitionViewController`, `src/main/resources/views/competition_manager.fxml`
@@ -126,3 +126,19 @@
   1. Introdurre nella GUI live una sezione compatta e mirata ("Quick Odds") focalizzata sui mercati attivi principali: esito 1X2 e linea Under/Over di riferimento per il minuto/punteggio corrente.
   2. Implementare la reattività in memoria (`onKeyTyped` / listener sulle proprietà testo) per aggiornare istantaneamente il calcolo di Live EV e Green-Up/Cashout target a video senza attendere o bloccare su transazioni di scrittura nel database.
   3. Prevedere un pulsante opzionale "Salva Snapshot Quote" se l'utente desidera rendere persistenti nel DB i valori registrati in quel momento della partita.
+
+---
+
+## Ticket 12: Diagnosi e Risoluzione Mancata Eliminazione Competizione (Modal Owner, Cascade & Flush Translation)
+* **Gravità:** `MAJOR` (Blocco operativo anagrafica: eliminazione silente o mancato feedback visivo a schermo)
+* **Effort Atteso:** `LOW`
+* **File coinvolti:** `org.nepe.competition.adapter.in.CompetitionViewController`, `org.nepe.competition.adapter.out.CompetitionRepositoryAdapter`, `org.nepe.competition.adapter.out.SpringDataCompetitionTeamRepository`
+* **Problema:** Quando l'utente tenta di eliminare una competizione dalla tabella campionati, l'azione sembra non produrre alcun effetto visibile:
+  1. Il dialog `Alert` di conferma non ha `initOwner(...)` configurato: su ambienti desktop (in particolare macOS), la modale può perdere il focus o aprirsi in background dietro lo stage principale.
+  2. In `CompetitionRepositoryAdapter.deleteById(id)`, la chiamata `springDataRepository.deleteById(id)` non effettua il `flush()` esplicito all'interno del blocco `try-catch`. Di conseguenza, se la competizione ha vincoli referenziali (partite in `matches` o associazioni in `competition_teams`), l'eccezione `DataIntegrityViolationException` viene sollevata solo al commit della transazione fuori dall'adapter; essa sfugge al `catch (NepeException e)` del controller, che abortisce silenziosamente senza aggiornare la UI né mostrare l'alert di errore.
+  3. Mancata disassociazione automatica preventiva delle squadre collegate (`competition_teams`), impedendo l'eliminazione anche quando la lega non contiene partite storiche.
+* **Soluzione:** 
+  1. Configurare `initOwner(tblCompetitions.getScene().getWindow())` per l'Alert di conferma e per `showErrorAlert` in `CompetitionViewController`.
+  2. Disassociare preventivamente le squadre (`springDataCompetitionTeamRepository.deleteByCompetitionId(id)`) prima di cancellare la competizione.
+  3. Inserire `springDataRepository.flush()` nel blocco `try` di `CompetitionRepositoryAdapter.deleteById(id)` per catturare ed incapsulare immediatamente la violazione dei vincoli relazionali nella domain exception `DomainValidationException`.
+  4. Aggiungere un blocco difensivo `catch (Exception e)` in `handleDeleteCompetition` per garantire che qualsiasi errore mostri sempre un messaggio descrittivo all'utente a video.

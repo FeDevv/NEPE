@@ -3,6 +3,7 @@ package org.nepe.competition.adapter.in;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.nepe.bootstrap.SpringFXMLLoader;
+import org.nepe.competition.domain.Competition;
 import org.nepe.competition.port.in.ManageCompetitionUseCase;
 import org.nepe.competition.port.in.ManageTeamUseCase;
 
@@ -43,5 +44,32 @@ class CompetitionViewControllerTest {
         );
 
         assertThat(controller).isNotNull();
+    }
+
+    @Test
+    @DisplayName("ALL_COMPETITIONS sentinel should have correct properties and valid domain state")
+    void allCompetitionsSentinelShouldBeValid() {
+        Competition sentinel = CompetitionViewController.ALL_COMPETITIONS;
+
+        assertThat(sentinel).isNotNull();
+        assertThat(sentinel.getId()).isEqualTo(-1);
+        assertThat(sentinel.getCode()).isEqualTo("ALL");
+        assertThat(sentinel.getName()).isEqualTo("Tutti i campionati");
+        assertThat(sentinel.getCountry()).isEqualTo("Global");
+        assertThat(sentinel.getDixonColesRho()).isEqualTo(Competition.DEFAULT_DIXON_COLES_RHO);
+        assertThat(sentinel.hasManualHomeAdvantage()).isFalse();
+        assertThat(CompetitionViewController.ALL_COMPETITIONS_LABEL).isEqualTo("🌐 Tutti i campionati");
+    }
+
+    @Test
+    @DisplayName("ALL_COMPETITIONS equality should be based on unique code 'ALL'")
+    void allCompetitionsSentinelEquality() {
+        Competition sentinel = CompetitionViewController.ALL_COMPETITIONS;
+        Competition sameCode = new Competition(99, "ALL", "Other Name", "Other Country", -0.12);
+        Competition differentCode = new Competition(1, "I1", "Serie A", "Italy", -0.12);
+
+        assertThat(sentinel).isEqualTo(sameCode);
+        assertThat(sentinel).isNotEqualTo(differentCode);
+        assertThat(sentinel.equals(null)).isFalse();
     }
 }
