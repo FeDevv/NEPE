@@ -1,6 +1,7 @@
 package org.nepe.match.adapter.in;
 
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Parent;
@@ -166,6 +167,7 @@ public class LiveConsoleController {
         configureMatchDropdown();
         configureMinuteInput();
         loadAvailableLiveMatches();
+        updateControlStates();
     }
 
     private void configureMatchDropdown() {
@@ -183,7 +185,7 @@ public class LiveConsoleController {
         });
 
         comboLiveMatchSelector.getSelectionModel().selectedItemProperty().addListener((obs, oldMatch, newMatch) -> {
-            if (newMatch != null) {
+            if (newMatch != null && (currentMatch == null || currentMatch.matchId() != newMatch.matchId())) {
                 loadMatchDetails(newMatch);
             }
         });
@@ -211,13 +213,10 @@ public class LiveConsoleController {
         try {
             List<MatchDetailsDTO> allMatches = manageMatchUseCase.getAllMatchDetails();
             List<MatchDetailsDTO> matches = allMatches.stream()
-                    .filter(m -> m.matchState() == MatchState.LIVE)
+                    .filter(m -> m.matchState() == MatchState.LIVE || m.matchState() == MatchState.SCHEDULED)
+                    .sorted(java.util.Comparator.comparing((MatchDetailsDTO m) -> m.matchState() == MatchState.LIVE ? 0 : 1)
+                            .thenComparing(MatchDetailsDTO::matchDateTime))
                     .toList();
-            if (matches.isEmpty()) {
-                matches = allMatches.stream()
-                        .filter(m -> m.matchState() == MatchState.SCHEDULED)
-                        .toList();
-            }
 
             comboLiveMatchSelector.setItems(FXCollections.observableArrayList(matches));
             if (!matches.isEmpty()) {
@@ -236,8 +235,11 @@ public class LiveConsoleController {
         this.scopeSeasonId = seasonId;
         try {
             List<MatchDetailsDTO> liveMatches = manageMatchUseCase.getMatchDetailsByState(competitionId, seasonId, MatchState.LIVE);
-            comboLiveMatchSelector.setItems(FXCollections.observableArrayList(liveMatches));
-            if (!liveMatches.isEmpty()) {
+            List<MatchDetailsDTO> scheduledMatches = manageMatchUseCase.getMatchDetailsByState(competitionId, seasonId, MatchState.SCHEDULED);
+            List<MatchDetailsDTO> combined = new java.util.ArrayList<>(liveMatches);
+            combined.addAll(scheduledMatches);
+            comboLiveMatchSelector.setItems(FXCollections.observableArrayList(combined));
+            if (!combined.isEmpty()) {
                 comboLiveMatchSelector.getSelectionModel().selectFirst();
             }
         } catch (Exception e) {
@@ -275,6 +277,7 @@ public class LiveConsoleController {
 
         reloadEventsHistory();
         recalculateLiveInference();
+        updateControlStates();
     }
 
     private void updateScoreboardDisplay() {
@@ -461,7 +464,7 @@ public class LiveConsoleController {
     }
 
     private void recordLiveEvent(MatchEventType type) {
-        if (currentMatch == null) return;
+        if (currentMatch == null || currentMatch.matchState() != MatchState.LIVE) return;
 
         try {
             liveMatchTradingUseCase.recordEvent(new RecordMatchEventCommand(
@@ -515,6 +518,9 @@ public class LiveConsoleController {
 
         try {
             liveMatchTradingUseCase.startLiveTrading(currentMatch.matchId());
+            MatchDetailsDTO updated = manageMatchUseCase.getMatchDetailsById(currentMatch.matchId());
+            loadMatchDetails(updated);
+            refreshMatchDropdownSelection(updated);
             lblStatus.setText("Partita avviata in modalità LIVE.");
         } catch (Exception e) {
             lblStatus.setText("Errore avvio live: " + e.getMessage());
@@ -527,9 +533,60 @@ public class LiveConsoleController {
 
         try {
             liveMatchTradingUseCase.finishLiveMatch(currentMatch.matchId());
+            MatchDetailsDTO updated = manageMatchUseCase.getMatchDetailsById(currentMatch.matchId());
+            loadMatchDetails(updated);
+            refreshMatchDropdownSelection(updated);
             lblStatus.setText("Partita conclusa e salvata.");
         } catch (Exception e) {
             lblStatus.setText("Errore conclusione partita: " + e.getMessage());
+        }
+    }
+
+    private void updateControlStates() {
+        if (currentMatch == null) {
+            if (btnStartLive != null) btnStartLive.setDisable(true);
+            if (btnFinishMatch != null) btnFinishMatch.setDisable(true);
+            setEventButtonsDisable(true);
+            setMinuteControlsDisable(true);
+            return;
+        }
+
+        MatchState state = currentMatch.matchState();
+        boolean isLive = state == MatchState.LIVE;
+        boolean isScheduled = state == MatchState.SCHEDULED;
+
+        if (btnStartLive != null) btnStartLive.setDisable(!isScheduled);
+        if (btnFinishMatch != null) btnFinishMatch.setDisable(!isLive);
+        setEventButtonsDisable(!isLive);
+        setMinuteControlsDisable(!isLive);
+    }
+
+    private void setEventButtonsDisable(boolean disable) {
+        if (btnGoalHome != null) btnGoalHome.setDisable(disable);
+        if (btnGoalAway != null) btnGoalAway.setDisable(disable);
+        if (btnRedCardHome != null) btnRedCardHome.setDisable(disable);
+        if (btnRedCardAway != null) btnRedCardAway.setDisable(disable);
+        if (btnUndoLastEvent != null) btnUndoLastEvent.setDisable(disable);
+    }
+
+    private void setMinuteControlsDisable(boolean disable) {
+        if (btnMinus1Min != null) btnMinus1Min.setDisable(disable);
+        if (txtCurrentMinute != null) txtCurrentMinute.setDisable(disable);
+        if (btnPlus1Min != null) btnPlus1Min.setDisable(disable);
+        if (btnPlus5Min != null) btnPlus5Min.setDisable(disable);
+    }
+
+    private void refreshMatchDropdownSelection(MatchDetailsDTO updatedMatch) {
+        if (comboLiveMatchSelector == null || updatedMatch == null) return;
+        ObservableList<MatchDetailsDTO> items = comboLiveMatchSelector.getItems();
+        if (items != null) {
+            for (int i = 0; i < items.size(); i++) {
+                if (items.get(i).matchId() == updatedMatch.matchId()) {
+                    items.set(i, updatedMatch);
+                    comboLiveMatchSelector.getSelectionModel().select(i);
+                    break;
+                }
+            }
         }
     }
 

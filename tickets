@@ -2,31 +2,42 @@
 # NEPE - Elenco Ticket e Anomalie Rilevate (Testing Manuale & Audit)
 # =============================================================================
 
-## Ticket 1: Sblocco Transizione Partita in LIVE da Dashboard
+## Ticket 1: Sblocco Transizione Partita in LIVE da Dashboard [COMPLETED]
+* **Gravità:** `MAJOR` (Deadlock operativo UI: impossibilità di avviare il live trading da match in stato SCHEDULED)
+* **Effort Atteso:** `MEDIUM`
 * **File coinvolti:** `org.nepe.match.adapter.in.DashboardController`, `org.nepe.match.adapter.in.LiveConsoleController`
 * **Problema:** Nella Dashboard, il pulsante per accedere alla Console Live (`btnLive`) è disabilitato se il match non è già in stato `LIVE` (`!match.matchState().allowsLiveTrading()`). Tuttavia, i match importati da CSV o creati manualmente nascono in stato `SCHEDULED`, e l'azione per avviare il live (`btnStartLive` / `startLiveTrading()`) si trova all'interno della Console Live. Di conseguenza, l'utente si trova in un deadlock e non può mai rendere live una partita dalla GUI.
 * **Soluzione:** 
   1. Nella Dashboard, consentire l'apertura della Console Live anche per match in stato `SCHEDULED` (`isLive() || isScheduled()`), permettendo al trader di predisporre la console prima del fischio d'inizio.
-  2. In alternativa o in aggiunta, prevedere un'azione rapida "Avvia Live" direttamente dal menu contestuale della Dashboard.
+  2. In aggiunta, prevedere un'azione rapida "Avvia Live" direttamente dal menu contestuale `btnMore` della Dashboard.
 
 ---
 
-## Ticket 2: Filtro per Competizione nel Popup di Mappatura Alias
-* **File coinvolti:** `org.nepe.competition.adapter.in.AliasMappingController`
-* **Problema:** Quando il parser CSV rileva una squadra sconosciuta, il popup modale di associazione carica tutte le squadre censite nel database (`manageTeamUseCase.getAllTeams()`). Mostrare centinaia di squadre di tutti i campionati (es. squadre di Premier League durante l'import della Serie A) rende la ricerca dispersiva e poco intuitiva.
-* **Soluzione:** Poiché il popup conosce già il codice della competizione corrente (`competitionCode`), pre-filtrare di default le squadre appartenenti a quel campionato, aggiungendo un toggle o checkbox "Mostra tutte le squadre" per i casi limite (es. squadre neopromosse o amichevoli).
+## Ticket 2: Filtro per Competizione e Ricerca Rapida nel Popup di Mappatura Alias
+* **Gravità:** `MINOR` (Degrado usabilità: ricerca dispersiva in liste ampie o dropdown vuoto in leghe nuove)
+* **Effort Atteso:** `LOW`
+* **File coinvolti:** `org.nepe.competition.adapter.in.AliasMappingController`, `src/main/resources/views/alias_mapping_dialog.fxml`, `org.nepe.competition.port.in.ManageCompetitionUseCase`
+* **Problema:** Quando il parser CSV rileva una squadra sconosciuta, il popup modale di associazione carica indistintamente tutte le centinaia di squadre censite nel database (`manageTeamUseCase.getAllTeams()`), rendendo la ricerca dispersiva. Inoltre, se si filtrasse rigidamente per campionato senza gestire i casi limite, al primissimo import di una nuova competizione (con 0 squadre ancora associate) il dropdown risulterebbe vuoto e inutilizzabile.
+* **Soluzione:** 
+  1. Iniettare `ManageCompetitionUseCase` in `AliasMappingController` per risolvere l'ID della competizione dal suo codice (`competitionCode`).
+  2. Pre-filtrare di default le squadre appartenenti al campionato corrente (`manageTeamUseCase.getTeamsByCompetition(competitionId)`). Se la competizione non ha ancora squadre associate (es. prima configurazione), ricadere automaticamente sull'elenco completo per evitare un dropdown vuoto.
+  3. Aggiungere una casella di ricerca/filtro testuale dinamica e un checkbox toggle `"Mostra tutte le squadre"` per permettere associazioni cross-campionato o amichevoli.
 
 ---
 
 ## Ticket 3: Risoluzione Voce Ambigua Dropdown Campionati in Creazione/Filtro Squadre
-* **File coinvolti:** `org.nepe.competition.adapter.in.CompetitionViewController`, `competition_manager.fxml`
+* **Gravità:** `MINOR` (Inconsistenza visiva ComboBox tra promptText ed elemento nullo)
+* **Effort Atteso:** `LOW`
+* **File coinvolti:** `org.nepe.competition.adapter.in.CompetitionViewController`, `src/main/resources/views/competition_manager.fxml`
 * **Problema:** Nella scheda "Gestione Squadre", il dropdown per filtrare per campionato (`comboFilterCompetition`) inserisce un elemento `null` per indicare "Tutti i campionati", generando ambiguità con il placeholder `promptText="Filtra per campionato..."`. Inoltre, nel form a destra per la creazione/associazione squadra (`comboTeamCompetition`), la selezione deve essere chiara e non confusa con i filtri di tabella.
 * **Soluzione:** Separare nettamente il testo di prompt informativo dalle voci effettivamente selezionabili nei rispettivi ComboBox, garantendo etichette chiare ed esplicite ("Tutti i campionati", "Seleziona campionato...").
 
 ---
 
 ## Ticket 4: Miglioramento Scheda Mappatura Alias (UX & Visualizzazione Squadra Ufficiale)
-* **File coinvolti:** `org.nepe.competition.adapter.in.CompetitionViewController`, `competition_manager.fxml`
+* **Gravità:** `MINOR` (Esposizione di ID numerici al posto dei nomi squadra e assenza di filtro di ricerca)
+* **Effort Atteso:** `MEDIUM`
+* **File coinvolti:** `org.nepe.competition.adapter.in.CompetitionViewController`, `src/main/resources/views/competition_manager.fxml`
 * **Problema:** Nel terzo tab ("Mappatura Alias"), la tabella `tblAliases` visualizza solo l'ID numerico della squadra di destinazione (`colAliasTeamId`), costringendo l'utente a decifrare identificativi numerici. Inoltre mancano una barra di ricerca per nome alias/squadra e un filtro per campionato simili a quelli presenti nel tab "Gestione Squadre".
 * **Soluzione:** 
   1. Visualizzare nella colonna della tabella il nome ufficiale della squadra invece dell'ID numerico grezzo.
@@ -35,14 +46,22 @@
 
 ---
 
-## Ticket 5: Refactoring Costanti Hardcoded e Formula EV Sintetico nella Dashboard
-* **File coinvolti:** `org.nepe.match.adapter.in.DashboardController`
-* **Problema:** Nel metodo `calculateSyntheticEv` di `DashboardController`, i valori euristici (`0.03`, `1.5`, `0.6`, `0.5`) sono inseriti come magic numbers nel codice, e la formula dell'EV Back è riscritta a mano per 3 volte duplicando la logica di dominio.
-* **Soluzione:** Estrarre le costanti nominali (`SYNTHETIC_EV_THRESHOLD = 0.03`, ecc.) e delegare il calcolo dell'EV direttamente a `EvCalculator.calculateEvBack(...)`.
+## Ticket 5: Calcolo Rigoroso Pre-Match EV in Dashboard con Virtual Thread Caching ed EvCalculator
+* **Gravità:** `MAJOR` (Inconsistenza numerica tra Dashboard e Pre-Match, e circolarità della formula sintetica)
+* **Effort Atteso:** `MEDIUM`
+* **File coinvolti:** `org.nepe.match.adapter.in.DashboardController`, `org.nepe.inference.domain.EvCalculator`
+* **Problema:** La colonna "Segnale EV+" della Dashboard utilizza attualmente un'euristica "sintetica" (`calculateSyntheticEv`) che approssima i parametri di Poisson $\lambda$ e $\mu$ in modo circolare partendo direttamente dalle quote 1X2 del mercato con magic numbers (`1.5`, `0.6`, `0.5`, `0.03`), duplicando a mano la formula dell'EV per 3 volte. Questo approccio produce valori disallineati rispetto all'analisi rigorosa eseguita nella schermata "Pre-Match" (basata su serie storiche, xG ponderati, $\alpha$ e $\beta$). Poiché le partite da valutare per turno di campionato sono nell'ordine della decina (solo quelle in stato `SCHEDULED`), non vi è alcuna necessità di ricorrere a valori fittizi.
+* **Soluzione:** 
+  1. Sostituire l'euristica sintetica con il calcolo effettivo del modello Pre-Match alimentato dai metodi già esposti da `ManageMatchUseCase` (`getHistoricalTeamPerformances`, `getLeagueAverageXgPerTeam`, `getDynamicHomeAdvantage`) per i match in stato `SCHEDULED`.
+  2. Sfruttare l'infrastruttura asincrona già presente basata sui Virtual Threads di Java 25 (`Thread.startVirtualThread`) per eseguire i calcoli in background senza impattare la responsività a 60 FPS dell'interfaccia grafica.
+  3. Mantenere memorizzati i segnali calcolati nella cache concorrente a video (`ConcurrentHashMap`), invalidandola in caso di cambio competizione/stagione, modifica dati o re-import CSV.
+  4. Centralizzare il calcolo del valore atteso tramite `EvCalculator.calculateEvBack(...)` con costanti esplicite (es. `EV_BADGE_MIN_THRESHOLD = 0.03`).
 
 ---
 
 ## Ticket 6: Allineamento Documentazione Tecnica (Recency Weighting e Schema Database)
+* **Gravità:** `MAJOR` (Contraddizione tra documentazione tecnica, codice sorgente e AGENTS.md)
+* **Effort Atteso:** `MEDIUM`
 * **File coinvolti:** `docs/theoretical_foundations.md`, `docs/database_design.md`, `docs/gui_design.md`
 * **Problema:** 
   1. `theoretical_foundations.md` cita come esempio una formula esponenziale di decadimento, mentre l'algoritmo deterministico approvato in `AGENTS.md` e implementato nel codice è lineare rank-based.
@@ -52,5 +71,58 @@
 
 ---
 
-## Ticket 7: Chiarire testo bottone
-nella schermata di gestione delle squadre, per disaccoppiare una squadra da un campionato abbiamo il bottone "rimuovi". risulta forse poco chiaro (?).
+## Ticket 7: Chiarimento Etichetta e Azione Disassociazione Squadra da Campionato
+* **Gravità:** `MINOR` (Ambiguità terminologica tra disassociazione da lega ed eliminazione definitiva anagrafica)
+* **Effort Atteso:** `LOW` (Modifica immediata di etichetta FXML e testo dialog di conferma)
+* **File coinvolti:** `org.nepe.competition.adapter.in.CompetitionViewController`, `src/main/resources/views/competition_manager.fxml`
+* **Problema:** Nella scheda "Gestione Squadre", il pulsante per disaccoppiare una squadra dal campionato selezionato riporta il testo ambiguo `"❌ Rimuovi"` (`btnDisassociateTeam`), collocato a fianco di `"🔗 Associa a Campionato"` e sopra `"🗑️ Elimina Squadra Selezionata"` (`btnDeleteTeam`). L'utente può facilmente confondere la disassociazione della squadra da una specifica lega con l'eliminazione definitiva dell'anagrafica squadra dal database.
+* **Soluzione:** 
+  1. Rinominare l'etichetta del pulsante in `"❌ Disassocia"` o `"❌ Disassocia da Campionato"` con tooltip esplicativo.
+  2. Aggiornare il messaggio del dialog di conferma specificando chiaramente che l'operazione rimuove solo l'associazione al campionato e non elimina la squadra né i suoi dati storici.
+
+---
+
+## Ticket 8: Rimozione o Riformulazione Banner Tecnico in Modifica Statistiche
+* **Gravità:** `IMPROVEMENT` (Esposizione all'utente di dettagli tecnici interni di implementazione/debug)
+* **Effort Atteso:** `LOW` (Modifica immediata del markup FXML nel popup)
+* **File coinvolti:** `src/main/resources/views/edit_match_stats_popup.fxml`
+* **Problema:** Nel popup modale di modifica statistiche partita (`edit_match_stats_popup.fxml`), il banner informativo espone dettagli implementativi interni del database rivolti allo sviluppatore: `"Il salvataggio attiverà la protezione sovrascrittura (is_manually_edited=1), preservando i dati inseriti da futuri re-import CSV."`.
+* **Soluzione:** Sostituire la stringa di debug con un messaggio chiaro e orientato all'utente (es. `"Le modifiche manuali verranno salvate e protette da future re-importazioni di dati."`) oppure rimuovere il banner se ritenuto superfluo per l'utente finale.
+
+---
+
+## Ticket 9: Conclusione Partite da Dashboard e dal Popup Statistiche
+* **Gravità:** `MAJOR` (Transizione di stato incompleta nella Dashboard e flusso di inserimento risultati spezzato)
+* **Effort Atteso:** `MEDIUM`
+* **File coinvolti:** `org.nepe.match.adapter.in.DashboardController`, `org.nepe.match.adapter.in.EditMatchStatsController`, `src/main/resources/views/edit_match_stats_popup.fxml`, `org.nepe.match.port.in.ManageMatchUseCase`
+* **Problema:** Attualmente una partita può transitare allo stato `FINISHED` esclusivamente dall'interno della Console Live tramite `btnFinishMatch`. Questo genera due blocchi:
+  1. Nella Dashboard, il menu azioni (`btnMore`) non consente di marcare direttamente una partita come terminata, nonostante la porta applicativa `ManageMatchUseCase.markAsFinished(int matchId)` sia già pronta.
+  2. Quando l'utente inserisce il risultato finale e le statistiche (tiri, falli) nel popup modale "✏️ Statistiche" per una partita in stato `SCHEDULED`, il salvataggio memorizza i numeri ma lascia la partita in stato `SCHEDULED`, costringendo l'utente a un doppio passaggio controintuitivo per archiviarla.
+* **Soluzione:** 
+  1. Aggiungere una voce `"🏁 Termina Partita"` nel menu a tendina `btnMore` della tabella nella Dashboard per match in stato `SCHEDULED` o `LIVE`, con finestra di conferma e refresh della tabella.
+  2. Nel popup di modifica statistiche (`edit_match_stats_popup.fxml` e `EditMatchStatsController`), aggiungere un controllo esplicito (es. checkbox `[x] Contrassegna come Partita Conclusa (FINISHED)`), permettendo di finalizzare e archiviare il match contestualmente al salvataggio del risultato finale in una singola operazione atomica.
+
+---
+
+## Ticket 10: Isolamento Stato Campi Quote e Pre-popolamento in Pre-Match Analysis
+* **Gravità:** `MAJOR` (Data leak visivo tra partite diverse e potenziale sovrascrittura di quote custom)
+* **Effort Atteso:** `LOW` (Pulizia preventiva del form e corretta priorità di popolamento)
+* **File coinvolti:** `org.nepe.inference.adapter.in.PreMatchAnalysisController`
+* **Problema:** All'apertura della vista di Analisi Pre-Match o al cambio di partita nel dropdown, il metodo `loadMatchDetails(...)` non invoca la pulizia dei campi (`clearAllMarketOddsFields()`). Questo provoca due anomalie:
+  1. I campi delle quote dei mercati secondari (Under/Over, BTTS, quote Lay) compilati per una partita rimangono memorizzati e visibili nei TextField per le partite successive se non esplicitamente sovrascritti.
+  2. Il pre-fill automatico con le quote 1X2 del CSV (`match.oddsHome()`, `match.oddsDraw()`, `match.oddsAway()`) viene eseguito incondizionatamente prima di `loadPersistedMarketOdds(...)`, rischiando di sovrascrivere quote manualmente personalizzate e salvate in precedenza nel repository `MarketOdds`.
+* **Soluzione:** 
+  1. Chiamare sempre `clearAllMarketOddsFields()` all'inizio di `loadMatchDetails(...)` per garantire un form pulito e isolato per ogni fixture.
+  2. Regolare la priorità di popolamento in modo che le quote personalizzate salvate in `MarketOdds` abbiano precedenza rispetto alle quote reference grezze del file CSV.
+
+---
+
+## Ticket 11: Inserimento Quote Exchange Rapide e Valutazione Live EV/Green-Up Reattiva
+* **Gravità:** `MAJOR` (Funzionalità core di trading incompleta in tempo reale)
+* **Effort Atteso:** `HIGH` (Layout compatto FXML, calcolo reattivo in memoria e integrazione query live)
+* **File coinvolti:** `org.nepe.match.adapter.in.LiveConsoleController`, `src/main/resources/views/live_console.fxml`, `org.nepe.inference.port.in.CalculateLiveInferenceUseCase`
+* **Problema:** Nella Console Live (`live_console.fxml`), l'interfaccia visualizza solo le "Fair Odds" matematiche calcolate dal modello, ma non offre alcun campo di input per inserire le quote exchange reali (Back e Lay) man mano che il bookmaker/mercato si muove durante il match. Un approccio ingenuo che replicasse l'intera matrice complessa del Pre-Match (con salvataggio sincrono su DB a ogni cifra) risulterebbe ingestibile e inutilizzabile per la rapidità richiesta durante una sessione live.
+* **Soluzione:** 
+  1. Introdurre nella GUI live una sezione compatta e mirata ("Quick Odds") focalizzata sui mercati attivi principali: esito 1X2 e linea Under/Over di riferimento per il minuto/punteggio corrente.
+  2. Implementare la reattività in memoria (`onKeyTyped` / listener sulle proprietà testo) per aggiornare istantaneamente il calcolo di Live EV e Green-Up/Cashout target a video senza attendere o bloccare su transazioni di scrittura nel database.
+  3. Prevedere un pulsante opzionale "Salva Snapshot Quote" se l'utente desidera rendere persistenti nel DB i valori registrati in quel momento della partita.

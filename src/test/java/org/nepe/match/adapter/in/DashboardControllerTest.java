@@ -7,16 +7,19 @@ import org.nepe.competition.port.in.ManageCompetitionUseCase;
 import org.nepe.competition.port.in.ManageSeasonUseCase;
 import org.nepe.inference.port.in.CalculatePreMatchInferenceUseCase;
 import org.nepe.match.port.in.ImportCsvMatchesUseCase;
+import org.nepe.match.port.in.LiveMatchTradingUseCase;
 import org.nepe.match.port.in.ManageMatchUseCase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @DisplayName("DashboardController Unit Tests")
 class DashboardControllerTest {
 
     private final ManageMatchUseCase manageMatchUseCase = mock(ManageMatchUseCase.class);
+    private final LiveMatchTradingUseCase liveMatchTradingUseCase = mock(LiveMatchTradingUseCase.class);
     private final ManageCompetitionUseCase manageCompetitionUseCase = mock(ManageCompetitionUseCase.class);
     private final ManageSeasonUseCase manageSeasonUseCase = mock(ManageSeasonUseCase.class);
     private final ImportCsvMatchesUseCase importCsvMatchesUseCase = mock(ImportCsvMatchesUseCase.class);
@@ -28,44 +31,64 @@ class DashboardControllerTest {
     @DisplayName("Constructor should enforce non-null dependencies")
     void shouldEnforceConstructorInvariants() {
         assertThatThrownBy(() -> new DashboardController(
-                null, manageCompetitionUseCase, manageSeasonUseCase, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, manageSettingsUseCase, springFXMLLoader))
+                null, liveMatchTradingUseCase, manageCompetitionUseCase, manageSeasonUseCase, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, manageSettingsUseCase, springFXMLLoader))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("ManageMatchUseCase must not be null");
 
         assertThatThrownBy(() -> new DashboardController(
-                manageMatchUseCase, null, manageSeasonUseCase, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, manageSettingsUseCase, springFXMLLoader))
+                manageMatchUseCase, liveMatchTradingUseCase, null, manageSeasonUseCase, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, manageSettingsUseCase, springFXMLLoader))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("ManageCompetitionUseCase must not be null");
 
         assertThatThrownBy(() -> new DashboardController(
-                manageMatchUseCase, manageCompetitionUseCase, null, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, manageSettingsUseCase, springFXMLLoader))
+                manageMatchUseCase, liveMatchTradingUseCase, manageCompetitionUseCase, null, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, manageSettingsUseCase, springFXMLLoader))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("ManageSeasonUseCase must not be null");
 
         assertThatThrownBy(() -> new DashboardController(
-                manageMatchUseCase, manageCompetitionUseCase, manageSeasonUseCase, null, calculatePreMatchInferenceUseCase, manageSettingsUseCase, springFXMLLoader))
+                manageMatchUseCase, liveMatchTradingUseCase, manageCompetitionUseCase, manageSeasonUseCase, null, calculatePreMatchInferenceUseCase, manageSettingsUseCase, springFXMLLoader))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("ImportCsvMatchesUseCase must not be null");
 
         assertThatThrownBy(() -> new DashboardController(
-                manageMatchUseCase, manageCompetitionUseCase, manageSeasonUseCase, importCsvMatchesUseCase, null, manageSettingsUseCase, springFXMLLoader))
+                manageMatchUseCase, liveMatchTradingUseCase, manageCompetitionUseCase, manageSeasonUseCase, importCsvMatchesUseCase, null, manageSettingsUseCase, springFXMLLoader))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("CalculatePreMatchInferenceUseCase must not be null");
 
         assertThatThrownBy(() -> new DashboardController(
-                manageMatchUseCase, manageCompetitionUseCase, manageSeasonUseCase, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, null, springFXMLLoader))
+                manageMatchUseCase, liveMatchTradingUseCase, manageCompetitionUseCase, manageSeasonUseCase, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, null, springFXMLLoader))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("ManageSettingsUseCase must not be null");
 
         assertThatThrownBy(() -> new DashboardController(
-                manageMatchUseCase, manageCompetitionUseCase, manageSeasonUseCase, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, manageSettingsUseCase, null))
+                manageMatchUseCase, liveMatchTradingUseCase, manageCompetitionUseCase, manageSeasonUseCase, importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, manageSettingsUseCase, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("SpringFXMLLoader must not be null");
     }
 
     @Test
-    @DisplayName("DashboardController should construct properly with valid dependencies")
-    void shouldConstructWithValidDependencies() {
+    @DisplayName("DashboardController should construct properly with valid dependencies using 8-arg constructor")
+    void shouldConstructWithValidDependencies8Arg() {
+        DashboardController controller = new DashboardController(
+                manageMatchUseCase,
+                liveMatchTradingUseCase,
+                manageCompetitionUseCase,
+                manageSeasonUseCase,
+                importCsvMatchesUseCase,
+                calculatePreMatchInferenceUseCase,
+                manageSettingsUseCase,
+                springFXMLLoader
+        );
+
+        assertThat(controller).isNotNull();
+        assertThat(controller.getSelectedMatchIdForNavigation()).isNull();
+        assertThat(controller.getCurrentCompetition()).isNull();
+        assertThat(controller.getCurrentSeason()).isNull();
+    }
+
+    @Test
+    @DisplayName("DashboardController should construct properly with valid dependencies using 7-arg constructor (backward compatibility)")
+    void shouldConstructWithValidDependencies7Arg() {
         DashboardController controller = new DashboardController(
                 manageMatchUseCase,
                 manageCompetitionUseCase,
@@ -87,6 +110,7 @@ class DashboardControllerTest {
     void shouldHandleSelectCompetitionAndSeasonSafelyWhenUninitialized() {
         DashboardController controller = new DashboardController(
                 manageMatchUseCase,
+                liveMatchTradingUseCase,
                 manageCompetitionUseCase,
                 manageSeasonUseCase,
                 importCsvMatchesUseCase,
@@ -100,5 +124,23 @@ class DashboardControllerTest {
 
         assertThat(controller.getCurrentCompetition()).isNull();
         assertThat(controller.getCurrentSeason()).isNull();
+    }
+
+    @Test
+    @DisplayName("handleStartLiveMatch should safely handle null match parameter without throwing NPE")
+    void shouldHandleNullMatchInStartLiveMatchSafely() {
+        DashboardController controller = new DashboardController(
+                manageMatchUseCase,
+                liveMatchTradingUseCase,
+                manageCompetitionUseCase,
+                manageSeasonUseCase,
+                importCsvMatchesUseCase,
+                calculatePreMatchInferenceUseCase,
+                manageSettingsUseCase,
+                springFXMLLoader
+        );
+
+        controller.handleStartLiveMatch(null);
+        verifyNoInteractions(liveMatchTradingUseCase);
     }
 }

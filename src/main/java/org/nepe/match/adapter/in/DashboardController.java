@@ -25,6 +25,7 @@ import org.nepe.inference.port.in.PreMatchAnalysisResult;
 import org.nepe.match.domain.MatchState;
 import org.nepe.match.port.in.ImportCsvMatchesUseCase;
 import org.nepe.match.port.in.ImportCsvResultDTO;
+import org.nepe.match.port.in.LiveMatchTradingUseCase;
 import org.nepe.match.port.in.ManageMatchUseCase;
 import org.nepe.match.port.out.MatchDetailsDTO;
 import org.nepe.shared.exception.AliasMappingRequiredException;
@@ -34,6 +35,7 @@ import org.nepe.shared.exception.GuiException;
 import org.nepe.shared.exception.NepeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 
 import java.io.File;
@@ -68,6 +70,7 @@ public class DashboardController {
             .withZone(ZoneId.of("Europe/Rome"));
 
     private final ManageMatchUseCase manageMatchUseCase;
+    private final LiveMatchTradingUseCase liveMatchTradingUseCase;
     private final ManageCompetitionUseCase manageCompetitionUseCase;
     private final ManageSeasonUseCase manageSeasonUseCase;
     private final ImportCsvMatchesUseCase importCsvMatchesUseCase;
@@ -114,7 +117,9 @@ public class DashboardController {
     private Competition currentCompetition;
     private Integer selectedMatchIdForNavigation = null;
 
+    @Autowired
     public DashboardController(ManageMatchUseCase manageMatchUseCase,
+                               LiveMatchTradingUseCase liveMatchTradingUseCase,
                                ManageCompetitionUseCase manageCompetitionUseCase,
                                ManageSeasonUseCase manageSeasonUseCase,
                                ImportCsvMatchesUseCase importCsvMatchesUseCase,
@@ -122,12 +127,24 @@ public class DashboardController {
                                org.nepe.settings.port.in.ManageSettingsUseCase manageSettingsUseCase,
                                SpringFXMLLoader springFXMLLoader) {
         this.manageMatchUseCase = Objects.requireNonNull(manageMatchUseCase, "ManageMatchUseCase must not be null");
+        this.liveMatchTradingUseCase = liveMatchTradingUseCase;
         this.manageCompetitionUseCase = Objects.requireNonNull(manageCompetitionUseCase, "ManageCompetitionUseCase must not be null");
         this.manageSeasonUseCase = Objects.requireNonNull(manageSeasonUseCase, "ManageSeasonUseCase must not be null");
         this.importCsvMatchesUseCase = Objects.requireNonNull(importCsvMatchesUseCase, "ImportCsvMatchesUseCase must not be null");
         this.calculatePreMatchInferenceUseCase = Objects.requireNonNull(calculatePreMatchInferenceUseCase, "CalculatePreMatchInferenceUseCase must not be null");
         this.manageSettingsUseCase = Objects.requireNonNull(manageSettingsUseCase, "ManageSettingsUseCase must not be null");
         this.springFXMLLoader = Objects.requireNonNull(springFXMLLoader, "SpringFXMLLoader must not be null");
+    }
+
+    public DashboardController(ManageMatchUseCase manageMatchUseCase,
+                               ManageCompetitionUseCase manageCompetitionUseCase,
+                               ManageSeasonUseCase manageSeasonUseCase,
+                               ImportCsvMatchesUseCase importCsvMatchesUseCase,
+                               CalculatePreMatchInferenceUseCase calculatePreMatchInferenceUseCase,
+                               org.nepe.settings.port.in.ManageSettingsUseCase manageSettingsUseCase,
+                               SpringFXMLLoader springFXMLLoader) {
+        this(manageMatchUseCase, null, manageCompetitionUseCase, manageSeasonUseCase,
+                importCsvMatchesUseCase, calculatePreMatchInferenceUseCase, manageSettingsUseCase, springFXMLLoader);
     }
 
     @FXML
@@ -220,6 +237,7 @@ public class DashboardController {
             private final Button btnLive = new Button("⚡ Live");
             private final Button btnStats = new Button("✏️ Statistiche");
             private final MenuButton btnMore = new MenuButton("⚙️");
+            private final MenuItem itemStartLive = new MenuItem("⚡ Avvia Live");
             private final MenuItem itemPostpone = new MenuItem("⏸️ Rinvia Partita");
             private final MenuItem itemCancel = new MenuItem("❌ Annulla Partita");
             private final MenuItem itemDelete = new MenuItem("🗑️ Elimina Partita");
@@ -238,7 +256,7 @@ public class DashboardController {
                 btnLive.getStyleClass().addAll("button", "btn-sm", "btn-danger");
                 btnStats.getStyleClass().addAll("button", "btn-sm");
                 btnMore.getStyleClass().addAll("button", "btn-sm");
-                btnMore.getItems().addAll(itemPostpone, itemCancel, new SeparatorMenuItem(), itemDelete);
+                btnMore.getItems().addAll(itemStartLive, itemPostpone, itemCancel, new SeparatorMenuItem(), itemDelete);
                 container.setAlignment(Pos.CENTER);
 
                 btnAnalyze.setOnAction(event -> {
@@ -250,7 +268,7 @@ public class DashboardController {
 
                 btnLive.setOnAction(event -> {
                     MatchDetailsDTO match = getMatchAtRow();
-                    if (match != null && match.matchState().allowsLiveTrading()) {
+                    if (match != null && (match.matchState().isLive() || match.matchState().isScheduled())) {
                         openLiveConsole(match.matchId());
                     }
                 });
@@ -259,6 +277,13 @@ public class DashboardController {
                     MatchDetailsDTO match = getMatchAtRow();
                     if (match != null && match.matchState() != MatchState.CANCELLED) {
                         openEditMatchStatsDialog(match);
+                    }
+                });
+
+                itemStartLive.setOnAction(event -> {
+                    MatchDetailsDTO match = getMatchAtRow();
+                    if (match != null) {
+                        handleStartLiveMatch(match);
                     }
                 });
 
@@ -293,8 +318,9 @@ public class DashboardController {
                     MatchDetailsDTO match = getMatchAtRow();
                     if (match != null) {
                         btnAnalyze.setDisable(!match.matchState().allowsPreMatchAnalysis());
-                        btnLive.setDisable(!match.matchState().allowsLiveTrading());
+                        btnLive.setDisable(!(match.matchState().isLive() || match.matchState().isScheduled()));
                         btnStats.setDisable(match.matchState() == MatchState.CANCELLED);
+                        itemStartLive.setDisable(match.matchState() != MatchState.SCHEDULED);
                         itemPostpone.setDisable(match.matchState().isTerminal() || match.matchState() == MatchState.POSTPONED);
                         itemCancel.setDisable(match.matchState() == MatchState.CANCELLED);
                         setGraphic(container);
@@ -798,9 +824,9 @@ public class DashboardController {
     public void handleNavLive(ActionEvent event) {
         MatchDetailsDTO selected = tblMatches.getSelectionModel().getSelectedItem();
         if (selected != null) {
-            if (!selected.matchState().allowsLiveTrading()) {
+            if (!selected.matchState().isLive() && !selected.matchState().isScheduled()) {
                 showInformationAlert("Trading Live Non Disponibile",
-                        "La console live è attiva solo per partite in corso (LIVE).");
+                        "La console live è attiva per partite in corso (LIVE) o programmate (SCHEDULED).");
                 return;
             }
             openLiveConsole(selected.matchId());
@@ -1039,6 +1065,33 @@ public class DashboardController {
                 log.warn("Failed to delete match {}: {}", match.matchId(), e.getMessage());
                 lblMessage.setText("Errore eliminazione: " + e.getMessage());
                 showErrorAlert("Impossibile eliminare la partita", e.getMessage());
+            }
+        }
+    }
+
+    public void handleStartLiveMatch(MatchDetailsDTO match) {
+        if (match == null) return;
+        lblMessage.setText("");
+
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Conferma Avvio Live");
+        confirmAlert.setHeaderText("Avvio partita in modalità LIVE");
+        confirmAlert.setContentText(String.format("Vuoi avviare la partita '%s' (%s) in modalità LIVE?",
+                match.getFixtureLabel(), formatDateTime(match.matchDateTime())));
+
+        Optional<ButtonType> result = confirmAlert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                if (liveMatchTradingUseCase != null) {
+                    liveMatchTradingUseCase.startLiveTrading(match.matchId());
+                }
+                syntheticEvCache.clear();
+                reloadMatches();
+                lblMessage.setText("Partita " + match.getFixtureLabel() + " avviata in modalità LIVE.");
+            } catch (NepeException e) {
+                log.warn("Failed to start live match {}: {}", match.matchId(), e.getMessage());
+                lblMessage.setText("Errore avvio live: " + e.getMessage());
+                showErrorAlert("Impossibile avviare la partita in LIVE", e.getMessage());
             }
         }
     }

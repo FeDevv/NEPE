@@ -12,6 +12,7 @@ import org.nepe.settings.port.in.ManageSettingsUseCase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @DisplayName("LiveConsoleController Unit Tests")
 class LiveConsoleControllerTest {
@@ -72,5 +73,65 @@ class LiveConsoleControllerTest {
         assertThat(controller).isNotNull();
         assertThat(controller.getScopeCompetitionId()).isNull();
         assertThat(controller.getScopeSeasonId()).isNull();
+    }
+
+    @Test
+    @DisplayName("setScope should store competition and season IDs and tolerate uninitialized UI controls safely")
+    void shouldStoreScopeAndHandleUninitializedControlsSafely() {
+        LiveConsoleController controller = new LiveConsoleController(
+                liveMatchTradingUseCase,
+                calculateLiveInferenceUseCase,
+                manageMatchUseCase,
+                manageMarketOddsUseCase,
+                manageSettingsUseCase,
+                springFXMLLoader
+        );
+
+        controller.setScope(10, 20);
+
+        assertThat(controller.getScopeCompetitionId()).isEqualTo(10);
+        assertThat(controller.getScopeSeasonId()).isEqualTo(20);
+    }
+
+    @Test
+    @DisplayName("loadMatchDetails should safely ignore null match parameter without throwing NPE")
+    void shouldSafelyHandleNullMatchInLoadMatchDetails() {
+        LiveConsoleController controller = new LiveConsoleController(
+                liveMatchTradingUseCase,
+                calculateLiveInferenceUseCase,
+                manageMatchUseCase,
+                manageMarketOddsUseCase,
+                manageSettingsUseCase,
+                springFXMLLoader
+        );
+
+        controller.loadMatchDetails(null);
+
+        assertThat(controller.getScopeCompetitionId()).isNull();
+        assertThat(controller.getScopeSeasonId()).isNull();
+    }
+
+    @Test
+    @DisplayName("Live event and state transition actions should safely handle null currentMatch without interacting with use cases")
+    void shouldSafelyHandleNullMatchInActions() {
+        LiveConsoleController controller = new LiveConsoleController(
+                liveMatchTradingUseCase,
+                calculateLiveInferenceUseCase,
+                manageMatchUseCase,
+                manageMarketOddsUseCase,
+                manageSettingsUseCase,
+                springFXMLLoader
+        );
+
+        controller.handleStartLive(null);
+        controller.handleFinishMatch(null);
+        controller.handleUndoLastEvent(null);
+        controller.handleGoalHome(null);
+        controller.handleGoalAway(null);
+        controller.handleRedCardHome(null);
+        controller.handleRedCardAway(null);
+
+        verifyNoInteractions(liveMatchTradingUseCase);
+        verifyNoInteractions(manageMatchUseCase);
     }
 }
