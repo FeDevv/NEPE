@@ -4,11 +4,13 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import javafx.util.StringConverter;
 import org.nepe.bootstrap.SpringFXMLLoader;
 import org.nepe.competition.domain.Competition;
@@ -21,9 +23,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Driving Inbound Adapter (JavaFX Controller) for managing Master Anagraphics.
@@ -51,6 +52,24 @@ public class CompetitionViewController {
     public static final Competition ALL_COMPETITIONS = new Competition(
             -1, "ALL", "Tutti i campionati", "Global", Competition.DEFAULT_DIXON_COLES_RHO, null
     );
+
+    static final StringConverter<Competition> COMPETITION_FILTER_CONVERTER = new StringConverter<>() {
+        @Override
+        public String toString(Competition c) {
+            if (c == null) {
+                return "";
+            }
+            if (c.equals(ALL_COMPETITIONS)) {
+                return ALL_COMPETITIONS_LABEL;
+            }
+            return c.getName() + " (" + c.getCode() + ")";
+        }
+
+        @Override
+        public Competition fromString(String string) {
+            return null;
+        }
+    };
 
     private final ManageCompetitionUseCase manageCompetitionUseCase;
     private final ManageTeamUseCase manageTeamUseCase;
@@ -95,12 +114,16 @@ public class CompetitionViewController {
     @FXML private Button btnDeleteTeam;
 
     // --- FXML Tab 3: Aliases ---
+    @FXML private TextField txtAliasSearch;
+    @FXML private ComboBox<Competition> comboFilterAliasCompetition;
+    @FXML private Button btnClearAliasSearch;
     @FXML private TableView<TeamAlias> tblAliases;
     @FXML private TableColumn<TeamAlias, Number> colAliasId;
     @FXML private TableColumn<TeamAlias, String> colAliasName;
-    @FXML private TableColumn<TeamAlias, Number> colAliasTeamId;
+    @FXML private TableColumn<TeamAlias, String> colAliasTeamName;
 
     @FXML private TextField txtAliasName;
+    @FXML private TextField txtSearchTargetTeam;
     @FXML private ComboBox<Team> comboAliasTargetTeam;
     @FXML private Button btnMapAlias;
     @FXML private Button btnDeleteAlias;
@@ -112,6 +135,9 @@ public class CompetitionViewController {
     private Competition selectedCompetition;
     private Team selectedTeam;
     private TeamAlias selectedAlias;
+    private final ObservableList<Team> masterTargetTeams = FXCollections.observableArrayList();
+    private final FilteredList<Team> filteredTargetTeams = new FilteredList<>(masterTargetTeams, p -> true);
+    private final Map<Integer, String> teamNamesCache = new HashMap<>();
 
     public CompetitionViewController(ManageCompetitionUseCase manageCompetitionUseCase,
                                      ManageTeamUseCase manageTeamUseCase,
@@ -227,34 +253,69 @@ public class CompetitionViewController {
     // --- Tab 3: Aliases Setup ---
 
     private void configureAliasesTable() {
-        colAliasId.setCellValueFactory(data -> new SimpleIntegerProperty(data.getValue().getId()));
-        colAliasName.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getAliasName()));
-        colAliasTeamId.setCellValueFactory(data -> new SimpleIntegerProperty(data.getValue().getTeamId()));
+        if (colAliasId != null) {
+            colAliasId.setCellValueFactory(data -> new SimpleIntegerProperty(data.getValue().getId()));
+        }
+        if (colAliasName != null) {
+            colAliasName.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getAliasName()));
+        }
+        if (colAliasTeamName != null) {
+            colAliasTeamName.setCellValueFactory(data -> {
+                int teamId = data.getValue().getTeamId();
+                String teamName = teamNamesCache.getOrDefault(teamId, "Team #" + teamId);
+                return new SimpleStringProperty(teamName);
+            });
+        }
 
-        tblAliases.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            this.selectedAlias = newVal;
-            if (btnDeleteAlias != null) {
-                btnDeleteAlias.setDisable(newVal == null);
-            }
-            if (newVal != null) {
-                txtAliasName.setText(newVal.getAliasName());
-                selectTeamInCombo(newVal.getTeamId());
-            }
-        });
+        if (tblAliases != null) {
+            tblAliases.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+                this.selectedAlias = newVal;
+                if (btnDeleteAlias != null) {
+                    btnDeleteAlias.setDisable(newVal == null);
+                }
+                if (newVal != null) {
+                    txtAliasName.setText(newVal.getAliasName());
+                    selectTeamInCombo(newVal.getTeamId());
+                }
+            });
+        }
+
+        if (txtAliasSearch != null) {
+            txtAliasSearch.textProperty().addListener((obs, oldVal, newVal) -> refreshAliasesTable());
+        }
+        if (comboFilterAliasCompetition != null) {
+            comboFilterAliasCompetition.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> refreshAliasesTable());
+        }
+
+        if (comboAliasTargetTeam != null) {
+            comboAliasTargetTeam.setItems(filteredTargetTeams);
+        }
+        if (txtSearchTargetTeam != null) {
+            txtSearchTargetTeam.textProperty().addListener((obs, oldVal, newVal) -> {
+                if (newVal == null || newVal.isBlank()) {
+                    filteredTargetTeams.setPredicate(p -> true);
+                } else {
+                    String query = newVal.trim().toLowerCase();
+                    filteredTargetTeams.setPredicate(team -> team != null && team.getName().toLowerCase().contains(query));
+                }
+            });
+        }
     }
 
     private void configureDropdowns() {
-        comboAliasTargetTeam.setConverter(new StringConverter<>() {
-            @Override
-            public String toString(Team team) {
-                return (team != null) ? String.format("%s (ID: %d)", team.getName(), team.getId()) : "";
-            }
+        if (comboAliasTargetTeam != null) {
+            comboAliasTargetTeam.setConverter(new StringConverter<>() {
+                @Override
+                public String toString(Team team) {
+                    return (team != null) ? String.format("%s (ID: %d)", team.getName(), team.getId()) : "";
+                }
 
-            @Override
-            public Team fromString(String string) {
-                return null;
-            }
-        });
+                @Override
+                public Team fromString(String string) {
+                    return null;
+                }
+            });
+        }
 
         if (comboTeamCompetition != null) {
             comboTeamCompetition.setConverter(new StringConverter<>() {
@@ -271,28 +332,22 @@ public class CompetitionViewController {
         }
 
         if (comboFilterCompetition != null) {
-            comboFilterCompetition.setConverter(new StringConverter<>() {
-                @Override
-                public String toString(Competition c) {
-                    if (c == null) {
-                        return "";
-                    }
-                    if (c.equals(ALL_COMPETITIONS)) {
-                        return ALL_COMPETITIONS_LABEL;
-                    }
-                    return c.getName() + " (" + c.getCode() + ")";
-                }
+            comboFilterCompetition.setConverter(COMPETITION_FILTER_CONVERTER);
+        }
 
-                @Override
-                public Competition fromString(String string) {
-                    return null;
-                }
-            });
+        if (comboFilterAliasCompetition != null) {
+            comboFilterAliasCompetition.setConverter(COMPETITION_FILTER_CONVERTER);
         }
     }
 
     private void selectTeamInCombo(int teamId) {
-        for (Team t : comboAliasTargetTeam.getItems()) {
+        if (comboAliasTargetTeam == null) {
+            return;
+        }
+        if (txtSearchTargetTeam != null) {
+            txtSearchTargetTeam.setText("");
+        }
+        for (Team t : masterTargetTeams) {
             if (t.getId() == teamId) {
                 comboAliasTargetTeam.getSelectionModel().select(t);
                 break;
@@ -323,20 +378,28 @@ public class CompetitionViewController {
                 }
             }
 
-            if (comboFilterCompetition != null) {
-                Competition prevFilter = comboFilterCompetition.getValue();
-                ObservableList<Competition> filterItems = FXCollections.observableArrayList();
-                filterItems.add(ALL_COMPETITIONS);
-                filterItems.addAll(list);
-                comboFilterCompetition.setItems(filterItems);
-                if (prevFilter != null && filterItems.contains(prevFilter)) {
-                    comboFilterCompetition.setValue(prevFilter);
-                } else {
-                    comboFilterCompetition.getSelectionModel().selectFirst();
-                }
-            }
+            updateCompetitionFilterComboBox(comboFilterCompetition, list);
+            updateCompetitionFilterComboBox(comboFilterAliasCompetition, list);
         } catch (Exception e) {
             log.error("Failed to load competitions", e);
+        }
+    }
+
+    private void updateCompetitionFilterComboBox(ComboBox<Competition> combo, List<Competition> competitions) {
+        if (combo == null) {
+            return;
+        }
+        Competition prevFilter = combo.getValue();
+        ObservableList<Competition> filterItems = FXCollections.observableArrayList();
+        filterItems.add(ALL_COMPETITIONS);
+        if (competitions != null) {
+            filterItems.addAll(competitions);
+        }
+        combo.setItems(filterItems);
+        if (prevFilter != null && filterItems.contains(prevFilter)) {
+            combo.setValue(prevFilter);
+        } else {
+            combo.getSelectionModel().selectFirst();
         }
     }
 
@@ -362,11 +425,19 @@ public class CompetitionViewController {
             tblTeams.setItems(FXCollections.observableArrayList(baseList));
 
             List<Team> allTeams = manageTeamUseCase.getAllTeams();
-            if (comboAliasTargetTeam != null) {
-                comboAliasTargetTeam.setItems(FXCollections.observableArrayList(allTeams));
-            }
+            updateTeamNamesCache(allTeams);
         } catch (Exception e) {
             log.error("Failed to load teams", e);
+        }
+    }
+
+    private void updateTeamNamesCache(List<Team> allTeams) {
+        teamNamesCache.clear();
+        if (allTeams != null) {
+            for (Team t : allTeams) {
+                teamNamesCache.put(t.getId(), t.getName());
+            }
+            masterTargetTeams.setAll(allTeams);
         }
     }
 
@@ -374,13 +445,45 @@ public class CompetitionViewController {
         refreshTeamsTable();
     }
 
-    private void reloadAliases() {
+    private void refreshAliasesTable() {
+        if (tblAliases == null) {
+            return;
+        }
         try {
+            if (teamNamesCache.isEmpty()) {
+                List<Team> allTeams = manageTeamUseCase.getAllTeams();
+                updateTeamNamesCache(allTeams);
+            }
             List<TeamAlias> list = manageTeamUseCase.getAllAliases();
+
+            Competition filterComp = (comboFilterAliasCompetition != null) ? comboFilterAliasCompetition.getValue() : null;
+            if (filterComp != null && !filterComp.equals(ALL_COMPETITIONS)) {
+                Set<Integer> compTeamIds = manageTeamUseCase.getTeamsByCompetition(filterComp.getId())
+                        .stream()
+                        .map(Team::getId)
+                        .collect(Collectors.toSet());
+                list = list.stream()
+                        .filter(a -> compTeamIds.contains(a.getTeamId()))
+                        .toList();
+            }
+
+            String search = (txtAliasSearch != null) ? txtAliasSearch.getText() : null;
+            if (search != null && !search.isBlank()) {
+                String query = search.trim().toLowerCase();
+                list = list.stream()
+                        .filter(a -> a.getAliasName().toLowerCase().contains(query)
+                                || teamNamesCache.getOrDefault(a.getTeamId(), "").toLowerCase().contains(query))
+                        .toList();
+            }
+
             tblAliases.setItems(FXCollections.observableArrayList(list));
         } catch (Exception e) {
             log.error("Failed to load team aliases", e);
         }
+    }
+
+    private void reloadAliases() {
+        refreshAliasesTable();
     }
 
     // --- Tab 1 Action Handlers ---
@@ -487,6 +590,10 @@ public class CompetitionViewController {
         confirmAlert.setHeaderText("Eliminazione definitiva competizione");
         confirmAlert.setContentText(String.format("Sei sicuro di voler eliminare la competizione '%s' (%s)?",
                 selectedCompetition.getName(), selectedCompetition.getCode()));
+        Window owner = getWindow();
+        if (owner != null) {
+            confirmAlert.initOwner(owner);
+        }
 
         Optional<ButtonType> result = confirmAlert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -499,6 +606,10 @@ public class CompetitionViewController {
                 log.warn("Cannot delete competition {}: {}", selectedCompetition.getId(), e.getMessage());
                 lblStatus.setText("Errore eliminazione: " + e.getMessage());
                 showErrorAlert("Impossibile eliminare il campionato", e.getMessage());
+            } catch (Exception e) {
+                log.error("Unexpected error deleting competition {}: {}", selectedCompetition.getId(), e.getMessage(), e);
+                lblStatus.setText("Errore imprevisto durante l'eliminazione: " + e.getMessage());
+                showErrorAlert("Errore di sistema", "Impossibile eliminare il campionato a causa di un errore imprevisto: " + e.getMessage());
             }
         }
     }
@@ -604,6 +715,7 @@ public class CompetitionViewController {
             manageTeamUseCase.renameTeam(new RenameTeamCommand(selectedTeam.getId(), newName.trim()));
             lblStatus.setText("Squadra rinominata in '" + newName.trim() + "'!");
             reloadTeams();
+            reloadAliases();
         } catch (NepeException e) {
             lblStatus.setText("Errore: " + e.getMessage());
         }
@@ -622,6 +734,10 @@ public class CompetitionViewController {
         confirmAlert.setHeaderText("Eliminazione definitiva squadra");
         confirmAlert.setContentText(String.format("Sei sicuro di voler eliminare la squadra '%s' e tutti i relativi alias?",
                 selectedTeam.getName()));
+        Window owner = getWindow();
+        if (owner != null) {
+            confirmAlert.initOwner(owner);
+        }
 
         Optional<ButtonType> result = confirmAlert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -641,6 +757,10 @@ public class CompetitionViewController {
                 log.warn("Cannot delete team {}: {}", selectedTeam.getId(), e.getMessage());
                 lblStatus.setText("Errore eliminazione: " + e.getMessage());
                 showErrorAlert("Impossibile eliminare la squadra", e.getMessage());
+            } catch (Exception e) {
+                log.error("Unexpected error deleting team {}: {}", selectedTeam.getId(), e.getMessage(), e);
+                lblStatus.setText("Errore imprevisto durante l'eliminazione: " + e.getMessage());
+                showErrorAlert("Errore di sistema", "Impossibile eliminare la squadra a causa di un errore imprevisto: " + e.getMessage());
             }
         }
     }
@@ -659,6 +779,17 @@ public class CompetitionViewController {
     // --- Tab 3 Action Handlers ---
 
     @FXML
+    public void handleClearAliasSearch(ActionEvent event) {
+        if (txtAliasSearch != null) {
+            txtAliasSearch.setText("");
+        }
+        if (comboFilterAliasCompetition != null) {
+            comboFilterAliasCompetition.getSelectionModel().selectFirst();
+        }
+        reloadAliases();
+    }
+
+    @FXML
     public void handleMapAlias(ActionEvent event) {
         lblStatus.setText("");
         String alias = txtAliasName.getText();
@@ -672,6 +803,9 @@ public class CompetitionViewController {
         try {
             manageTeamUseCase.mapAlias(new MapTeamAliasCommand(alias.trim(), targetTeam.getId()));
             txtAliasName.setText("");
+            if (txtSearchTargetTeam != null) {
+                txtSearchTargetTeam.setText("");
+            }
             lblStatus.setText("Alias '" + alias.trim() + "' associato a " + targetTeam.getName() + "!");
             reloadAliases();
         } catch (NepeException e) {
@@ -693,6 +827,9 @@ public class CompetitionViewController {
             this.selectedAlias = null;
             tblAliases.getSelectionModel().clearSelection();
             txtAliasName.setText("");
+            if (txtSearchTargetTeam != null) {
+                txtSearchTargetTeam.setText("");
+            }
             reloadAliases();
         } catch (NepeException e) {
             lblStatus.setText("Errore eliminazione: " + e.getMessage());
@@ -724,6 +861,23 @@ public class CompetitionViewController {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
+        Window owner = getWindow();
+        if (owner != null) {
+            alert.initOwner(owner);
+        }
         alert.showAndWait();
+    }
+
+    private Window getWindow() {
+        if (tblCompetitions != null && tblCompetitions.getScene() != null) {
+            return tblCompetitions.getScene().getWindow();
+        }
+        if (tblTeams != null && tblTeams.getScene() != null) {
+            return tblTeams.getScene().getWindow();
+        }
+        if (btnBackToDashboard != null && btnBackToDashboard.getScene() != null) {
+            return btnBackToDashboard.getScene().getWindow();
+        }
+        return null;
     }
 }

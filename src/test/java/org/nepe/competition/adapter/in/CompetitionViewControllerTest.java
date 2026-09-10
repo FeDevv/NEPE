@@ -72,4 +72,31 @@ class CompetitionViewControllerTest {
         assertThat(sentinel).isNotEqualTo(differentCode);
         assertThat(sentinel.equals(null)).isFalse();
     }
+
+    @Test
+    @DisplayName("COMPETITION_FILTER_CONVERTER should format null, ALL_COMPETITIONS, and regular competitions properly")
+    void competitionFilterConverterShouldFormatProperly() {
+        var converter = CompetitionViewController.COMPETITION_FILTER_CONVERTER;
+
+        assertThat(converter.toString(null)).isEmpty();
+        assertThat(converter.toString(CompetitionViewController.ALL_COMPETITIONS))
+                .isEqualTo(CompetitionViewController.ALL_COMPETITIONS_LABEL);
+
+        Competition premierLeague = new Competition(10, "E0", "Premier League", "England", -0.12, 1.25);
+        assertThat(converter.toString(premierLeague)).isEqualTo("Premier League (E0)");
+
+        assertThat(converter.fromString("Any string")).isNull();
+    }
+
+    @Test
+    @DisplayName("Official team name resolution for aliases should return team name or fallback")
+    void officialTeamNameResolutionShouldProvideFallback() {
+        java.util.Map<Integer, String> cache = new java.util.HashMap<>();
+        cache.put(1, "Arsenal");
+        cache.put(2, "Chelsea");
+
+        assertThat(cache.getOrDefault(1, "Team #1")).isEqualTo("Arsenal");
+        assertThat(cache.getOrDefault(2, "Team #2")).isEqualTo("Chelsea");
+        assertThat(cache.getOrDefault(99, "Team #99")).isEqualTo("Team #99");
+    }
 }

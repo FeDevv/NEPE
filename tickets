@@ -2,7 +2,7 @@
 # NEPE - Elenco Ticket e Anomalie Rilevate (Testing Manuale & Audit)
 # =============================================================================
 
-## Ticket 1: Sblocco Transizione Partita in LIVE da Dashboard [COMPLETED]
+## Ticket 1: Sblocco Transizione Partita in LIVE da Dashboard [COMPLETED✔]
 * **Gravità:** `MAJOR` (Deadlock operativo UI: impossibilità di avviare il live trading da match in stato SCHEDULED)
 * **Effort Atteso:** `MEDIUM`
 * **File coinvolti:** `org.nepe.match.adapter.in.DashboardController`, `org.nepe.match.adapter.in.LiveConsoleController`
@@ -13,7 +13,7 @@
 
 ---
 
-## Ticket 2: Filtro per Competizione e Ricerca Rapida nel Popup di Mappatura Alias [COMPLETED]
+## Ticket 2: Filtro per Competizione e Ricerca Rapida nel Popup di Mappatura Alias [COMPLETED✔]
 * **Gravità:** `MINOR` (Degrado usabilità: ricerca dispersiva in liste ampie o dropdown vuoto in leghe nuove)
 * **Effort Atteso:** `LOW`
 * **File coinvolti:** `org.nepe.competition.adapter.in.AliasMappingController`, `src/main/resources/views/alias_mapping_dialog.fxml`, `org.nepe.competition.port.in.ManageCompetitionUseCase`
@@ -25,7 +25,7 @@
 
 ---
 
-## Ticket 3: Risoluzione Voce Ambigua Dropdown Campionati in Creazione/Filtro Squadre [COMPLETED]
+## Ticket 3: Risoluzione Voce Ambigua Dropdown Campionati in Creazione/Filtro Squadre [COMPLETED✔]
 * **Gravità:** `MINOR` (Inconsistenza visiva ComboBox tra promptText ed elemento nullo)
 * **Effort Atteso:** `LOW`
 * **File coinvolti:** `org.nepe.competition.adapter.in.CompetitionViewController`, `src/main/resources/views/competition_manager.fxml`
@@ -34,15 +34,18 @@
 
 ---
 
-## Ticket 4: Miglioramento Scheda Mappatura Alias (UX & Visualizzazione Squadra Ufficiale)
+## Ticket 4: Miglioramento Scheda Mappatura Alias (UX & Visualizzazione Squadra Ufficiale) [COMPLETED✔]
 * **Gravità:** `MINOR` (Esposizione di ID numerici al posto dei nomi squadra e assenza di filtro di ricerca)
 * **Effort Atteso:** `MEDIUM`
-* **File coinvolti:** `org.nepe.competition.adapter.in.CompetitionViewController`, `src/main/resources/views/competition_manager.fxml`
-* **Problema:** Nel terzo tab ("Mappatura Alias"), la tabella `tblAliases` visualizza solo l'ID numerico della squadra di destinazione (`colAliasTeamId`), costringendo l'utente a decifrare identificativi numerici. Inoltre mancano una barra di ricerca per nome alias/squadra e un filtro per campionato simili a quelli presenti nel tab "Gestione Squadre".
+* **File coinvolti:** `org.nepe.competition.adapter.in.CompetitionViewController`, `src/main/resources/views/competition_manager.fxml`, `org.nepe.competition.adapter.in.CompetitionViewControllerTest`
+* **Problema:** Nel terzo tab ("Mappatura Alias"), la tabella `tblAliases` visualizza solo l'ID numerico della squadra di destinazione (`colAliasTeamId`), costringendo l'utente a decifrare identificativi numerici. Inoltre mancano una barra di ricerca per nome alias/squadra e un filtro per campionato simili a quelli presenti nel tab "Gestione Squadre", nonché un meccanismo rapido di ricerca sottostringhe nel dropdown di associazione squadra ufficiale.
 * **Soluzione:** 
-  1. Visualizzare nella colonna della tabella il nome ufficiale della squadra invece dell'ID numerico grezzo.
-  2. Aggiungere filtro di ricerca testuale per individuare rapidamente gli alias.
-  3. Allineare il layout visivo e i controlli a quelli della scheda creazione squadre per coerenza UX.
+  1. Sostituita la colonna `colAliasTeamId` con `colAliasTeamName` che visualizza il nome ufficiale della squadra risolto con lookup $O(1)$ in memoria tramite cache `teamNamesCache`.
+  2. Aggiunta la toolbar superiore di ricerca e filtro con `txtAliasSearch`, `comboFilterAliasCompetition` e `btnClearAliasSearch` ("Mostra Tutti"), applicando il filtro combinato dinamico in `refreshAliasesTable()`.
+  3. Aggiunto il campo di ricerca per sottostringhe `txtSearchTargetTeam` collegato via `FilteredList<Team>` al dropdown `comboAliasTargetTeam`.
+  4. Refactorizzato e centralizzato il converter `COMPETITION_FILTER_CONVERTER` e l'helper `updateCompetitionFilterComboBox` per aderire pienamente al principio DRY.
+  5. Aggiunti test unitari di regressione in `CompetitionViewControllerTest`.
+
 
 ---
 
@@ -129,7 +132,7 @@
 
 ---
 
-## Ticket 12: Diagnosi e Risoluzione Mancata Eliminazione Competizione (Modal Owner, Cascade & Flush Translation)
+## Ticket 12: Diagnosi e Risoluzione Mancata Eliminazione Competizione (Modal Owner, Cascade & Flush Translation) [COMPLETED]
 * **Gravità:** `MAJOR` (Blocco operativo anagrafica: eliminazione silente o mancato feedback visivo a schermo)
 * **Effort Atteso:** `LOW`
 * **File coinvolti:** `org.nepe.competition.adapter.in.CompetitionViewController`, `org.nepe.competition.adapter.out.CompetitionRepositoryAdapter`, `org.nepe.competition.adapter.out.SpringDataCompetitionTeamRepository`

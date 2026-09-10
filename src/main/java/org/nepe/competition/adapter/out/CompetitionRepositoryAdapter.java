@@ -22,11 +22,14 @@ import java.util.Optional;
 public class CompetitionRepositoryAdapter implements CompetitionRepositoryPort {
 
     private final SpringDataCompetitionRepository springDataRepository;
+    private final SpringDataCompetitionTeamRepository springDataCompetitionTeamRepository;
     private final CompetitionMapper mapper;
 
     public CompetitionRepositoryAdapter(SpringDataCompetitionRepository springDataRepository,
+                                        SpringDataCompetitionTeamRepository springDataCompetitionTeamRepository,
                                         CompetitionMapper mapper) {
         this.springDataRepository = Objects.requireNonNull(springDataRepository, "SpringDataCompetitionRepository must not be null");
+        this.springDataCompetitionTeamRepository = Objects.requireNonNull(springDataCompetitionTeamRepository, "SpringDataCompetitionTeamRepository must not be null");
         this.mapper = Objects.requireNonNull(mapper, "CompetitionMapper must not be null");
     }
 
@@ -87,7 +90,9 @@ public class CompetitionRepositoryAdapter implements CompetitionRepositoryPort {
     @Transactional
     public void deleteById(int id) {
         try {
+            springDataCompetitionTeamRepository.deleteByCompetitionId(id);
             springDataRepository.deleteById(id);
+            springDataRepository.flush();
         } catch (DataIntegrityViolationException e) {
             throw new DomainValidationException(
                     String.format("Cannot delete competition with ID %d because related records (matches/seasons) depend on it.", id),

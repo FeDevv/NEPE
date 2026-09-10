@@ -159,12 +159,23 @@
             <Tab text="🔗 Mappatura Alias">
                 <HBox spacing="16.0" style="-fx-padding: 16 0 0 0;">
                     <!-- Aliases Table (Left, expands) -->
-                    <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                    <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                        <!-- Search Bar & Competition Filter -->
+                        <HBox spacing="10.0" alignment="CENTER_LEFT">
+                            <TextField fx:id="txtAliasSearch" promptText="🔍 Cerca per alias o squadra..." prefWidth="250.0"/>
+                            <ComboBox fx:id="comboFilterAliasCompetition" prefWidth="220.0" promptText="Filtra per campionato...">
+                                <tooltip>
+                                    <Tooltip text="Filtra gli alias per campionato della squadra associata"/>
+                                </tooltip>
+                            </ComboBox>
+                            <Button fx:id="btnClearAliasSearch" text="Mostra Tutti" styleClass="button" onAction="#handleClearAliasSearch"/>
+                        </HBox>
+
                         <TableView fx:id="tblAliases" VBox.vgrow="ALWAYS">
                             <columns>
                                 <TableColumn fx:id="colAliasId" text="ID" prefWidth="70.0"/>
-                                <TableColumn fx:id="colAliasName" text="Nome Alias / CSV Grezzo" prefWidth="250.0"/>
-                                <TableColumn fx:id="colAliasTeamId" text="ID Squadra Destinazione" prefWidth="160.0"/>
+                                <TableColumn fx:id="colAliasName" text="Nome Alias / CSV Grezzo" prefWidth="240.0"/>
+                                <TableColumn fx:id="colAliasTeamName" text="Squadra Ufficiale" prefWidth="220.0"/>
                             </columns>
                             <placeholder>
                                 <Label text="Nessun alias memorizzato." styleClass="label-muted"/>
@@ -183,6 +194,7 @@
 
                         <VBox spacing="6.0">
                             <Label text="Squadra Ufficiale nel Database:" styleClass="label-muted"/>
+                            <TextField fx:id="txtSearchTargetTeam" promptText="🔍 Filtra squadra per nome..."/>
                             <ComboBox fx:id="comboAliasTargetTeam" prefWidth="320.0" promptText="Seleziona squadra ufficiale..."/>
                         </VBox>
 
