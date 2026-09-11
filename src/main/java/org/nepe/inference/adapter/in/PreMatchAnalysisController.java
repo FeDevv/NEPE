@@ -334,12 +334,18 @@ public class PreMatchAnalysisController {
         // Guard condition: enforce pre-match eligibility invariant
         if (!match.matchState().allowsPreMatchAnalysis()) {
             this.currentMatch = match;
-            lblMatchHeader.setText(String.format("%s vs %s", match.homeTeamName(), match.awayTeamName()));
-            lblMatchInfo.setText(String.format("%s | %s (CET) | Stato: %s",
+            this.isUpdatingUi = true;
+            try {
+                clearAllMarketOddsFields();
+            } finally {
+                this.isUpdatingUi = false;
+            }
+            if (lblMatchHeader != null) lblMatchHeader.setText(String.format("%s vs %s", match.homeTeamName(), match.awayTeamName()));
+            if (lblMatchInfo != null) lblMatchInfo.setText(String.format("%s | %s (CET) | Stato: %s",
                     match.competitionName(),
                     formatDateTime(match.matchDateTime()),
                     match.matchState().name()));
-            lblStatus.setText(String.format("La partita selezionata (%s vs %s) non è idonea per l'analisi pre-match. Stato attuale: %s.",
+            if (lblStatus != null) lblStatus.setText(String.format("La partita selezionata (%s vs %s) non è idonea per l'analisi pre-match. Stato attuale: %s.",
                     match.homeTeamName(), match.awayTeamName(), match.matchState().name()));
             setFormControlsDisabled(true);
             return;
@@ -348,9 +354,12 @@ public class PreMatchAnalysisController {
         this.currentMatch = match;
         this.isUpdatingUi = true;
         setFormControlsDisabled(false);
-        lblStatus.setText("");
+        if (lblStatus != null) lblStatus.setText("");
 
         try {
+            // 1. Ensure state isolation between fixtures by resetting all input fields first
+            clearAllMarketOddsFields();
+
             double baseHomeAdv = manageMatchUseCase.getDynamicHomeAdvantage(match.competitionId(), match.seasonId());
             boolean isManualHa = false;
             if (manageCompetitionUseCase != null) {
@@ -360,36 +369,31 @@ public class PreMatchAnalysisController {
                     // Fallback to dynamic if lookup fails
                 }
             }
-            String haLabel = String.format("Fattore Campo: x%.2f (%s)", baseHomeAdv, isManualHa ? "Manuale" : "Dinamico");
+            String haLabel = String.format(Locale.US, "Fattore Campo: x%.2f (%s)", baseHomeAdv, isManualHa ? "Manuale" : "Dinamico");
 
-            lblMatchHeader.setText(String.format("%s vs %s", match.homeTeamName(), match.awayTeamName()));
-            lblMatchInfo.setText(String.format("%s | %s (CET) | %s | Stato: %s",
+            if (lblMatchHeader != null) lblMatchHeader.setText(String.format("%s vs %s", match.homeTeamName(), match.awayTeamName()));
+            if (lblMatchInfo != null) lblMatchInfo.setText(String.format("%s | %s (CET) | %s | Stato: %s",
                     match.competitionName(),
                     formatDateTime(match.matchDateTime()),
                     haLabel,
                     match.matchState().name()));
 
-            lblDixonColesRho.setText(String.format("%.4f", match.dixonColesRho()));
+            if (lblDixonColesRho != null) lblDixonColesRho.setText(String.format(Locale.US, "%.4f", match.dixonColesRho()));
 
             // Load modifiers from match
-            sliderModAttHome.setValue(match.modAttHome());
-            sliderModDefHome.setValue(match.modDefHome());
-            sliderModAttAway.setValue(match.modAttAway());
-            sliderModDefAway.setValue(match.modDefAway());
+            if (sliderModAttHome != null) sliderModAttHome.setValue(match.modAttHome());
+            if (sliderModDefHome != null) sliderModDefHome.setValue(match.modDefHome());
+            if (sliderModAttAway != null) sliderModAttAway.setValue(match.modAttAway());
+            if (sliderModDefAway != null) sliderModDefAway.setValue(match.modDefAway());
 
-            chkMustWinHome.setSelected(match.isMustWinHome());
-            chkMustWinAway.setSelected(match.isMustWinAway());
-            chkLowUrgencyHome.setSelected(match.isLowUrgencyHome());
-            chkLowUrgencyAway.setSelected(match.isLowUrgencyAway());
-            chkNeutralVenue.setSelected(match.isNeutralVenue());
+            if (chkMustWinHome != null) chkMustWinHome.setSelected(match.isMustWinHome());
+            if (chkMustWinAway != null) chkMustWinAway.setSelected(match.isMustWinAway());
+            if (chkLowUrgencyHome != null) chkLowUrgencyHome.setSelected(match.isLowUrgencyHome());
+            if (chkLowUrgencyAway != null) chkLowUrgencyAway.setSelected(match.isLowUrgencyAway());
+            if (chkNeutralVenue != null) chkNeutralVenue.setSelected(match.isNeutralVenue());
 
-            // Pre-fill reference 1X2 back odds if present
-            if (match.oddsHome() != null) txtBack1.setText(String.format("%.2f", match.oddsHome()));
-            if (match.oddsDraw() != null) txtBackX.setText(String.format("%.2f", match.oddsDraw()));
-            if (match.oddsAway() != null) setBackAwayOdds(match.oddsAway());
-
-            // Load saved market odds from repository
-            loadPersistedMarketOdds(match.matchId());
+            // 2. Load saved market odds with priority over CSV baseline odds
+            loadPersistedOrReferenceOdds(match);
 
         } finally {
             this.isUpdatingUi = false;
@@ -413,23 +417,25 @@ public class PreMatchAnalysisController {
         if (chkNeutralVenue != null) chkNeutralVenue.setDisable(disabled);
     }
 
-    private void setBackAwayOdds(Double oddsAway) {
-        if (oddsAway != null) {
-            txtBack2.setText(String.format("%.2f", oddsAway));
-        }
-    }
-
-    private void loadPersistedMarketOdds(int matchId) {
+    private void loadPersistedOrReferenceOdds(MatchDetailsDTO match) {
         try {
-            List<MarketOdds> savedOdds = manageMarketOddsUseCase.getOddsForMatch(matchId);
+            List<MarketOdds> savedOdds = manageMarketOddsUseCase.getOddsForMatch(match.matchId());
+
+            boolean hasCustomMatchOdds1 = false;
+            boolean hasCustomMatchOddsX = false;
+            boolean hasCustomMatchOdds2 = false;
+
             for (MarketOdds odds : savedOdds) {
                 if (odds.getMarketType() == MarketType.MATCH_ODDS) {
                     if ("1".equalsIgnoreCase(odds.getOutcome())) {
                         setOddsFields(txtBack1, txtLay1, odds);
+                        hasCustomMatchOdds1 = true;
                     } else if ("X".equalsIgnoreCase(odds.getOutcome())) {
                         setOddsFields(txtBackX, txtLayX, odds);
+                        hasCustomMatchOddsX = true;
                     } else if ("2".equalsIgnoreCase(odds.getOutcome())) {
                         setOddsFields(txtBack2, txtLay2, odds);
+                        hasCustomMatchOdds2 = true;
                     }
                 } else if (odds.getMarketType() == MarketType.UNDER_OVER_05) {
                     if ("UNDER".equalsIgnoreCase(odds.getOutcome())) {
@@ -469,14 +475,30 @@ public class PreMatchAnalysisController {
                     }
                 }
             }
+
+            // Fallback: If no custom MarketOdds were saved for 1X2 outcomes, pre-fill baseline reference odds from CSV/match
+            if (!hasCustomMatchOdds1 && match.oddsHome() != null && txtBack1 != null) {
+                txtBack1.setText(String.format(Locale.US, "%.2f", match.oddsHome()));
+            }
+            if (!hasCustomMatchOddsX && match.oddsDraw() != null && txtBackX != null) {
+                txtBackX.setText(String.format(Locale.US, "%.2f", match.oddsDraw()));
+            }
+            if (!hasCustomMatchOdds2 && match.oddsAway() != null && txtBack2 != null) {
+                txtBack2.setText(String.format(Locale.US, "%.2f", match.oddsAway()));
+            }
+
         } catch (Exception e) {
-            log.error("Could not load persisted market odds for match ID {}", matchId, e);
+            log.error("Could not load persisted market odds for match ID {}", match.matchId(), e);
         }
     }
 
     private void setOddsFields(TextField backField, TextField layField, MarketOdds odds) {
-        if (odds.getBackOdds() != null) backField.setText(String.format("%.2f", odds.getBackOdds()));
-        if (odds.getLayOdds() != null) layField.setText(String.format("%.2f", odds.getLayOdds()));
+        if (backField != null && odds.getBackOdds() != null) {
+            backField.setText(String.format(Locale.US, "%.2f", odds.getBackOdds()));
+        }
+        if (layField != null && odds.getLayOdds() != null) {
+            layField.setText(String.format(Locale.US, "%.2f", odds.getLayOdds()));
+        }
     }
 
     private void triggerRecalculation() {
@@ -817,6 +839,120 @@ public class PreMatchAnalysisController {
 
     public Integer getScopeSeasonId() {
         return scopeSeasonId;
+    }
+
+    // --- Package-private test helpers for state verification ---
+
+    void initTestControls() {
+        txtBack1 = new TextField();
+        txtLay1 = new TextField();
+        txtBackX = new TextField();
+        txtLayX = new TextField();
+        txtBack2 = new TextField();
+        txtLay2 = new TextField();
+
+        txtBackUnder05 = new TextField();
+        txtLayUnder05 = new TextField();
+        txtBackOver05 = new TextField();
+        txtLayOver05 = new TextField();
+
+        txtBackUnder15 = new TextField();
+        txtLayUnder15 = new TextField();
+        txtBackOver15 = new TextField();
+        txtLayOver15 = new TextField();
+
+        txtBackUnder25 = new TextField();
+        txtLayUnder25 = new TextField();
+        txtBackOver25 = new TextField();
+        txtLayOver25 = new TextField();
+
+        txtBackUnder35 = new TextField();
+        txtLayUnder35 = new TextField();
+        txtBackOver35 = new TextField();
+        txtLayOver35 = new TextField();
+
+        txtBackUnder45 = new TextField();
+        txtLayUnder45 = new TextField();
+        txtBackOver45 = new TextField();
+        txtLayOver45 = new TextField();
+
+        txtBackBttsYes = new TextField();
+        txtLayBttsYes = new TextField();
+        txtBackBttsNo = new TextField();
+        txtLayBttsNo = new TextField();
+
+        lblMatchHeader = new Label();
+        lblMatchInfo = new Label();
+        lblStatus = new Label();
+        lblDixonColesRho = new Label();
+
+        sliderModAttHome = new Slider(0.5, 2.0, 1.0);
+        sliderModDefHome = new Slider(0.5, 2.0, 1.0);
+        sliderModAttAway = new Slider(0.5, 2.0, 1.0);
+        sliderModDefAway = new Slider(0.5, 2.0, 1.0);
+
+        chkMustWinHome = new CheckBox();
+        chkMustWinAway = new CheckBox();
+        chkLowUrgencyHome = new CheckBox();
+        chkLowUrgencyAway = new CheckBox();
+        chkNeutralVenue = new CheckBox();
+
+        lblProb1 = new Label();
+        lblFairOdds1 = new Label();
+        lblEvBack1 = new Label();
+        lblEvLay1 = new Label();
+        lblProbX = new Label();
+        lblFairOddsX = new Label();
+        lblEvBackX = new Label();
+        lblEvLayX = new Label();
+        lblProb2 = new Label();
+        lblFairOdds2 = new Label();
+        lblEvBack2 = new Label();
+        lblEvLay2 = new Label();
+
+        lblProbUnder05 = new Label(); lblFairOddsUnder05 = new Label(); lblEvBackUnder05 = new Label(); lblEvLayUnder05 = new Label();
+        lblProbOver05 = new Label(); lblFairOddsOver05 = new Label(); lblEvBackOver05 = new Label(); lblEvLayOver05 = new Label();
+        lblProbUnder15 = new Label(); lblFairOddsUnder15 = new Label(); lblEvBackUnder15 = new Label(); lblEvLayUnder15 = new Label();
+        lblProbOver15 = new Label(); lblFairOddsOver15 = new Label(); lblEvBackOver15 = new Label(); lblEvLayOver15 = new Label();
+        lblProbUnder25 = new Label(); lblFairOddsUnder25 = new Label(); lblEvBackUnder25 = new Label(); lblEvLayUnder25 = new Label();
+        lblProbOver25 = new Label(); lblFairOddsOver25 = new Label(); lblEvBackOver25 = new Label(); lblEvLayOver25 = new Label();
+        lblProbUnder35 = new Label(); lblFairOddsUnder35 = new Label(); lblEvBackUnder35 = new Label(); lblEvLayUnder35 = new Label();
+        lblProbOver35 = new Label(); lblFairOddsOver35 = new Label(); lblEvBackOver35 = new Label(); lblEvLayOver35 = new Label();
+        lblProbUnder45 = new Label(); lblFairOddsUnder45 = new Label(); lblEvBackUnder45 = new Label(); lblEvLayUnder45 = new Label();
+        lblProbOver45 = new Label(); lblFairOddsOver45 = new Label(); lblEvBackOver45 = new Label(); lblEvLayOver45 = new Label();
+
+        lblProbBttsYes = new Label(); lblFairOddsBttsYes = new Label(); lblEvBackBttsYes = new Label(); lblEvLayBttsYes = new Label();
+        lblProbBttsNo = new Label(); lblFairOddsBttsNo = new Label(); lblEvBackBttsNo = new Label(); lblEvLayBttsNo = new Label();
+
+        lblLambdaHome = new Label();
+        lblMuAway = new Label();
+    }
+
+    TextField getTxtBack1() { return txtBack1; }
+    TextField getTxtLay1() { return txtLay1; }
+    TextField getTxtBackX() { return txtBackX; }
+    TextField getTxtLayX() { return txtLayX; }
+    TextField getTxtBack2() { return txtBack2; }
+    TextField getTxtLay2() { return txtLay2; }
+
+    TextField getTxtBackUnder25() { return txtBackUnder25; }
+    TextField getTxtLayUnder25() { return txtLayUnder25; }
+    TextField getTxtBackOver25() { return txtBackOver25; }
+    TextField getTxtLayOver25() { return txtLayOver25; }
+
+    TextField getTxtBackBttsYes() { return txtBackBttsYes; }
+    TextField getTxtLayBttsYes() { return txtLayBttsYes; }
+
+    List<TextField> getAllMarketOddsTextFields() {
+        return List.of(
+                txtBack1, txtLay1, txtBackX, txtLayX, txtBack2, txtLay2,
+                txtBackUnder05, txtLayUnder05, txtBackOver05, txtLayOver05,
+                txtBackUnder15, txtLayUnder15, txtBackOver15, txtLayOver15,
+                txtBackUnder25, txtLayUnder25, txtBackOver25, txtLayOver25,
+                txtBackUnder35, txtLayUnder35, txtBackOver35, txtLayOver35,
+                txtBackUnder45, txtLayUnder45, txtBackOver45, txtLayOver45,
+                txtBackBttsYes, txtLayBttsYes, txtBackBttsNo, txtLayBttsNo
+        );
     }
 
     // --- Utility Helpers ---

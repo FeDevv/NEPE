@@ -109,16 +109,18 @@
 
 ---
 
-## Ticket 10: Isolamento Stato Campi Quote e Pre-popolamento in Pre-Match Analysis
+## Ticket 10: Isolamento Stato Campi Quote e Pre-popolamento in Pre-Match Analysis [COMPLETED]
 * **Gravità:** `MAJOR` (Data leak visivo tra partite diverse e potenziale sovrascrittura di quote custom)
 * **Effort Atteso:** `LOW` (Pulizia preventiva del form e corretta priorità di popolamento)
-* **File coinvolti:** `org.nepe.inference.adapter.in.PreMatchAnalysisController`
+* **File coinvolti:** `org.nepe.inference.adapter.in.PreMatchAnalysisController`, `org.nepe.inference.adapter.in.PreMatchAnalysisControllerTest`
 * **Problema:** All'apertura della vista di Analisi Pre-Match o al cambio di partita nel dropdown, il metodo `loadMatchDetails(...)` non invoca la pulizia dei campi (`clearAllMarketOddsFields()`). Questo provoca due anomalie:
   1. I campi delle quote dei mercati secondari (Under/Over, BTTS, quote Lay) compilati per una partita rimangono memorizzati e visibili nei TextField per le partite successive se non esplicitamente sovrascritti.
   2. Il pre-fill automatico con le quote 1X2 del CSV (`match.oddsHome()`, `match.oddsDraw()`, `match.oddsAway()`) viene eseguito incondizionatamente prima di `loadPersistedMarketOdds(...)`, rischiando di sovrascrivere quote manualmente personalizzate e salvate in precedenza nel repository `MarketOdds`.
 * **Soluzione:** 
-  1. Chiamare sempre `clearAllMarketOddsFields()` all'inizio di `loadMatchDetails(...)` per garantire un form pulito e isolato per ogni fixture.
-  2. Regolare la priorità di popolamento in modo che le quote personalizzate salvate in `MarketOdds` abbiano precedenza rispetto alle quote reference grezze del file CSV.
+  1. Invocata preventivamente `clearAllMarketOddsFields()` all'inizio di `loadMatchDetails(...)` (sia per match idonei che per guard condition su match in stato inidoneo) per garantire il totale isolamento dello stato UI tra fixture distinte.
+  2. Refactorizzata la logica in `loadPersistedOrReferenceOdds(MatchDetailsDTO match)`: le quote caricate da `MarketOdds` vengono applicate con priorità assoluta; solo per gli esiti 1X2 in cui non esiste alcun record salvato in `MarketOdds` viene effettuato il fallback sulle quote reference baseline del match/CSV (`oddsHome`, `oddsDraw`, `oddsAway`).
+  3. Standardizzata la formattazione a `Locale.US` e aggiunti controlli di null-safety sui controlli grafici.
+  4. Introdotti test unitari di regressione completi in `PreMatchAnalysisControllerTest` a garanzia dell'isolamento dei campi e della gerarchia di precedenza delle quote.
 
 ---
 
@@ -147,3 +149,15 @@
   2. Disassociare preventivamente le squadre (`springDataCompetitionTeamRepository.deleteByCompetitionId(id)`) prima di cancellare la competizione.
   3. Inserire `springDataRepository.flush()` nel blocco `try` di `CompetitionRepositoryAdapter.deleteById(id)` per catturare ed incapsulare immediatamente la violazione dei vincoli relazionali nella domain exception `DomainValidationException`.
   4. Aggiungere un blocco difensivo `catch (Exception e)` in `handleDeleteCompetition` per garantire che qualsiasi errore mostri sempre un messaggio descrittivo all'utente a video.
+
+---
+
+## Ticket 13: Stile Visivo Chiaro (Light/White) per Dialoghi di Notifica e Conferma (Alerts)
+* **Gravità:** `IMPROVEMENT` (Design System & Contrasto Visivo UI)
+* **Effort Atteso:** `LOW`
+* **File coinvolti:** `src/main/resources/styles.css`, Controller JavaFX che istanziano `Alert` (`PreMatchAnalysisController`, `DashboardController`, `CompetitionViewController`, `LiveConsoleController`)
+* **Problema:** L'applicazione adotta una palette scura (Dark Theme: background `#121316` / `#16171b` / `#1a1b20`). I popup operativi complessi (come la modifica statistiche `edit_match_stats_popup.fxml`, la creazione match `create_match_popup.fxml` e la mappatura alias `alias_mapping_popup.fxml`) mantengono correttamente il tema scuro dell'applicazione per coerenza di interfaccia. Al contrario, tutti i dialoghi di sistema di tipo **`Alert`** (finestre di conferma eliminazione quote, conferma cancellazione competizione/squadra, finalizzazione match, avvisi ed errori) devono presentarsi con il **tema chiaro/bianco** nativo (come quello visibile nella conferma di eliminazione quote in Pre-Match), garantendo un forte stacco visivo e attirando immediatamente l'attenzione del trader sullo sfondo scuro dell'app.
+* **Soluzione:** 
+  1. Verificare e garantire che tutti i dialoghi `Alert` (conferma, errore, warning, informativi) mantengano il rendering chiaro/bianco nativo, evitando l'iniezione forzata o non voluta del foglio di stile scuro (`styles.css`) sul `DialogPane`.
+  2. Preservare il tema scuro principale dell'applicazione per tutti i popup modali operativi complessi (`edit_match_stats_popup.fxml`, `create_match_popup.fxml`, `alias_mapping_popup.fxml`), assicurando la coerenza estetica tra viste primarie e secondarie.
+  3. Assicurarsi che i testi, le icone e i pulsanti all'interno degli Alert chiari abbiano contrasto ottimale e che `initOwner(...)` sia sempre configurato su tutti gli Alert dell'applicazione per una corretta gestione del focus desktop.

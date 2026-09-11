@@ -79,16 +79,31 @@ Interfaccia di controllo in tempo reale durante lo svolgimento degli incontri.
 
 ---
 
-### 2.5 Popup Modale Mappatura Alias (`alias_mapping_popup.fxml` / `AliasMappingController`)
-Finestra di dialogo modale che compare in caso di rilevamento di una squadra non ancora censita o mappata durante l'importazione CSV.
+### 2.5 Popup Modali Operativi Complessi
+Finestre di dialogo interattive dedicate a operazioni complesse di data-entry, configurazione e override manuale (*Human-in-the-Loop*). Per garantire continuità estetica con le schermate primarie, questi popup adottano integralmente il tema scuro dell'applicazione (`styles.css`).
 
-* **Scopo:** Garantire l'integrità del database evitando che nomi con spelling diverso creino squadre duplicate (*Human-in-the-Loop*).
+#### 2.5.1 Popup Modale Mappatura Alias (`alias_mapping_popup.fxml` / `AliasMappingController`)
+Finestra modale che compare in caso di rilevamento di una squadra non ancora censita o mappata durante l'importazione CSV.
+* **Scopo:** Garantire l'integrità del database evitando che nomi con spelling diverso creino squadre duplicate.
 * **Comportamento UX:**
-  * Mostra il messaggio: *"Squadra non riconosciuta nel file CSV: '[Nome CSV]'"*.
-  * Offre due opzioni:
-    1. **Associa a squadra esistente:** Menu a tendina con ricerca per scegliere la squadra reale dal DB. Cliccando "Conferma Associazione", il sistema crea il record in `team_aliases` e riprende automaticamente e in modo trasparente l'elaborazione del file CSV dal punto di interruzione.
+  * Mostra il messaggio esplicativo: *"Squadra non riconosciuta nel file CSV: '[Nome CSV]'"*.
+  * Offre tre opzioni operative:
+    1. **Associa a squadra esistente:** Menu a tendina con ricerca dinamica per selezionare la squadra ufficiale dal DB. Pre-filtra di default le squadre della competizione corrente per massimizzare la rapidità operativa, con opzione di sblocco globale ("Mostra tutte le squadre"). Cliccando *"Conferma Associazione"*, il sistema crea il record in `team_aliases` e riprende automaticamente e in modo trasparente l'elaborazione del file CSV dal punto di interruzione.
     2. **Crea Nuova Squadra:** Salva la squadra come nuova entità nel DB, associa l'alias e prosegue l'importazione.
     3. **Annulla:** Interrompe l'importazione del file corrente e notifica l'annullamento.
+
+#### 2.5.2 Inserimento Partita Manuale (`create_match_popup.fxml` / `CreateMatchController`)
+Finestra modale richiamata dal pulsante *"Aggiungi Partita Manualmente"* della Dashboard.
+* **Scopo:** Permettere al trader di pianificare e registrare incontri futuri (`SCHEDULED`) non presenti nei CSV storici (i quali contengono solo partite già disputate e concluse).
+* **Componenti Visivi:**
+  * Selezione guidata di squadra di casa e squadra ospite con vincolo di non coincidenza.
+  * Selettore data (`DatePicker`) e orario di inizio in ora locale (automaticamente convertito e memorizzato in UTC nel DB).
+  * Campi opzionali per quote 1X2 di riferimento iniziali (`odds_home`, `odds_draw`, `odds_away`).
+
+#### 2.5.3 Modifica Statistiche e Override xG (`edit_match_stats_popup.fxml` / `EditMatchStatsController`)
+Finestra modale per l'override dei dati di un match registrato nel DB.
+* **Scopo:** Consentire l'intervento manuale su punteggio, tiri totali, tiri in porta, cartellini rossi e override esplicito degli xG (`manual_home_xg`, `manual_away_xg`).
+* **Invarianti di Protezione:** Il salvataggio imposta automaticamente il flag `is_manually_edited = true`, impedendo che successivi re-import di file CSV sovrascrivano i dati validati manualmente dal trader.
 
 ---
 
@@ -101,3 +116,31 @@ Schermata di configurazione dei parametri globali del software.
   * *Numero Partite Campione ($N$)*: Default 10 (numero di match storici per il calcolo delle forze $\alpha$ e $\beta$).
   * *Fattore Decadimento Stagionale ($\gamma$)*: Default 0.70 (peso attribuito alle partite della stagione precedente).
   * *Soglia Target Green Up (%)*: Default 10% (soglia per i suggerimenti di Cash Out live).
+
+---
+
+## 3. Design System, Finestre Modali e Contrasto Visivo (UX Guidelines)
+
+NEPE applica una precisa gerarchia visiva basata sul contrasto cromatico per distinguere l'attività analitica continuativa dagli eventi di interruzione decisionale ad alta priorità.
+
+### 3.1 Palette Cromatica Principale (Dark Theme Ergonomico)
+* **Sfondo Primario:** `#121316` (riduce l'affaticamento visivo durante sessioni prolungate di trading e studio dei dati).
+* **Container e Card:** `#16171b` / `#1a1b20` con bordi a basso contrasto (`#272a34`).
+* **Tipografia:** San-serif di sistema moderna (`-apple-system`, `Segoe UI`, `Roboto`), testo primario ad alta leggibilità (`#f3f4f6`) e secondario smorzato (`#9ca3af`).
+* **Segnali Semantici:**
+  * Verde EV+ (`#22c55e` / `#16a34a`): Evidenzia quote a valore atteso positivo e indicatori di profitto.
+  * Rosso (`#ef4444`): Segnala cartellini rossi, valori negativi e azioni distruttive di eliminazione.
+  * Blu Accento (`#3b82f6`): Elementi attivi, selezioni, focus e pulsanti di navigazione primaria.
+
+### 3.2 Popup Operativi e Funzionali (Dark Theme Coerente)
+Tutte le finestre modali operative complesse derivate da layout FXML dedicati (`create_match_popup.fxml`, `edit_match_stats_popup.fxml`, `alias_mapping_popup.fxml`, dialoghi di selezione stagione per import CSV):
+* **Condivisone del Foglio di Stile:** Includono esplicitamente `styles.css` nella propria `Scene`.
+* **Coerenza Visiva:** Mantengono lo sfondo scuro, le card con bordi arrotondati e la medesima formattazione di tabelle, dropdown e campi di input, garantendo un'esperienza utente uniforme e priva di sfarfallii visivi durante il data-entry.
+
+### 3.3 Dialoghi di Sistema, Notifica e Conferma (Light / White Theme per Massimo Contrasto)
+Al contrario dei popup operativi, tutti i messaggi di sistema e i dialoghi modali basati sulla classe `javafx.scene.control.Alert` (`AlertType.CONFIRMATION`, `AlertType.WARNING`, `AlertType.ERROR`, `AlertType.INFORMATION`):
+* **Stile Visivo:** Mantengono deliberatamente il **tema chiaro/bianco nativo** del sistema operativo (sfondo bianco, testo scuro ad alto contrasto, pulsanti di sistema standard).
+* **Razionale UX & Psicologia dell'Interfaccia:**
+  * **Interruzione ad Alta Priorità:** Un `Alert` rappresenta una richiesta di attenzione straordinaria che interrompe temporaneamente il normale flusso di lavoro (es. *«Sei sicuro di voler eliminare le quote salvate per questo match?»*, *«Confermi l'eliminazione definitiva della competizione?»*, o segnalazioni di errore bloccante nell'elaborazione del motore di calcolo).
+  * **Visual Pop-Out Effect:** Il forte contrasto cromatico tra la finestra bianca luminosa e l'ambiente desktop scuro sottostante cattura istantaneamente lo sguardo del trader. Questo riduce drasticamente il rischio di distrazioni o conferme accidentali (*misclicks*) su azioni irreversibili.
+* **Regola di Ancoraggio Desktop (`initOwner`):** Per garantire la stabilità modale su qualsiasi ambiente operativo (in particolare macOS e Linux), ogni istanza di `Alert` deve essere tassativamente ancorata allo stage/finestra genitore tramite `alert.initOwner(parentWindow)`. Ciò previene la perdita di focus e impedisce che la finestra modale scivoli inavvertitamente dietro l'interfaccia principale.
