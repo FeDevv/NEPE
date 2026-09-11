@@ -20,9 +20,13 @@ import org.nepe.competition.domain.Competition;
 import org.nepe.competition.domain.Season;
 import org.nepe.competition.port.in.ManageCompetitionUseCase;
 import org.nepe.competition.port.in.ManageSeasonUseCase;
+import org.nepe.inference.domain.EvCalculator;
 import org.nepe.inference.port.in.CalculatePreMatchInferenceUseCase;
 import org.nepe.inference.port.in.PreMatchAnalysisResult;
+import org.nepe.inference.port.in.PreMatchInferenceQuery;
+import org.nepe.match.domain.MatchModifiers;
 import org.nepe.match.domain.MatchState;
+import org.nepe.settings.domain.AppSettings;
 import org.nepe.match.port.in.ImportCsvMatchesUseCase;
 import org.nepe.match.port.in.ImportCsvResultDTO;
 import org.nepe.match.port.in.LiveMatchTradingUseCase;
@@ -56,7 +60,7 @@ import java.util.Optional;
  *     <li>Competition selection and active tournament context binding.</li>
  *     <li>Matches fixture browsing with state-based filtering (SCHEDULED, LIVE, FINISHED).</li>
  *     <li>Local CET/CEST timezone kickoff formatting.</li>
- *     <li>Synthetic pre-match Expected Value (EV+) signal detection and badge rendering.</li>
+ *     <li>Rigorous pre-match Expected Value (EV+) signal detection and badge rendering.</li>
  *     <li>CSV ingestion with FileChooser and automated redirection to {@code AliasMappingController}.</li>
  *     <li>Scene switching and navigation across analytical panels.</li>
  * </ul>
@@ -213,7 +217,7 @@ public class DashboardController {
         colOdds.setStyle("-fx-alignment: CENTER;");
 
         colEvBadge.setCellValueFactory(cellData ->
-                new SimpleStringProperty(getSyntheticEvSignal(cellData.getValue()))
+                new SimpleStringProperty(getPreMatchEvSignal(cellData.getValue()))
         );
         colEvBadge.setCellFactory(column -> new TableCell<>() {
             @Override
@@ -238,6 +242,7 @@ public class DashboardController {
             private final Button btnStats = new Button("✏️ Statistiche");
             private final MenuButton btnMore = new MenuButton("⚙️");
             private final MenuItem itemStartLive = new MenuItem("⚡ Avvia Live");
+            private final MenuItem itemFinish = new MenuItem("🏁 Termina Partita");
             private final MenuItem itemPostpone = new MenuItem("⏸️ Rinvia Partita");
             private final MenuItem itemCancel = new MenuItem("❌ Annulla Partita");
             private final MenuItem itemDelete = new MenuItem("🗑️ Elimina Partita");
@@ -256,7 +261,7 @@ public class DashboardController {
                 btnLive.getStyleClass().addAll("button", "btn-sm", "btn-danger");
                 btnStats.getStyleClass().addAll("button", "btn-sm");
                 btnMore.getStyleClass().addAll("button", "btn-sm");
-                btnMore.getItems().addAll(itemStartLive, itemPostpone, itemCancel, new SeparatorMenuItem(), itemDelete);
+                btnMore.getItems().addAll(itemStartLive, itemFinish, itemPostpone, itemCancel, new SeparatorMenuItem(), itemDelete);
                 container.setAlignment(Pos.CENTER);
 
                 btnAnalyze.setOnAction(event -> {
@@ -284,6 +289,13 @@ public class DashboardController {
                     MatchDetailsDTO match = getMatchAtRow();
                     if (match != null) {
                         handleStartLiveMatch(match);
+                    }
+                });
+
+                itemFinish.setOnAction(event -> {
+                    MatchDetailsDTO match = getMatchAtRow();
+                    if (match != null) {
+                        handleFinishMatch(match);
                     }
                 });
 
@@ -321,6 +333,7 @@ public class DashboardController {
                         btnLive.setDisable(!(match.matchState().isLive() || match.matchState().isScheduled()));
                         btnStats.setDisable(match.matchState() == MatchState.CANCELLED);
                         itemStartLive.setDisable(match.matchState() != MatchState.SCHEDULED);
+                        itemFinish.setDisable(match.matchState() != MatchState.SCHEDULED && match.matchState() != MatchState.LIVE);
                         itemPostpone.setDisable(match.matchState().isTerminal() || match.matchState() == MatchState.POSTPONED);
                         itemCancel.setDisable(match.matchState() == MatchState.CANCELLED);
                         setGraphic(container);
@@ -348,7 +361,7 @@ public class DashboardController {
         comboCompetition.getSelectionModel().selectedItemProperty().addListener((obs, oldComp, newComp) -> {
             if (newComp != null) {
                 this.currentCompetition = newComp;
-                syntheticEvCache.clear();
+                preMatchEvCache.clear();
                 reloadMatches();
             }
         });
@@ -370,7 +383,7 @@ public class DashboardController {
         comboSeason.getSelectionModel().selectedItemProperty().addListener((obs, oldSeason, newSeason) -> {
             if (newSeason != null) {
                 this.currentSeason = newSeason;
-                syntheticEvCache.clear();
+                preMatchEvCache.clear();
                 reloadMatches();
             }
         });
@@ -450,7 +463,7 @@ public class DashboardController {
             }
 
             // Compute EV signals asynchronously on a Java 25 Virtual Thread to prevent UI thread stuttering
-            computeSyntheticEvSignalsAsync(matches);
+            computePreMatchEvSignalsAsync(matches);
         } catch (Exception e) {
             log.error("Error reloading matches", e);
             if (lblMessage != null) {
@@ -500,18 +513,20 @@ public class DashboardController {
         }
     }
 
-    // --- Synthetic EV+ Evaluator for Dashboard Badge ---
+    // --- Pre-Match EV+ Evaluator for Dashboard Fixture Badge ---
 
-    private final Map<Integer, String> syntheticEvCache = new java.util.concurrent.ConcurrentHashMap<>();
+    public static final double EV_BADGE_MIN_THRESHOLD = 0.03; // 3% minimum edge required to render an EV+ badge
 
-    private String getSyntheticEvSignal(MatchDetailsDTO match) {
+    private final Map<Integer, String> preMatchEvCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private String getPreMatchEvSignal(MatchDetailsDTO match) {
         if (match == null) {
             return "-";
         }
-        return syntheticEvCache.getOrDefault(match.matchId(), "-");
+        return preMatchEvCache.getOrDefault(match.matchId(), "-");
     }
 
-    private void computeSyntheticEvSignalsAsync(List<MatchDetailsDTO> matches) {
+    private void computePreMatchEvSignalsAsync(List<MatchDetailsDTO> matches) {
         if (matches == null || matches.isEmpty()) {
             return;
         }
@@ -519,9 +534,9 @@ public class DashboardController {
         Thread.startVirtualThread(() -> {
             boolean updated = false;
             for (MatchDetailsDTO match : matches) {
-                if (match != null && !syntheticEvCache.containsKey(match.matchId())) {
-                    String signal = calculateSyntheticEv(match);
-                    syntheticEvCache.put(match.matchId(), signal);
+                if (match != null && !preMatchEvCache.containsKey(match.matchId())) {
+                    String signal = calculatePreMatchEv(match);
+                    preMatchEvCache.put(match.matchId(), signal);
                     updated = true;
                 }
             }
@@ -532,68 +547,125 @@ public class DashboardController {
     }
 
     /**
-     * Computes a high-performance synthetic EV+ signal for batch fixture rendering on the Dashboard table.
-     * <p>
-     * <b>Architectural Trade-Off & Design Rationale:</b>
-     * To ensure a responsive 60 FPS UI experience during table scrolling and rapid filter switching,
-     * this method applies a lightweight heuristic based on market-implied goal expectations derived
-     * from 1X2 market odds, rather than querying and processing historical N-match time-series
-     * for every fixture in the viewport.
-     * <p>
-     * Complete and rigorous pre-match inference using the full Dixon-Coles bivariate Poisson model
-     * and historical team strengths is executed when navigating to the Pre-Match Analysis view.
+     * Computes the rigorous pre-match Expected Value (EV+) signal for a fixture,
+     * powered by historical team performances, league statistics, Dixon-Coles modeling,
+     * and {@link EvCalculator}.
      *
      * @param match the match projection DTO
-     * @return a synthetic EV+ badge label (e.g., "EV+ 1 (+5.2%)") or "-" if no positive value is identified
+     * @return an EV+ badge label (e.g. "EV+ 1 (+5.2%)") or "-" if no positive value exceeds the threshold
      */
-    private String calculateSyntheticEv(MatchDetailsDTO match) {
-        if (match.oddsHome() == null && match.oddsDraw() == null && match.oddsAway() == null) {
+    private String calculatePreMatchEv(MatchDetailsDTO match) {
+        if (match == null) {
             return "-";
         }
-        if (match.matchState() == MatchState.FINISHED || match.matchState() == MatchState.CANCELLED) {
+        if (match.matchState() == null || !match.matchState().allowsPreMatchAnalysis()) {
+            return "-";
+        }
+        if (match.oddsHome() == null && match.oddsDraw() == null && match.oddsAway() == null) {
             return "-";
         }
 
         try {
-            // Approximate market-implied goal expectation rates
-            double pHomeImplied = (match.oddsHome() != null && match.oddsHome() > 1.0) ? (1.0 / match.oddsHome()) : 0.40;
-            double pAwayImplied = (match.oddsAway() != null && match.oddsAway() > 1.0) ? (1.0 / match.oddsAway()) : 0.30;
-            double totalImplied = pHomeImplied + pAwayImplied;
+            AppSettings settings = (manageSettingsUseCase != null)
+                    ? manageSettingsUseCase.getSettings()
+                    : AppSettings.defaults();
+            int defaultN = settings.getDefaultNMatches();
+            double commRate = settings.getCommissionRate();
+            double gamma = settings.getSeasonalDecayGamma();
 
-            double lambdaH = Math.max(0.6, totalImplied * 1.5 * (pHomeImplied / Math.max(0.1, totalImplied)));
-            double muA = Math.max(0.5, totalImplied * 1.5 * (pAwayImplied / Math.max(0.1, totalImplied)));
+            var homeHistory = manageMatchUseCase.getHistoricalTeamPerformances(
+                    match.homeTeamId(), match.competitionId(), match.seasonId(), defaultN);
+            var awayHistory = manageMatchUseCase.getHistoricalTeamPerformances(
+                    match.awayTeamId(), match.competitionId(), match.seasonId(), defaultN);
+            double leagueAvgXg = manageMatchUseCase.getLeagueAverageXgPerTeam(
+                    match.competitionId(), match.seasonId());
+            double homeAdvantage = manageMatchUseCase.getDynamicHomeAdvantage(
+                    match.competitionId(), match.seasonId());
 
-            double commRate = (manageSettingsUseCase != null) ? manageSettingsUseCase.getSettings().getCommissionRate() : 0.05;
+            MatchModifiers modifiers = mapModifiers(match);
 
-            PreMatchAnalysisResult result = calculatePreMatchInferenceUseCase.calculate(
-                    lambdaH,
-                    muA,
+            PreMatchInferenceQuery query = new PreMatchInferenceQuery(
+                    homeHistory,
+                    awayHistory,
+                    leagueAvgXg,
+                    homeAdvantage,
+                    gamma,
                     match.dixonColesRho(),
                     commRate,
+                    modifiers,
                     Collections.emptyList()
             );
 
-            if (match.oddsHome() != null) {
-                double evHome = (result.homeWin().probability() * (match.oddsHome() - 1.0) * (1.0 - commRate)) - (1.0 - result.homeWin().probability());
-                if (evHome > 0.03) {
-                    return String.format("EV+ 1 (+%.1f%%)", evHome * 100);
+            PreMatchAnalysisResult result = calculatePreMatchInferenceUseCase.calculate(query);
+
+            String bestOutcome = null;
+            double bestEv = 0.0;
+
+            // 1. Evaluate Home Win (1)
+            if (match.oddsHome() != null && match.oddsHome() > 1.0) {
+                double evHome = EvCalculator.calculateEvBack(result.homeWin().probability(), match.oddsHome(), commRate);
+                if (evHome >= EV_BADGE_MIN_THRESHOLD && evHome > bestEv) {
+                    bestEv = evHome;
+                    bestOutcome = "1";
                 }
             }
-            if (match.oddsDraw() != null) {
-                double evDraw = (result.draw().probability() * (match.oddsDraw() - 1.0) * (1.0 - commRate)) - (1.0 - result.draw().probability());
-                if (evDraw > 0.03) {
-                    return String.format("EV+ X (+%.1f%%)", evDraw * 100);
+
+            // 2. Evaluate Draw (X)
+            if (match.oddsDraw() != null && match.oddsDraw() > 1.0) {
+                double evDraw = EvCalculator.calculateEvBack(result.draw().probability(), match.oddsDraw(), commRate);
+                if (evDraw >= EV_BADGE_MIN_THRESHOLD && evDraw > bestEv) {
+                    bestEv = evDraw;
+                    bestOutcome = "X";
                 }
             }
-            if (match.oddsAway() != null) {
-                double evAway = (result.awayWin().probability() * (match.oddsAway() - 1.0) * (1.0 - commRate)) - (1.0 - result.awayWin().probability());
-                if (evAway > 0.03) {
-                    return String.format("EV+ 2 (+%.1f%%)", evAway * 100);
+
+            // 3. Evaluate Away Win (2)
+            if (match.oddsAway() != null && match.oddsAway() > 1.0) {
+                double evAway = EvCalculator.calculateEvBack(result.awayWin().probability(), match.oddsAway(), commRate);
+                if (evAway >= EV_BADGE_MIN_THRESHOLD && evAway > bestEv) {
+                    bestEv = evAway;
+                    bestOutcome = "2";
                 }
             }
-        } catch (Exception ignored) {
+
+            if (bestOutcome != null) {
+                return String.format(java.util.Locale.US, "EV+ %s (+%.1f%%)", bestOutcome, bestEv * 100);
+            }
+        } catch (NepeException e) {
+            log.warn("Domain exception computing pre-match EV signal for match ID {}: {}", match.matchId(), e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected error computing pre-match EV signal for match ID {}: {}", match.matchId(), e.getMessage(), e);
         }
+
         return "-";
+    }
+
+    private static MatchModifiers mapModifiers(MatchDetailsDTO match) {
+        return new MatchModifiers(
+                match.isNeutralVenue(),
+                match.isMustWinHome(),
+                match.isMustWinAway(),
+                match.isLowUrgencyHome(),
+                match.isLowUrgencyAway(),
+                match.modAttHome(),
+                match.modDefHome(),
+                match.modAttAway(),
+                match.modDefAway()
+        );
+    }
+
+    /**
+     * Package-private accessor for testing the calculated pre-match EV signal.
+     */
+    String computePreMatchEvForTest(MatchDetailsDTO match) {
+        return calculatePreMatchEv(match);
+    }
+
+    /**
+     * Package-private accessor to check cache content in tests.
+     */
+    Map<Integer, String> getPreMatchEvCache() {
+        return Collections.unmodifiableMap(preMatchEvCache);
     }
 
     // --- Action & Event Handlers ---
@@ -639,7 +711,7 @@ public class DashboardController {
 
     @FXML
     public void handleRefresh(ActionEvent event) {
-        syntheticEvCache.clear();
+        preMatchEvCache.clear();
         loadInitialData();
         reloadMatches();
     }
@@ -682,7 +754,7 @@ public class DashboardController {
                     ImportCsvResultDTO result = importCsvMatchesUseCase.importCsvFile(selectedFile.toPath(), targetSeasonName);
                     importCompleted = true;
                     Platform.runLater(() -> {
-                        syntheticEvCache.clear();
+                        preMatchEvCache.clear();
 
                         // Reload seasons in comboSeason and select imported season
                         List<Season> updatedSeasons = manageSeasonUseCase.getAllSeasons();
@@ -792,7 +864,7 @@ public class DashboardController {
     public void handleAddMatch(ActionEvent event) {
         boolean created = openCreateMatchDialog();
         if (created) {
-            syntheticEvCache.clear();
+            preMatchEvCache.clear();
             reloadMatches();
         }
     }
@@ -970,7 +1042,7 @@ public class DashboardController {
             dialogStage.showAndWait();
 
             if (view.controller().isStatsUpdated()) {
-                syntheticEvCache.clear();
+                preMatchEvCache.clear();
                 reloadMatches();
                 return true;
             }
@@ -994,6 +1066,34 @@ public class DashboardController {
         }
     }
 
+    public void handleFinishMatch(MatchDetailsDTO match) {
+        if (match == null) return;
+        lblMessage.setText("");
+
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        if (tblMatches != null && tblMatches.getScene() != null && tblMatches.getScene().getWindow() != null) {
+            confirmAlert.initOwner(tblMatches.getScene().getWindow());
+        }
+        confirmAlert.setTitle("Conferma Conclusione Partita");
+        confirmAlert.setHeaderText("Conclusione partita");
+        confirmAlert.setContentText(String.format("Vuoi contrassegnare la partita '%s' come CONCLUSA (FINISHED)?",
+                match.getFixtureLabel()));
+
+        Optional<ButtonType> result = confirmAlert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                manageMatchUseCase.markAsFinished(match.matchId());
+                preMatchEvCache.clear();
+                reloadMatches();
+                lblMessage.setText("Partita " + match.getFixtureLabel() + " contrassegnata come CONCLUSA.");
+            } catch (NepeException e) {
+                log.warn("Failed to finish match {}: {}", match.matchId(), e.getMessage());
+                lblMessage.setText("Errore conclusione: " + e.getMessage());
+                showErrorAlert("Impossibile concludere la partita", e.getMessage());
+            }
+        }
+    }
+
     public void handlePostponeMatch(MatchDetailsDTO match) {
         if (match == null) return;
         lblMessage.setText("");
@@ -1008,7 +1108,7 @@ public class DashboardController {
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
                 manageMatchUseCase.markAsPostponed(match.matchId());
-                syntheticEvCache.clear();
+                preMatchEvCache.clear();
                 reloadMatches();
                 lblMessage.setText("Partita " + match.getFixtureLabel() + " contrassegnata come RINVIATA.");
             } catch (NepeException e) {
@@ -1033,7 +1133,7 @@ public class DashboardController {
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
                 manageMatchUseCase.markAsCancelled(match.matchId());
-                syntheticEvCache.clear();
+                preMatchEvCache.clear();
                 reloadMatches();
                 lblMessage.setText("Partita " + match.getFixtureLabel() + " contrassegnata come ANNULLATA.");
             } catch (NepeException e) {
@@ -1058,7 +1158,7 @@ public class DashboardController {
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
                 manageMatchUseCase.deleteMatch(match.matchId());
-                syntheticEvCache.clear();
+                preMatchEvCache.clear();
                 reloadMatches();
                 lblMessage.setText("Partita " + match.getFixtureLabel() + " eliminata con successo.");
             } catch (NepeException e) {
@@ -1085,7 +1185,7 @@ public class DashboardController {
                 if (liveMatchTradingUseCase != null) {
                     liveMatchTradingUseCase.startLiveTrading(match.matchId());
                 }
-                syntheticEvCache.clear();
+                preMatchEvCache.clear();
                 reloadMatches();
                 lblMessage.setText("Partita " + match.getFixtureLabel() + " avviata in modalità LIVE.");
             } catch (NepeException e) {

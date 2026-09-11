@@ -75,6 +75,10 @@
         <TextField fx:id="txtManualAwayXg" promptText="es. 0.820 (Opzionale)" GridPane.rowIndex="6" GridPane.columnIndex="2"/>
     </GridPane>
 
+    <!-- Mark as Finished Option -->
+    <CheckBox fx:id="chkMarkAsFinished" text="🏁 Contrassegna come Partita Conclusa (FINISHED)"
+              styleClass="label-strong" style="-fx-text-fill: #38bdf8; -fx-padding: 4 0;"/>
+
     <!-- Error Feedback Label -->
     <Label fx:id="lblError" text="" styleClass="label-muted" style="-fx-text-fill: #f87171; -fx-font-weight: bold;"/>
 

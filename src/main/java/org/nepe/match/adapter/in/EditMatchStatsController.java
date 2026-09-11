@@ -3,10 +3,12 @@ package org.nepe.match.adapter.in;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import org.nepe.inference.domain.XgEstimator;
+import org.nepe.match.domain.MatchState;
 import org.nepe.match.port.in.ManageMatchUseCase;
 import org.nepe.match.port.in.UpdateMatchStatisticsCommand;
 import org.nepe.match.port.out.MatchDetailsDTO;
@@ -61,6 +63,7 @@ public class EditMatchStatsController {
     @FXML private Label lblPreviewAwayXg;
     @FXML private TextField txtManualHomeXg;
     @FXML private TextField txtManualAwayXg;
+    @FXML private CheckBox chkMarkAsFinished;
 
     @FXML private Label lblError;
     @FXML private Button btnResetManualXg;
@@ -127,6 +130,12 @@ public class EditMatchStatsController {
         txtManualAwayXg.setText(match.manualAwayXg() != null ? String.format(Locale.US, "%.3f", match.manualAwayXg()) : "");
 
         lblError.setText("");
+
+        if (chkMarkAsFinished != null) {
+            boolean alreadyFinished = match.matchState().isFinished();
+            chkMarkAsFinished.setSelected(alreadyFinished);
+            chkMarkAsFinished.setDisable(alreadyFinished || match.matchState() == MatchState.CANCELLED);
+        }
 
         // Trigger dynamic xG calculation
         updateHomeXgPreview();
@@ -234,6 +243,11 @@ public class EditMatchStatsController {
             manageMatchUseCase.updateStatistics(command);
             log.info("Successfully updated match statistics and manual xG for match ID {}", currentMatch.matchId());
 
+            if (chkMarkAsFinished != null && chkMarkAsFinished.isSelected() && !currentMatch.matchState().isFinished()) {
+                manageMatchUseCase.markAsFinished(currentMatch.matchId());
+                log.info("Successfully marked match ID {} as FINISHED", currentMatch.matchId());
+            }
+
             this.statsUpdated = true;
             closeModal();
 
@@ -313,5 +327,13 @@ public class EditMatchStatsController {
 
     public boolean isStatsUpdated() {
         return statsUpdated;
+    }
+
+    public CheckBox getChkMarkAsFinished() {
+        return chkMarkAsFinished;
+    }
+
+    void setChkMarkAsFinished(CheckBox chkMarkAsFinished) {
+        this.chkMarkAsFinished = chkMarkAsFinished;
     }
 }
