@@ -208,3 +208,17 @@
   3. Nel metodo reattivo ad alta frequenza `recalculateLiveInference()`, rimossa ogni chiamata a query I/O verso i casi d'uso: il motore live esegue esclusivamente calcoli matematici in-memory via `LiveInferenceService` / `LiveEngineModifiers`, garantendo zero latenza I/O sul `JavaFX Application Thread`.
   4. Aggiunti metodi getter di ispezione (`getCachedLambdaPre()`, `getCachedMuPre()`, `getCachedModifiers()`) e azzeramento difensivo dello stato in `updateControlStates()` quando nessun match è selezionato.
   5. Introdotto il test di regressione dedicato `shouldCachePreMatchRatesAndAvoidSynchronousDbQueriesOnLiveOddsChanges()` in `LiveConsoleControllerTest.java`, verificando che a fronte di molteplici variazioni reattive di quote live e minuti di gioco, il numero di query DB storiche e quote rimanga rigorosamente pari a 1 (avvenuta una sola volta durante il caricamento iniziale). Tutti i 451 test del progetto passano deterministamente con esito positivo.
+
+---
+
+## Ticket 16: Supporto Ambiente Headless CI/CD per Test Controller JavaFX su GitHub Actions & SonarCloud [COMPLETED]
+* **Gravità:** `MAJOR` (Blocco pipeline remota CI/CD: fallimento dell'analisi SonarCloud su runner Linux headless)
+* **Effort Atteso:** `LOW`
+* **File coinvolti:** `.github/workflows/build.yml`
+* **Problema:** I test unitari dei controller JavaFX (`PreMatchAnalysisControllerTest`, `LiveConsoleControllerTest`, `DashboardControllerTest`, `CompetitionViewControllerTest`, `AliasMappingControllerTest`, `EditMatchStatsControllerTest`) inizializzano il runtime grafico mediante `Platform.startup(() -> {})`. 
+  Mentre in ambiente desktop locale (macOS) è sempre attivo un display server e l'intera suite di 451 test passa deterministamente al 100%, sul runner remoto Linux di GitHub Actions (`runs-on: ubuntu-latest`) non è presente alcun display server X11 configurato. 
+  Di conseguenza, l'esecuzione di `mvn -B verify` fallisce con `java.lang.UnsupportedOperationException: Unable to open DISPLAY`, interrompendo anticipatamente la build e impedendo il caricamento dell'analisi su SonarCloud.
+* **Soluzione Realizzata:** 
+  1. Configurato l'approccio nativo di virtual display server X11 in `.github/workflows/build.yml` installando `xvfb` (`sudo apt-get update && sudo apt-get install -y xvfb`).
+  2. Incapsulato il comando Maven di build, test e analisi SonarCloud all'interno di `xvfb-run --auto-servernum mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=FeDevv_NEPE`.
+  3. L'allocazione trasparente di un display virtuale in memoria X11 da parte del kernel Linux risolve alla radice il vincolo del sottosistema Glass/Prism di JavaFX senza alterare il codice sorgente o il `pom.xml`, garantendo piena compatibilità e stabilità a lungo termine con Java 25 e OpenJFX 26.

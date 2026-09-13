@@ -263,7 +263,7 @@ All agents filing issues or review notes must use the following standardized str
 When an autonomous AI agent is spawned in a **clean context** to perform a total system verification pass of NEPE, it MUST adhere to the following operational protocol.
 
 ### 7.1 Objective & Strict Severity Filtering Policy
-* **Current Operational Baseline:** The software is currently functionally operative with all 15 known tickets resolved and 449/449 tests passing.
+* **Current Operational Baseline:** The software is currently functionally operative with all 16 known tickets resolved and 449/449 tests passing.
 * **Strict Severity Threshold:** **Focus exclusively on detecting BLOCKER, CRITICAL, and MAJOR defects.**
 * **Filtering Directive:** Do NOT file `MINOR` cosmetic suggestions, stylistic refactorings, or trivial `IMPROVEMENT` notes (improvements are always theoretically possible in any mature software). The objective of the clean-context audit is to identify genuine defects, architectural leaks, or calculation flaws that threaten correctness, reliability, or maintainability.
 
