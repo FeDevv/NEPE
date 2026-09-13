@@ -127,6 +127,7 @@ public class MatchRepositoryAdapter implements MatchRepositoryPort {
     public void deleteById(int id) {
         try {
             springDataRepository.deleteById(id);
+            springDataRepository.flush();
         } catch (DataIntegrityViolationException e) {
             throw new DomainValidationException(
                     String.format("Cannot delete match with ID %d because associated events or odds depend on it.", id),

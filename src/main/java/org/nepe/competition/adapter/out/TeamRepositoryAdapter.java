@@ -99,7 +99,9 @@ public class TeamRepositoryAdapter implements TeamRepositoryPort {
     @Transactional
     public void deleteById(int id) {
         try {
+            competitionTeamRepository.deleteByTeamId(id);
             springDataRepository.deleteById(id);
+            springDataRepository.flush();
         } catch (DataIntegrityViolationException e) {
             throw new DomainValidationException(
                     String.format("Cannot delete team with ID %d because associated records (matches/aliases) depend on it.", id),

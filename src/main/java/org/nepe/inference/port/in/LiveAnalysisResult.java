@@ -21,6 +21,7 @@ import java.util.List;
  * @param bttsYes              full-time Both Teams to Score ("YES") prediction
  * @param bttsNo               full-time Both Teams to Score ("NO") prediction
  * @param greenUpTargetMet     flag indicating if profit thresholds have been satisfied for cash-out / green-up
+ * @param greenUpProfitRatio   calculated profit ratio achieved at current live odds (or null if not available)
  */
 public record LiveAnalysisResult(
         int currentMinute,
@@ -35,7 +36,8 @@ public record LiveAnalysisResult(
         List<MarketPrediction> underOverPredictions,
         MarketPrediction bttsYes,
         MarketPrediction bttsNo,
-        boolean greenUpTargetMet
+        boolean greenUpTargetMet,
+        Double greenUpProfitRatio
 ) {
 
     /**

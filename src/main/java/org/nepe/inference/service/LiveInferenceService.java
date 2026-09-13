@@ -106,13 +106,14 @@ public class LiveInferenceService implements CalculateLiveInferenceUseCase {
         }
 
         // 5. Evaluate Green-Up profit threshold target
-        boolean greenUpTargetMet = evaluateGreenUpTarget(
+        Double greenUpProfitRatio = calculateGreenUpProfitRatio(
                 query.entryOdds(),
                 query.entryMarketType(),
                 query.entryOutcome(),
-                query.greenUpProfitTarget(),
+                query.isShort(),
                 oddsIndex
         );
+        boolean greenUpTargetMet = greenUpProfitRatio != null && greenUpProfitRatio >= query.greenUpProfitTarget();
 
         return new LiveAnalysisResult(
                 query.currentMinute(),
@@ -127,7 +128,8 @@ public class LiveInferenceService implements CalculateLiveInferenceUseCase {
                 List.copyOf(uoPredictions),
                 bttsYes,
                 bttsNo,
-                greenUpTargetMet
+                greenUpTargetMet,
+                greenUpProfitRatio
         );
     }
 
@@ -195,23 +197,35 @@ public class LiveInferenceService implements CalculateLiveInferenceUseCase {
 
     // --- Green-Up Evaluation Helper ---
 
-    private static boolean evaluateGreenUpTarget(Double entryOdds,
-                                                 MarketType entryMarketType,
-                                                 String entryOutcome,
-                                                 double profitTarget,
-                                                 Map<String, MarketOdds> oddsIndex) {
+    private static Double calculateGreenUpProfitRatio(Double entryOdds,
+                                                     MarketType entryMarketType,
+                                                     String entryOutcome,
+                                                     boolean isShort,
+                                                     Map<String, MarketOdds> oddsIndex) {
         if (entryOdds == null || entryOdds <= 1.0 || entryMarketType == null || entryOutcome == null || oddsIndex == null) {
-            return false;
+            return null;
         }
 
         String key = buildOddsKey(entryMarketType, entryOutcome);
         MarketOdds matchingOdds = oddsIndex.get(key);
-        if (matchingOdds != null && matchingOdds.getLayOdds() != null && matchingOdds.getLayOdds() > 1.0) {
-            // Hedging Profit Ratio = (Entry Back Odds - Current Lay Odds) / Current Lay Odds
-            double profitRatio = EvCalculator.calculateGreenUpProfitRatioBack(entryOdds, matchingOdds.getLayOdds());
-            return profitRatio >= profitTarget;
+        if (matchingOdds == null) {
+            return null;
         }
-        return false;
+
+        if (isShort) {
+            Double currentBackOdds = matchingOdds.getBackOdds();
+            if (currentBackOdds != null && currentBackOdds > 1.0) {
+                // Short position (opened Lay): hedge by Backing at current back odds
+                return EvCalculator.calculateGreenUpProfitRatioLay(entryOdds, currentBackOdds);
+            }
+        } else {
+            Double currentLayOdds = matchingOdds.getLayOdds();
+            if (currentLayOdds != null && currentLayOdds > 1.0) {
+                // Long position (opened Back): hedge by Laying at current lay odds
+                return EvCalculator.calculateGreenUpProfitRatioBack(entryOdds, currentLayOdds);
+            }
+        }
+        return null;
     }
 
     // --- Prediction Assembly & Market Indexing ---

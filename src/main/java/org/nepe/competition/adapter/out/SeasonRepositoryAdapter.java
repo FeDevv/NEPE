@@ -93,6 +93,7 @@ public class SeasonRepositoryAdapter implements SeasonRepositoryPort {
     public void deleteById(int id) {
         try {
             springDataRepository.deleteById(id);
+            springDataRepository.flush();
         } catch (DataIntegrityViolationException e) {
             throw new DomainValidationException(
                     String.format("Cannot delete season with ID %d because associated matches depend on it.", id),

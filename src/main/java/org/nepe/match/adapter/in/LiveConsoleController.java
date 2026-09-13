@@ -10,7 +10,6 @@ import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
 import org.nepe.bootstrap.SpringFXMLLoader;
-import org.nepe.inference.domain.EvCalculator;
 import org.nepe.inference.domain.TeamStrengthCalculator;
 import org.nepe.inference.port.in.CalculateLiveInferenceUseCase;
 import org.nepe.inference.port.in.LiveAnalysisResult;
@@ -573,7 +572,8 @@ public class LiveConsoleController {
                     liveOddsList,
                     entryOdds,
                     entryMarket,
-                    entryOutcomeKey
+                    entryOutcomeKey,
+                    isShort
             );
 
             LiveAnalysisResult result = calculateLiveInferenceUseCase.calculate(query);
@@ -606,7 +606,7 @@ public class LiveConsoleController {
             updateQuickOddsDisplay(result, activeLine);
 
             // Update Green-Up display and banner
-            updateGreenUpDisplay(result, entryOdds, entryMarket, entryOutcomeKey, liveOddsMap, profitTarget);
+            updateGreenUpDisplay(result, entryOdds, profitTarget);
 
             lblStatus.setText("");
         } catch (Exception e) {
@@ -671,60 +671,33 @@ public class LiveConsoleController {
         }
     }
 
-    private void updateGreenUpDisplay(LiveAnalysisResult result, Double entryOdds, MarketType entryMarket,
-                                      String entryOutcome, Map<String, MarketOdds> liveOddsMap, double profitTarget) {
+    private void updateGreenUpDisplay(LiveAnalysisResult result, Double entryOdds, double profitTarget) {
         boolean isShort = (comboEntryType != null && ENTRY_TYPE_SHORT.equals(comboEntryType.getValue()));
+        boolean greenUpActive = result != null && result.greenUpTargetMet();
+        Double profitRatio = result != null ? result.greenUpProfitRatio() : null;
 
-        boolean greenUpActive = false;
-        double profitRatio = 0.0;
-        boolean hasValidOdds = false;
-
-        if (entryOdds != null && entryOdds > 1.0) {
-            String key = entryMarket.name() + ":" + entryOutcome.trim().toUpperCase();
-            MarketOdds matching = liveOddsMap.get(key);
-
-            if (isShort) {
-                // Short position (Lay entry): liquidated by buying back at current Back odds
-                if (matching != null && matching.getBackOdds() != null && matching.getBackOdds() > 1.0) {
-                    double currentBack = matching.getBackOdds();
-                    profitRatio = EvCalculator.calculateGreenUpProfitRatioLay(entryOdds, currentBack);
-                    hasValidOdds = true;
-                    greenUpActive = (profitRatio >= profitTarget);
-                } else if (lblLiveGreenUpProfit != null) {
-                    lblLiveGreenUpProfit.setText(MSG_WAITING_PUNTA_ODDS);
-                    lblLiveGreenUpProfit.setStyle("-fx-text-fill: #9ca3af;");
-                }
-            } else {
-                // Long position (Back entry): liquidated by laying at current Lay odds
-                if (matching != null && matching.getLayOdds() != null && matching.getLayOdds() > 1.0) {
-                    double currentLay = matching.getLayOdds();
-                    profitRatio = EvCalculator.calculateGreenUpProfitRatioBack(entryOdds, currentLay);
-                    hasValidOdds = true;
-                    greenUpActive = (profitRatio >= profitTarget);
-                } else if (lblLiveGreenUpProfit != null) {
-                    lblLiveGreenUpProfit.setText(MSG_WAITING_BANCA_ODDS);
-                    lblLiveGreenUpProfit.setStyle("-fx-text-fill: #9ca3af;");
+        if (profitRatio != null) {
+            if (lblLiveGreenUpProfit != null) {
+                lblLiveGreenUpProfit.setText(String.format(Locale.US, "%+.1f%% (Target: %.0f%%)",
+                        profitRatio * 100.0, profitTarget * 100.0));
+                if (greenUpActive) {
+                    lblLiveGreenUpProfit.setStyle("-fx-text-fill: #34d399; -fx-font-weight: bold;");
+                } else if (profitRatio >= 0.0) {
+                    lblLiveGreenUpProfit.setStyle("-fx-text-fill: #93c5fd; -fx-font-weight: bold;");
+                } else {
+                    lblLiveGreenUpProfit.setStyle("-fx-text-fill: #f87171; -fx-font-weight: bold;");
                 }
             }
-
-            if (hasValidOdds) {
-                if (lblLiveGreenUpProfit != null) {
-                    lblLiveGreenUpProfit.setText(String.format(Locale.US, "%+.1f%% (Target: %.0f%%)",
-                            profitRatio * 100.0, profitTarget * 100.0));
-                    if (profitRatio >= profitTarget) {
-                        lblLiveGreenUpProfit.setStyle("-fx-text-fill: #34d399; -fx-font-weight: bold;");
-                    } else if (profitRatio >= 0.0) {
-                        lblLiveGreenUpProfit.setStyle("-fx-text-fill: #93c5fd; -fx-font-weight: bold;");
-                    } else {
-                        lblLiveGreenUpProfit.setStyle("-fx-text-fill: #f87171; -fx-font-weight: bold;");
-                    }
-                }
-                if (greenUpActive && lblGreenUpText != null) {
-                    String direction = isShort ? "Banca → Punta" : "Punta → Banca";
-                    lblGreenUpText.setText(String.format(Locale.US,
-                            "Target di Green Up (Cash Out %s) Raggiunto! Profitto stimato: %+.1f%% (Target: %.0f%%). Chiudi la posizione per bloccare il profitto.",
-                            direction, profitRatio * 100.0, profitTarget * 100.0));
-                }
+            if (greenUpActive && lblGreenUpText != null) {
+                String direction = isShort ? "Banca → Punta" : "Punta → Banca";
+                lblGreenUpText.setText(String.format(Locale.US,
+                        "Target di Green Up (Cash Out %s) Raggiunto! Profitto stimato: %+.1f%% (Target: %.0f%%). Chiudi la posizione per bloccare il profitto.",
+                        direction, profitRatio * 100.0, profitTarget * 100.0));
+            }
+        } else if (entryOdds != null && entryOdds > 1.0) {
+            if (lblLiveGreenUpProfit != null) {
+                lblLiveGreenUpProfit.setText(isShort ? MSG_WAITING_PUNTA_ODDS : MSG_WAITING_BANCA_ODDS);
+                lblLiveGreenUpProfit.setStyle("-fx-text-fill: #9ca3af;");
             }
         } else if (lblLiveGreenUpProfit != null) {
             lblLiveGreenUpProfit.setText("N/A");

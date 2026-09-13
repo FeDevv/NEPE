@@ -197,6 +197,8 @@ class LiveInferenceServiceTest {
             LiveAnalysisResult result = service.calculate(query);
 
             assertThat(result.greenUpTargetMet()).isTrue();
+            assertThat(result.greenUpProfitRatio()).isNotNull();
+            assertThat(result.greenUpProfitRatio()).isCloseTo(0.50, within(EPSILON));
         }
 
         @Test
@@ -224,13 +226,16 @@ class LiveInferenceServiceTest {
                     liveOdds,
                     2.50, // Entry Back on Home (1) @ 2.50
                     MarketType.MATCH_ODDS,
-                    "1"
+                    "1",
+                    false
             );
 
             LiveAnalysisResult result = service.calculate(query);
 
             // Lay odds for "1" are 2.80 -> (2.50 - 2.80)/2.80 = -10.7% (loss, not profit target)
             assertThat(result.greenUpTargetMet()).isFalse();
+            assertThat(result.greenUpProfitRatio()).isNotNull();
+            assertThat(result.greenUpProfitRatio()).isCloseTo((2.50 - 2.80) / 2.80, within(EPSILON));
         }
 
         @Test
@@ -257,12 +262,121 @@ class LiveInferenceServiceTest {
                     liveOdds,
                     2.20,
                     MarketType.UNDER_OVER_25,
-                    "OVER"
+                    "OVER",
+                    false
             );
 
             LiveAnalysisResult result = service.calculate(query);
 
             assertThat(result.greenUpTargetMet()).isTrue();
+            assertThat(result.greenUpProfitRatio()).isNotNull();
+            assertThat(result.greenUpProfitRatio()).isCloseTo((2.20 - 1.50) / 1.50, within(EPSILON));
+        }
+
+        @Test
+        @DisplayName("Should trigger greenUpTargetMet for Short (Lay) position when Back odds rise above target threshold")
+        void shouldTriggerGreenUpForShortPositionWhenBackOddsRiseAboveTarget() {
+            // Position opened Lay @ 1.80. Target 10% (0.10).
+            // Current live Back odds rise to 3.00.
+            // Profit ratio Lay = 1.0 - (1.80 / 3.00) = 1.0 - 0.60 = +40.0% >= 10%.
+            List<MarketOdds> liveOdds = List.of(
+                    MarketOdds.create(1, MarketType.MATCH_ODDS, "1", 3.00, 3.10)
+            );
+
+            LiveInferenceQuery query = new LiveInferenceQuery(
+                    1.50,
+                    1.00,
+                    65,
+                    0,
+                    1,
+                    0,
+                    0,
+                    MatchModifiers.defaultModifiers(),
+                    -0.12,
+                    0.05,
+                    0.10,
+                    liveOdds,
+                    1.80,
+                    MarketType.MATCH_ODDS,
+                    "1",
+                    true // Short position
+            );
+
+            LiveAnalysisResult result = service.calculate(query);
+
+            assertThat(result.greenUpTargetMet()).isTrue();
+            assertThat(result.greenUpProfitRatio()).isNotNull();
+            assertThat(result.greenUpProfitRatio()).isCloseTo(0.40, within(EPSILON));
+        }
+
+        @Test
+        @DisplayName("Should NOT trigger greenUpTargetMet for Short position when Back odds are unfavorable")
+        void shouldNotTriggerGreenUpForShortPositionWhenBackOddsUnfavorable() {
+            // Position opened Lay @ 2.00. Target 10% (0.10).
+            // Current live Back odds drop to 1.50 (adverse movement).
+            // Profit ratio Lay = 1.0 - (2.00 / 1.50) = -33.3%.
+            List<MarketOdds> liveOdds = List.of(
+                    MarketOdds.create(1, MarketType.MATCH_ODDS, "1", 1.50, 1.55)
+            );
+
+            LiveInferenceQuery query = new LiveInferenceQuery(
+                    1.50,
+                    1.00,
+                    70,
+                    1,
+                    0,
+                    0,
+                    0,
+                    MatchModifiers.defaultModifiers(),
+                    -0.12,
+                    0.05,
+                    0.10,
+                    liveOdds,
+                    2.00,
+                    MarketType.MATCH_ODDS,
+                    "1",
+                    true // Short position
+            );
+
+            LiveAnalysisResult result = service.calculate(query);
+
+            assertThat(result.greenUpTargetMet()).isFalse();
+            assertThat(result.greenUpProfitRatio()).isNotNull();
+            assertThat(result.greenUpProfitRatio()).isCloseTo(1.0 - (2.00 / 1.50), within(EPSILON));
+        }
+
+        @Test
+        @DisplayName("Should return null profit ratio and false target when required exit odds are missing")
+        void shouldReturnNullProfitRatioWhenExitOddsMissing() {
+            // Short position opened Lay @ 2.00.
+            // Live odds exist for Match Odds "1" but ONLY provide Lay odds (Back odds is null).
+            List<MarketOdds> liveOdds = List.of(
+                    MarketOdds.create(1, MarketType.MATCH_ODDS, "1", null, 1.80)
+            );
+
+            LiveInferenceQuery query = new LiveInferenceQuery(
+                    1.50,
+                    1.00,
+                    50,
+                    0,
+                    0,
+                    0,
+                    0,
+                    MatchModifiers.defaultModifiers(),
+                    -0.12,
+                    0.05,
+                    0.10,
+                    liveOdds,
+                    2.00,
+                    MarketType.MATCH_ODDS,
+                    "1",
+                    true
+            );
+
+            LiveAnalysisResult result = service.calculate(query);
+
+            assertThat(result.greenUpProfitRatio()).isNull();
+            assertThat(result.greenUpTargetMet()).isFalse();
         }
 
         @Test

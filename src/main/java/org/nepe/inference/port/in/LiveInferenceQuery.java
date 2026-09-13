@@ -25,6 +25,7 @@ import java.util.List;
  * @param entryOdds           initial opening position odds (nullable, used for Green-Up profit evaluation)
  * @param entryMarketType     market type of the initial position (default: MATCH_ODDS)
  * @param entryOutcome        outcome of the initial position (default: "1")
+ * @param isShort             flag indicating whether initial position is Short (Lay entry) or Long (Back entry)
  */
 public record LiveInferenceQuery(
         double lambdaHomePre,
@@ -41,7 +42,8 @@ public record LiveInferenceQuery(
         List<MarketOdds> currentLiveOdds,
         Double entryOdds,
         org.nepe.match.domain.MarketType entryMarketType,
-        String entryOutcome
+        String entryOutcome,
+        boolean isShort
 ) {
 
     public LiveInferenceQuery {
@@ -52,7 +54,7 @@ public record LiveInferenceQuery(
     }
 
     /**
-     * Backward-compatible constructor defaulting entry market to 1X2 Match Odds on Home ("1").
+     * Backward-compatible constructor defaulting entry market to 1X2 Match Odds on Home ("1") and Long position.
      */
     public LiveInferenceQuery(
             double lambdaHomePre,
@@ -84,7 +86,8 @@ public record LiveInferenceQuery(
                 currentLiveOdds,
                 entryOdds,
                 org.nepe.match.domain.MarketType.MATCH_ODDS,
-                "1"
+                "1",
+                false
         );
     }
 }

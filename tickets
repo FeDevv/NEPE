@@ -222,3 +222,41 @@
   1. Configurato l'approccio nativo di virtual display server X11 in `.github/workflows/build.yml` installando `xvfb` (`sudo apt-get update && sudo apt-get install -y xvfb`).
   2. Incapsulato il comando Maven di build, test e analisi SonarCloud all'interno di `xvfb-run --auto-servernum mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=FeDevv_NEPE`.
   3. L'allocazione trasparente di un display virtuale in memoria X11 da parte del kernel Linux risolve alla radice il vincolo del sottosistema Glass/Prism di JavaFX senza alterare il codice sorgente o il `pom.xml`, garantendo piena compatibilità e stabilità a lungo termine con Java 25 e OpenJFX 26.
+
+---
+
+## Ticket 17: Supporto Nativo Posizioni Short e Centralizzazione Valutazione Green-Up nel Dominio (LiveInferenceService) [COMPLETED]
+* **Gravità:** `MAJOR` (Violazione purezza esagonale e disallineamento matematico nella valutazione Cash Out Short tra Use Case e Controller, violazione Vettore 1 Sezione 7 di AGENTS.md)
+* **Effort Atteso:** `MEDIUM`
+* **File coinvolti:** `org.nepe.inference.port.in.LiveInferenceQuery`, `org.nepe.inference.port.in.LiveAnalysisResult`, `org.nepe.inference.service.LiveInferenceService`, `org.nepe.match.adapter.in.LiveConsoleController`, `src/test/java/org/nepe/inference/service/LiveInferenceServiceTest.java`, `src/test/java/org/nepe/match/adapter/in/LiveConsoleControllerTest.java`
+* **Problema:** 
+  1. Il record di porta in ingresso `LiveInferenceQuery` non prevedeva alcun indicatore sulla tipologia di posizione aperta (`isShort`), accettando unicamente `entryOdds`, `entryMarketType` ed `entryOutcome`.
+  2. Il domain service `LiveInferenceService.evaluateGreenUpTarget` presupponeva rigidamente che la posizione aperta fosse di tipo Long (Punta / Back entry): cercava la corrispondente quota Lay sul mercato (`matchingOdds.getLayOdds()`) e calcolava il ratio di profitto con `EvCalculator.calculateGreenUpProfitRatioBack`.
+  3. Di conseguenza, quando nella Console Live il trader selezionava una posizione in Short (Banca / Lay entry), `LiveInferenceService` eseguiva una valutazione matematica errata (cercava quote Lay anziché quote Back, e applicava la formula Back anziché la formula Lay $1 - K_{\text{entry}} / K_{\text{exit}}$). Il flag `result.greenUpTargetMet()` restituito dal caso d'uso risultava scorretto.
+  4. Per sopperire a tale incompletezza del caso d'uso, il controller `LiveConsoleController` aveva implementato inline la logica di valutazione in `updateGreenUpDisplay`, calcolando per conto proprio il profit ratio, risolvendo le quote di uscita e verificando la soglia (`greenUpActive = profitRatio >= profitTarget`), scartando e ignorando del tutto `result.greenUpTargetMet()`. Questo costituiva una violazione della separazione esagonale e una duplicazione di logica di business nel presentation layer.
+* **Soluzione Realizzata:** 
+  1. In `LiveInferenceQuery.java`, aggiunto il campo canonico `boolean isShort` al record con costruttore backward-compatible a 13 parametri con default `false` (posizioni Long).
+  2. In `LiveAnalysisResult.java`, aggiunto il componente `Double greenUpProfitRatio` all'header canonico del record immutabile per esporre direttamente il rapporto di profitto calcolato (`null` se quote non disponibili).
+  3. In `LiveInferenceService.java`, introdotto il metodo `calculateGreenUpProfitRatio`:
+     - Se `isShort == true`: recupera la quota di liquidazione Back (`matchingOdds.getBackOdds()`) e calcola il ratio con `EvCalculator.calculateGreenUpProfitRatioLay(entryOdds, currentBackOdds)`.
+     - Se `isShort == false`: recupera la quota di liquidazione Lay (`matchingOdds.getLayOdds()`) e calcola il ratio con `EvCalculator.calculateGreenUpProfitRatioBack(entryOdds, currentLayOdds)`.
+     - Calcola `greenUpTargetMet = (profitRatio != null && profitRatio >= profitTarget)` e popola `LiveAnalysisResult` con entrambi i dati.
+  4. In `LiveConsoleController.java`, rimossi l'import di `EvCalculator` e qualsiasi calcolo matematico inline: il controller passa `isShort` a `LiveInferenceQuery` e consuma direttamente `result.greenUpProfitRatio()` per il rendering percentuale e `result.greenUpTargetMet()` per il banner di attivazione, preservando i messaggi informativi di attesa quote (`MSG_WAITING_BANCA_ODDS` e `MSG_WAITING_PUNTA_ODDS`).
+  5. In `LiveInferenceServiceTest.java`, aggiornati i test esistenti e aggiunti 3 nuovi test unitari mirati per posizioni Short (target raggiunto con quota Back in salita, target non raggiunto con movimento sfavorevole, assenza di quote Back). Tutti i 454 test del progetto passano deterministamente con esito positivo (0 errori, 0 fallimenti).
+
+---
+
+## Ticket 18: Completamento Exception Translation e Disassociazione competition_teams con Flush nei Repository Adapter [COMPLETED]
+* **Gravità:** `MAJOR` (Fuga di eccezioni SQL/Spring Data non tradotte e mancata pulizia vincoli referenziali in eliminazione entità, violazione Vettore 4 Sezione 7 di AGENTS.md)
+* **Effort Atteso:** `LOW`
+* **File coinvolti:** `org.nepe.competition.adapter.out.TeamRepositoryAdapter`, `org.nepe.competition.adapter.out.SeasonRepositoryAdapter`, `org.nepe.match.adapter.out.MatchRepositoryAdapter`, `src/test/java/org/nepe/competition/adapter/out/TeamRepositoryAdapterTest.java`
+* **Problema:** 
+  1. In `TeamRepositoryAdapter.deleteById(int id)` non veniva invocata la disassociazione preventiva dalla tabella ponte `competition_teams` (`competitionTeamRepository.deleteByTeamId(id)`), pur essendo `competitionTeamRepository` già iniettato nel componente e disponendo del relativo metodo.
+  2. In `TeamRepositoryAdapter`, `SeasonRepositoryAdapter` e `MatchRepositoryAdapter`, la chiamata `springDataRepository.deleteById(id)` veniva eseguita senza `springDataRepository.flush()` all'interno del blocco `try-catch`.
+  3. Poiché i metodi applicativi (`TeamService.deleteTeam`, `SeasonService.deleteSeason`, `MatchService.deleteMatch`) sono delimitati da `@Transactional`, l'ActionQueue di Hibernate differisce l'istruzione SQL DELETE al commit della transazione fuori dall'adapter. 
+  4. Se l'entità possiede vincoli di integrità referenziale violati (es. partite collegate in `matches` con `ON DELETE RESTRICT`), l'eccezione `DataIntegrityViolationException` veniva sollevata solo al commit transazionale, scavalcando il blocco `catch` dell'adapter. Essa sfuggiva al pattern di traduzione in `DomainValidationException`, trapelando all'esterno e venendo intercettata nei controller grafici solo dal generico blocco `catch (Exception e)` come "Errore di sistema imprevisto".
+* **Soluzione Realizzata:** 
+  1. In `TeamRepositoryAdapter.deleteById(int id)`: aggiunta la chiamata `competitionTeamRepository.deleteByTeamId(id);` prima dell'eliminazione del team, garantendo la pulizia a cascata nella tabella ponte `competition_teams`. Aggiunto `springDataRepository.flush();` nel blocco `try` per emettere subito lo statement SQL e catturare qualsiasi violazione referenziale legata a match esistenti.
+  2. In `SeasonRepositoryAdapter.deleteById(int id)`: aggiunto `springDataRepository.flush();` all'interno del blocco `try-catch`, forzando la verifica immediata di integrità referenziale per le partite dipendenti e traducendo l'eccezione SQL in `DomainValidationException`.
+  3. In `MatchRepositoryAdapter.deleteById(int id)`: aggiunto `springDataRepository.flush();` all'interno del blocco `try-catch`, traducendo tempestivamente qualsiasi vincolo DB da eventi o quote collegate in `DomainValidationException`.
+  4. Creata la suite completa di test unitari `TeamRepositoryAdapterTest.java` (22 test) che verifica l'ordine rigoroso delle operazioni (`competitionTeamRepository.deleteByTeamId` -> `springDataRepository.deleteById` -> `springDataRepository.flush()`), la corretta traduzione di `DataIntegrityViolationException` in `DomainValidationException` (sia durante il `flush` sia in `deleteById`), nonché la copertura esaustiva di tutte le query, mutazioni e associazioni del repository. L'intera suite di test del progetto conta ora 476 test su 476 passati deterministamente (0 fallimenti, 0 errori).
