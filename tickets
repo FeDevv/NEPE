@@ -170,3 +170,41 @@
   1. Verificato che tutti gli 11 dialoghi `Alert` presenti nell'applicazione mantengano il rendering chiaro/bianco nativo del sistema operativo (sfondo bianco, testo scuro ad alto contrasto), evitando qualsiasi iniezione forzata del tema scuro sul `DialogPane`.
   2. Preservato il Dark Theme per i popup operativi complessi (`create_match_popup.fxml`, `edit_match_stats_popup.fxml`, `alias_mapping_popup.fxml`).
   3. Configurato sistematicamente il metodo helper `getWindow()` e `initOwner(owner)` su tutte le istanze di `Alert` in `DashboardController.java` (`handleFinishMatch`, `handlePostponeMatch`, `handleCancelMatch`, `handleDeleteMatch`, `handleStartLiveMatch`, `showInformationAlert`, `showErrorAlert`), `PreMatchAnalysisController.java` (`handleDeleteOdds`) e `CompetitionViewController.java` (`handleDeleteCompetition`, `handleDeleteTeam`, `showErrorAlert`), garantendo stabilità di focus e ancoraggio modale desktop impeccabile su tutti i sistemi operativi.
+
+---
+
+## Ticket 14: Allineamento Vantaggio Campo Dinamico di Competizione in LiveConsoleController [COMPLETED]
+* **Gravità:** `MAJOR` (Inconsistenza matematica tra pre-match e live console, violazione Sezione 3.2 e Sezione 7.2 Vettore 2 di AGENTS.md)
+* **Effort Atteso:** `LOW`
+* **File coinvolti:** `org.nepe.match.adapter.in.LiveConsoleController`, `src/test/java/org/nepe/match/adapter/in/LiveConsoleControllerTest.java`
+* **Problema:** Nel metodo `recalculateLiveInference()` di `LiveConsoleController`, il fattore campo pre-match per determinare $\lambda_{\text{Pre}}$ e $\mu_{\text{Pre}}$ veniva cablato staticamente al valore di default:
+  `double homeAdv = currentMatch.isNeutralVenue() ? 1.0 : org.nepe.inference.domain.TeamStrengthCalculator.DEFAULT_HOME_ADVANTAGE;`
+  ignorando completamente il metodo della porta applicativa `manageMatchUseCase.getDynamicHomeAdvantage(currentMatch.competitionId(), currentMatch.seasonId())`.
+  Se un campionato ha un override manuale del fattore campo (es. 1.35 o 1.15) o una stima calcolata empiricamente tramite Empirical Bayes Shrinkage, la Dashboard e la schermata di Analisi Pre-Match calcolavano correttamente le quote eque e i tassi con tale valore, mentre all'ingresso nella Console Live i tassi pre-match subivano una discontinuità arbitraria ricadendo su 1.20.
+* **Soluzione Realizzata:** 
+  1. In `LiveConsoleController.java`, sostituito il fallback cablato con l'invocazione di porta:
+     `double baseHomeAdv = manageMatchUseCase.getDynamicHomeAdvantage(currentMatch.competitionId(), currentMatch.seasonId());`
+     `double homeAdv = currentMatch.isNeutralVenue() ? 1.0 : baseHomeAdv;`
+     eliminando qualsiasi valore hardcoded e garantendo perfetta continuità matematica tra pre-match e live.
+  2. Aggiunto un controllo di null-safety su `comboLiveMatchSelector` in `setScope(...)` per evitare warning impropri su controlli non ancora inizializzati.
+  3. Aggiornato `setupStandardMocks()` in `LiveConsoleControllerTest.java` con `when(manageMatchUseCase.getDynamicHomeAdvantage(anyInt(), anyInt())).thenReturn(1.20);` e introdotto il test di regressione dedicato `shouldRetrieveDynamicHomeAdvantageAndHandleNeutralVenue()`, verificando sia il recupero dinamico dal use case sia la corretta gestione del flag campo neutro (`isNeutralVenue = true`). Tutte le 15 asserzioni del controller e i 450 test del progetto passano con successo.
+
+---
+
+## Ticket 15: Caching dei Parametri Pre-Match ed Eliminazione Query I/O Sincrone sul Thread UI in LiveConsoleController [COMPLETED]
+* **Gravità:** `MAJOR` (Rischio micro-freeze interfaccia grafica JavaFX ad ogni digitazione quote ed esecuzione ridondante di query DB storiche, violazione Vettore 1 e Vettore 3 di AGENTS.md)
+* **Effort Atteso:** `LOW`
+* **File coinvolti:** `org.nepe.match.adapter.in.LiveConsoleController`, `src/test/java/org/nepe/match/adapter/in/LiveConsoleControllerTest.java`
+* **Problema:** Ad ogni battitura di tasto nei campi di inserimento quote live (`txtLiveBack1`, `txtLiveLay1`, ecc.), alla variazione del minuto di gioco (`+1 Min`, `-1 Min`, `+5 Min`) o alla registrazione di eventi, `LiveConsoleController` invoca `recalculateLiveInference()`. Questo metodo eseguiva in modo sincrono sul thread di interfaccia grafica (`JavaFX Application Thread`):
+  - Due query al database per lo storico partite di casa e trasferta (`manageMatchUseCase.getHistoricalTeamPerformances`).
+  - Una query aggregata per l'xG medio di campionato (`manageMatchUseCase.getLeagueAverageXgPerTeam`).
+  - Una query per il vantaggio campo dinamico (`manageMatchUseCase.getDynamicHomeAdvantage`).
+  - Una query per le quote di riferimento salvate (`manageMarketOddsUseCase.getOddsForMatch`).
+  - L'aggregazione delle forze $\alpha$, $\beta$ e il ricalcolo dei tassi pre-match $\lambda_{\text{Pre}}$ e $\mu_{\text{Pre}}$ tramite `TeamStrengthCalculator`.
+  Poiché i tassi pre-match e le quote di riferimento sono proprietà invarianti della fixture che non cambiano durante lo svolgimento in-game o digitando le quote del bookmaker, rieseguire 5 query SQL sincrone sul thread UI ad ogni keystroke costituiva un overhead ingiustificato e rischiava di degradare la fluidità a 60 FPS dell'applicazione.
+* **Soluzione Realizzata:** 
+  1. Introdotto il metodo helper `computeAndCachePreMatchParameters(MatchDetailsDTO match)` che calcola e memorizza in campi di istanza (`cachedLambdaPre`, `cachedMuPre`, `cachedModifiers`, `cachedStoredOdds`) i tassi pre-match e i parametri statici una sola volta all'apertura o selezione della partita (`loadMatchDetails`).
+  2. Preservato il flag `isUpdatingQuickOdds` in `clearAllQuickOddsFields()` salvando lo stato pregresso (`wasUpdating`), evitando che la pulizia campi resetti prematuramente il flag scatenando ricalcoli multipli non necessari durante il setup iniziale della partita.
+  3. Nel metodo reattivo ad alta frequenza `recalculateLiveInference()`, rimossa ogni chiamata a query I/O verso i casi d'uso: il motore live esegue esclusivamente calcoli matematici in-memory via `LiveInferenceService` / `LiveEngineModifiers`, garantendo zero latenza I/O sul `JavaFX Application Thread`.
+  4. Aggiunti metodi getter di ispezione (`getCachedLambdaPre()`, `getCachedMuPre()`, `getCachedModifiers()`) e azzeramento difensivo dello stato in `updateControlStates()` quando nessun match è selezionato.
+  5. Introdotto il test di regressione dedicato `shouldCachePreMatchRatesAndAvoidSynchronousDbQueriesOnLiveOddsChanges()` in `LiveConsoleControllerTest.java`, verificando che a fronte di molteplici variazioni reattive di quote live e minuti di gioco, il numero di query DB storiche e quote rimanga rigorosamente pari a 1 (avvenuta una sola volta durante il caricamento iniziale). Tutti i 451 test del progetto passano deterministamente con esito positivo.

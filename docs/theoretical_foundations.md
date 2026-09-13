@@ -52,7 +52,12 @@ $$\alpha_i = \frac{\bar{xG}_{\text{segnati}, i}}{\bar{xG}_{\text{campionato}}}, 
 $$\lambda_{\text{Home}} = \alpha_{\text{Home}} \times \beta_{\text{Away}} \times \bar{xG}_{\text{campionato}} \times \text{EffectiveHomeAdvantage} \times \text{mod}_{\text{att,Home}} \times \text{mod}_{\text{def,Away}}$$
 $$\mu_{\text{Away}} = \alpha_{\text{Away}} \times \beta_{\text{Home}} \times \bar{xG}_{\text{campionato}} \times \frac{1}{\text{EffectiveHomeAdvantage}} \times \text{mod}_{\text{att,Away}} \times \text{mod}_{\text{def,Home}}$$
 
-* **EffectiveHomeAdvantage:** Pari a $1.00$ se `is_neutral_venue == true`, altrimenti pari al fattore campo della competizione (default $1.20$ o valore calcolato/configurato in `competitions.home_advantage`).
+* **EffectiveHomeAdvantage:** Pari a $1.00$ se `is_neutral_venue == true` (campo neutro, nessun vantaggio territoriale), altrimenti pari al fattore campo della competizione determinato gerarchicamente:
+  1. *Override Manuale:* Se configurato esplicitamente dall'utente in `competitions.home_advantage`.
+  2. *Stima Dinamica (Empirical Bayes Shrinkage):* Ponderazione continua tra la stagione precedente ($\text{HA}_{\text{prior}}$) e le partite concluse della stagione attiva ($\text{HA}_{\text{current}}$):
+     $$\text{HA}_{\text{estimate}} = (1 - w(M)) \cdot \text{HA}_{\text{prior}} + w(M) \cdot \text{HA}_{\text{current}}, \quad \text{con } w(M) = \frac{M}{M + 40}$$
+     dove $M$ è il numero di partite terminate nella stagione in corso. La stima è protetta con clamping di sicurezza nell'intervallo $[1.00, 1.60]$.
+  3. *Fallback di Dominio:* In assenza totale o parziale di dati storici ($M = 0$ e nessuna stagione precedente), il sistema adotta la costante di dominio `DEFAULT_HOME_ADVANTAGE = 1.20`.
 * **Regola Mutual Low-Urgency:** Se entrambe le formazioni hanno il flag `low_urgency` attivo, a entrambi i tassi $\lambda_{\text{Home}}$ e $\mu_{\text{Away}}$ viene applicato il moltiplicatore riduttivo di prudenza pari a $0.65$.
 
 ---

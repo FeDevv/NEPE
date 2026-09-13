@@ -386,6 +386,95 @@ class LiveConsoleControllerTest {
         assertThat(boxBanner.isVisible()).isFalse();
     }
 
+    @Test
+    @DisplayName("Ticket 14: Live console should dynamically retrieve competition home advantage and respect neutral venue flag")
+    void shouldRetrieveDynamicHomeAdvantageAndHandleNeutralVenue() {
+        LiveConsoleController controller = createController();
+        initAllControls(controller);
+        setupStandardMocks();
+
+        when(manageMatchUseCase.getDynamicHomeAdvantage(10, 20)).thenReturn(1.35);
+
+        controller.initialize();
+        MatchDetailsDTO standardMatch = createSampleLiveMatch(); // isNeutralVenue is false, comp 10, season 20
+        controller.loadMatchDetails(standardMatch);
+
+        verify(manageMatchUseCase, atLeastOnce()).getDynamicHomeAdvantage(10, 20);
+
+        // Now test neutral venue match
+        MatchDetailsDTO neutralMatch = new MatchDetailsDTO(
+                2,
+                Instant.parse("2026-09-12T18:00:00Z"),
+                MatchState.LIVE,
+                false,
+                0, 0,
+                0, 0,
+                0, 0,
+                0, 0,
+                null, null,
+                null, null, null,
+                true, false, false, false, false, // isNeutralVenue = true
+                1.0, 1.0, 1.0, 1.0,
+                0,
+                10, "I1", "Serie A", "Italy", -0.12,
+                20, "2024/2025",
+                101, "Inter",
+                102, "Milan"
+        );
+
+        controller.loadMatchDetails(neutralMatch);
+        Label lblResidual = getField(controller, "lblResidualRates");
+        assertThat(lblResidual.getText()).isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("Ticket 15: Pre-match rates should be cached on loadMatchDetails and not re-queried during live odds or minute updates")
+    void shouldCachePreMatchRatesAndAvoidSynchronousDbQueriesOnLiveOddsChanges() {
+        LiveConsoleController controller = createController();
+        initAllControls(controller);
+        setupStandardMocks();
+
+        controller.initialize();
+        MatchDetailsDTO match = createSampleLiveMatch();
+
+        // 1. Load match details: pre-match rates must be computed and cached once
+        controller.loadMatchDetails(match);
+
+        assertThat(controller.getCachedLambdaPre()).isPositive();
+        assertThat(controller.getCachedMuPre()).isPositive();
+        assertThat(controller.getCachedModifiers()).isNotNull();
+
+        // Verify initial invocation count during loadMatchDetails (1 home history, 1 away history, 1 league avg, 1 dynamic home adv, 1 stored odds)
+        verify(manageMatchUseCase, times(1)).getHistoricalTeamPerformances(match.homeTeamId(), match.competitionId(), match.seasonId(), 10);
+        verify(manageMatchUseCase, times(1)).getHistoricalTeamPerformances(match.awayTeamId(), match.competitionId(), match.seasonId(), 10);
+        verify(manageMatchUseCase, times(1)).getLeagueAverageXgPerTeam(match.competitionId(), match.seasonId());
+        verify(manageMatchUseCase, times(1)).getDynamicHomeAdvantage(match.competitionId(), match.seasonId());
+        verify(manageMarketOddsUseCase, times(1)).getOddsForMatch(match.matchId());
+
+        // 2. Perform frequent in-game actions: live odds typing, minute increment, odds clear
+        TextField txtBack1 = getField(controller, "txtLiveBack1");
+        TextField txtLay1 = getField(controller, "txtLiveLay1");
+        TextField txtBackX = getField(controller, "txtLiveBackX");
+
+        txtBack1.setText("2.50");
+        txtLay1.setText("2.54");
+        txtBackX.setText("3.40");
+        controller.handlePlus1Min(new ActionEvent());
+        controller.handlePlus5Min(new ActionEvent());
+        controller.handleClearLiveOdds(new ActionEvent());
+
+        // 3. Verify that despite 6 reactive recalculations, zero additional database queries were made
+        verify(manageMatchUseCase, times(1)).getHistoricalTeamPerformances(match.homeTeamId(), match.competitionId(), match.seasonId(), 10);
+        verify(manageMatchUseCase, times(1)).getHistoricalTeamPerformances(match.awayTeamId(), match.competitionId(), match.seasonId(), 10);
+        verify(manageMatchUseCase, times(1)).getLeagueAverageXgPerTeam(match.competitionId(), match.seasonId());
+        verify(manageMatchUseCase, times(1)).getDynamicHomeAdvantage(match.competitionId(), match.seasonId());
+        verify(manageMarketOddsUseCase, times(1)).getOddsForMatch(match.matchId());
+
+        // Residual rates UI should still be updated reactively
+        Label lblResidual = getField(controller, "lblResidualRates");
+        assertThat(lblResidual.getText()).isNotEmpty();
+    }
+
     // --- Helper Methods ---
 
     private LiveConsoleController createController() {
@@ -402,6 +491,7 @@ class LiveConsoleControllerTest {
     private void setupStandardMocks() {
         when(manageSettingsUseCase.getSettings()).thenReturn(AppSettings.defaults());
         when(manageMatchUseCase.getLeagueAverageXgPerTeam(anyInt(), anyInt())).thenReturn(1.35);
+        when(manageMatchUseCase.getDynamicHomeAdvantage(anyInt(), anyInt())).thenReturn(1.20);
         when(manageMatchUseCase.getHistoricalTeamPerformances(anyInt(), anyInt(), anyInt(), anyInt()))
                 .thenReturn(List.of(
                         new TeamStrengthCalculator.MatchPerformance(1.6, 1.0, false),

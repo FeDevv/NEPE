@@ -11,6 +11,7 @@ import javafx.stage.Stage;
 import javafx.util.StringConverter;
 import org.nepe.bootstrap.SpringFXMLLoader;
 import org.nepe.inference.domain.EvCalculator;
+import org.nepe.inference.domain.TeamStrengthCalculator;
 import org.nepe.inference.port.in.CalculateLiveInferenceUseCase;
 import org.nepe.inference.port.in.LiveAnalysisResult;
 import org.nepe.inference.port.in.LiveInferenceQuery;
@@ -192,6 +193,12 @@ public class LiveConsoleController {
     private AppSettings currentSettings;
     private boolean isUpdatingQuickOdds = false;
 
+    // --- Cached Pre-Match Calculation Parameters (Avoiding redundant synchronous DB I/O on UI thread) ---
+    private double cachedLambdaPre = 0.0;
+    private double cachedMuPre = 0.0;
+    private MatchModifiers cachedModifiers;
+    private List<MarketOdds> cachedStoredOdds = Collections.emptyList();
+
     public LiveConsoleController(LiveMatchTradingUseCase liveMatchTradingUseCase,
                                  CalculateLiveInferenceUseCase calculateLiveInferenceUseCase,
                                  ManageMatchUseCase manageMatchUseCase,
@@ -341,9 +348,11 @@ public class LiveConsoleController {
             List<MatchDetailsDTO> scheduledMatches = manageMatchUseCase.getMatchDetailsByState(competitionId, seasonId, MatchState.SCHEDULED);
             List<MatchDetailsDTO> combined = new java.util.ArrayList<>(liveMatches);
             combined.addAll(scheduledMatches);
-            comboLiveMatchSelector.setItems(FXCollections.observableArrayList(combined));
-            if (!combined.isEmpty()) {
-                comboLiveMatchSelector.getSelectionModel().selectFirst();
+            if (comboLiveMatchSelector != null) {
+                comboLiveMatchSelector.setItems(FXCollections.observableArrayList(combined));
+                if (!combined.isEmpty()) {
+                    comboLiveMatchSelector.getSelectionModel().selectFirst();
+                }
             }
         } catch (Exception e) {
             log.warn("Could not load live matches for competition ID {} and season ID {}", competitionId, seasonId, e);
@@ -360,6 +369,10 @@ public class LiveConsoleController {
         this.currentMatch = match;
         this.scopeCompetitionId = match.competitionId();
         this.scopeSeasonId = match.seasonId();
+        this.currentSettings = manageSettingsUseCase.getSettings();
+
+        // 1. Pre-compute and cache pre-match parameters immediately
+        computeAndCachePreMatchParameters(match);
 
         lblHomeTeamName.setText(match.homeTeamName());
         lblAwayTeamName.setText(match.awayTeamName());
@@ -429,58 +442,84 @@ public class LiveConsoleController {
         };
     }
 
-    // --- Core Real-Time In-Game Probability Recalculation ---
-
-    private void recalculateLiveInference() {
-        if (currentMatch == null) return;
+    /**
+     * Pre-computes and caches pre-match rates (lambdaPre, muPre), match modifiers,
+     * and stored baseline odds upon match selection or match configuration changes.
+     * <p>
+     * This isolates heavy synchronous database queries and mathematical team strength aggregations
+     * from high-frequency in-game events (minute stepper, live odds typing, score changes),
+     * ensuring zero-lag 60 FPS responsiveness on the JavaFX Application Thread.
+     *
+     * @param match match details DTO
+     */
+    private void computeAndCachePreMatchParameters(MatchDetailsDTO match) {
+        if (match == null) return;
 
         try {
             int defaultN = (currentSettings != null) ? currentSettings.getDefaultNMatches() : 10;
             double gamma = (currentSettings != null) ? currentSettings.getSeasonalDecayGamma() : 0.70;
 
             // 1. Fetch team historical match performances (N_min = 10 with previous season gamma decay)
-            List<org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance> homeHistory =
-                    manageMatchUseCase.getHistoricalTeamPerformances(currentMatch.homeTeamId(), currentMatch.competitionId(), currentMatch.seasonId(), defaultN);
-            List<org.nepe.inference.domain.TeamStrengthCalculator.MatchPerformance> awayHistory =
-                    manageMatchUseCase.getHistoricalTeamPerformances(currentMatch.awayTeamId(), currentMatch.competitionId(), currentMatch.seasonId(), defaultN);
+            List<TeamStrengthCalculator.MatchPerformance> homeHistory =
+                    manageMatchUseCase.getHistoricalTeamPerformances(match.homeTeamId(), match.competitionId(), match.seasonId(), defaultN);
+            List<TeamStrengthCalculator.MatchPerformance> awayHistory =
+                    manageMatchUseCase.getHistoricalTeamPerformances(match.awayTeamId(), match.competitionId(), match.seasonId(), defaultN);
 
-            double leagueAvgXg = manageMatchUseCase.getLeagueAverageXgPerTeam(currentMatch.competitionId(), currentMatch.seasonId());
+            double leagueAvgXg = manageMatchUseCase.getLeagueAverageXgPerTeam(match.competitionId(), match.seasonId());
 
-            org.nepe.inference.domain.TeamStrengthCalculator.TeamStrength homeStrength =
-                    org.nepe.inference.domain.TeamStrengthCalculator.calculateStrength(homeHistory, leagueAvgXg, gamma);
-            org.nepe.inference.domain.TeamStrengthCalculator.TeamStrength awayStrength =
-                    org.nepe.inference.domain.TeamStrengthCalculator.calculateStrength(awayHistory, leagueAvgXg, gamma);
+            TeamStrengthCalculator.TeamStrength homeStrength =
+                    TeamStrengthCalculator.calculateStrength(homeHistory, leagueAvgXg, gamma);
+            TeamStrengthCalculator.TeamStrength awayStrength =
+                    TeamStrengthCalculator.calculateStrength(awayHistory, leagueAvgXg, gamma);
 
-            double homeAdv = currentMatch.isNeutralVenue() ? 1.0 : org.nepe.inference.domain.TeamStrengthCalculator.DEFAULT_HOME_ADVANTAGE;
+            double baseHomeAdv = manageMatchUseCase.getDynamicHomeAdvantage(match.competitionId(), match.seasonId());
+            double homeAdv = match.isNeutralVenue() ? 1.0 : baseHomeAdv;
 
-            MatchModifiers modifiers = new MatchModifiers(
-                    currentMatch.isNeutralVenue(),
-                    currentMatch.isMustWinHome(),
-                    currentMatch.isMustWinAway(),
-                    currentMatch.isLowUrgencyHome(),
-                    currentMatch.isLowUrgencyAway(),
-                    currentMatch.modAttHome(),
-                    currentMatch.modDefHome(),
-                    currentMatch.modAttAway(),
-                    currentMatch.modDefAway()
+            this.cachedModifiers = new MatchModifiers(
+                    match.isNeutralVenue(),
+                    match.isMustWinHome(),
+                    match.isMustWinAway(),
+                    match.isLowUrgencyHome(),
+                    match.isLowUrgencyAway(),
+                    match.modAttHome(),
+                    match.modDefHome(),
+                    match.modAttAway(),
+                    match.modDefAway()
             );
 
-            org.nepe.inference.domain.TeamStrengthCalculator.PreMatchRates preRates =
-                    org.nepe.inference.domain.TeamStrengthCalculator.calculatePreMatchRates(
-                            homeStrength, awayStrength, leagueAvgXg, homeAdv, modifiers
+            TeamStrengthCalculator.PreMatchRates preRates =
+                    TeamStrengthCalculator.calculatePreMatchRates(
+                            homeStrength, awayStrength, leagueAvgXg, homeAdv, this.cachedModifiers
                     );
 
-            double lambdaPre = preRates.lambdaHome();
-            double muPre = preRates.muAway();
+            this.cachedLambdaPre = preRates.lambdaHome();
+            this.cachedMuPre = preRates.muAway();
+
+            // Cache stored baseline market odds for this match
+            List<MarketOdds> storedOdds = manageMarketOddsUseCase.getOddsForMatch(match.matchId());
+            this.cachedStoredOdds = (storedOdds != null) ? storedOdds : Collections.emptyList();
+        } catch (Exception e) {
+            log.error("Could not compute pre-match parameters for match ID {}", match.matchId(), e);
+        }
+    }
+
+    // --- Core Real-Time In-Game Probability Recalculation ---
+
+    private void recalculateLiveInference() {
+        if (currentMatch == null) return;
+
+        try {
+            if (cachedModifiers == null) {
+                computeAndCachePreMatchParameters(currentMatch);
+            }
 
             double commission = (currentSettings != null) ? currentSettings.getCommissionRate() : 0.05;
             double profitTarget = (currentSettings != null) ? currentSettings.getGreenUpProfitTarget() : 0.10;
 
-            // 4. Assemble market odds: preload stored baseline odds and overlay with in-memory quick live odds
-            List<MarketOdds> storedOdds = manageMarketOddsUseCase.getOddsForMatch(currentMatch.matchId());
+            // 1. Assemble market odds: preload cached baseline odds and overlay with in-memory quick live odds
             Map<String, MarketOdds> liveOddsMap = new HashMap<>();
-            if (storedOdds != null) {
-                for (MarketOdds o : storedOdds) {
+            if (cachedStoredOdds != null) {
+                for (MarketOdds o : cachedStoredOdds) {
                     if (o != null && o.getMarketType() != null && o.getOutcome() != null) {
                         liveOddsMap.put(o.getMarketType().name() + ":" + o.getOutcome().trim().toUpperCase(), o);
                     }
@@ -500,7 +539,7 @@ public class LiveConsoleController {
 
             List<MarketOdds> liveOddsList = new ArrayList<>(liveOddsMap.values());
 
-            // 5. Resolve entry position parameters for Green-Up evaluation
+            // 2. Resolve entry position parameters for Green-Up evaluation
             String selectedOutcome = (comboEntryOutcome != null && comboEntryOutcome.getValue() != null)
                     ? comboEntryOutcome.getValue() : "1";
             MarketType entryMarket;
@@ -520,14 +559,14 @@ public class LiveConsoleController {
             }
 
             LiveInferenceQuery query = new LiveInferenceQuery(
-                    lambdaPre,
-                    muPre,
+                    cachedLambdaPre,
+                    cachedMuPre,
                     currentMinute,
                     currentHomeScore,
                     currentAwayScore,
                     currentHomeRedCards,
                     currentAwayRedCards,
-                    modifiers,
+                    cachedModifiers,
                     currentMatch.dixonColesRho(),
                     commission,
                     profitTarget,
@@ -761,6 +800,7 @@ public class LiveConsoleController {
     }
 
     private void clearAllQuickOddsFields() {
+        boolean wasUpdating = isUpdatingQuickOdds;
         isUpdatingQuickOdds = true;
         try {
             if (txtLiveBack1 != null) txtLiveBack1.clear();
@@ -774,7 +814,7 @@ public class LiveConsoleController {
             if (txtLiveBackOver != null) txtLiveBackOver.clear();
             if (txtLiveLayOver != null) txtLiveLayOver.clear();
         } finally {
-            isUpdatingQuickOdds = false;
+            isUpdatingQuickOdds = wasUpdating;
         }
     }
 
@@ -904,6 +944,10 @@ public class LiveConsoleController {
 
     private void updateControlStates() {
         if (currentMatch == null) {
+            this.cachedLambdaPre = 0.0;
+            this.cachedMuPre = 0.0;
+            this.cachedModifiers = null;
+            this.cachedStoredOdds = Collections.emptyList();
             if (btnStartLive != null) btnStartLive.setDisable(true);
             if (btnFinishMatch != null) btnFinishMatch.setDisable(true);
             setEventButtonsDisable(true);
@@ -992,6 +1036,18 @@ public class LiveConsoleController {
 
     public Integer getScopeSeasonId() {
         return scopeSeasonId;
+    }
+
+    public double getCachedLambdaPre() {
+        return cachedLambdaPre;
+    }
+
+    public double getCachedMuPre() {
+        return cachedMuPre;
+    }
+
+    public MatchModifiers getCachedModifiers() {
+        return cachedModifiers;
     }
 
     private static String formatDateTime(Instant instant) {

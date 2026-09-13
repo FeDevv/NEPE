@@ -171,7 +171,9 @@ graph TD
 * **Primary Target:** Entire `src/main/java/org/nepe/**` hierarchy, `docs/architectural_design.md`
 * **Audit Checklist:**
   - [ ] Zero illegal imports in `domain` packages (`org.springframework`, `jakarta.persistence`, `javafx`).
+  - [ ] Zero inline domain/mathematical calculations in Inbound/Outbound Adapters (e.g., probability math, time decay, EV formulas, scoring heuristics must NEVER be calculated directly in JavaFX controllers, but must delegate to domain services/models or dedicated use cases; if missing, create appropriate domain ports/services).
   - [ ] Clean Inbound/Outbound port contracts; no leakage of JPA entities or UI nodes into domain.
+  - [ ] Absence of inappropriate hardcoded values or magic numbers in controllers/adapters (parameters like commission rates, sample sizes, and decay factors must be dynamically retrieved or read from settings/competition entities).
   - [ ] Exception translation pattern enforced in all Outbound Adapters.
   - [ ] Single Responsibility and DRY adherence without over-engineering.
 
@@ -253,3 +255,73 @@ All agents filing issues or review notes must use the following standardized str
 * **MAJOR:** Missing edge-case handling, UI freeze under load, missing index, or doc-code contradiction.
 * **MINOR:** Sub-optimal performance, naming inconsistency, missing invariant validation error message.
 * **IMPROVEMENT:** Code readability enhancement, additional test scenario, or doc phrasing refinement.
+
+---
+
+## 7. Master Protocol: Clean-Context Comprehensive System Audit
+
+When an autonomous AI agent is spawned in a **clean context** to perform a total system verification pass of NEPE, it MUST adhere to the following operational protocol.
+
+### 7.1 Objective & Strict Severity Filtering Policy
+* **Current Operational Baseline:** The software is currently functionally operative with all 15 known tickets resolved and 449/449 tests passing.
+* **Strict Severity Threshold:** **Focus exclusively on detecting BLOCKER, CRITICAL, and MAJOR defects.**
+* **Filtering Directive:** Do NOT file `MINOR` cosmetic suggestions, stylistic refactorings, or trivial `IMPROVEMENT` notes (improvements are always theoretically possible in any mature software). The objective of the clean-context audit is to identify genuine defects, architectural leaks, or calculation flaws that threaten correctness, reliability, or maintainability.
+
+### 7.2 The Five Core Inspection Vectors
+
+#### Vector 1: Hexagonal Purity & Inline Calculation Ban
+* **The Invariant:** Inbound Adapters (JavaFX Controllers in `org.nepe.*.adapter.in.*`) and Outbound Adapters (Repositories/Parsers in `org.nepe.*.adapter.out.*`) MUST NOT perform inline mathematical computations, domain aggregations, or business heuristics.
+* **What to Inspect:**
+  - Check controllers for inline probability math, Poisson calculations, Dixon-Coles adjustments, time-decay scalers, red card multipliers, or EV/Green-Up ratio formulas.
+  - All mathematical and trading evaluations MUST delegate strictly to Domain models/services (`EvCalculator`, `PoissonModel`, `DixonColesModel`, `LiveEngineModifiers`, `TeamStrengthCalculator`, `XgEstimator`) or Inbound Ports (`*UseCase`).
+  - If a controller performs calculations because a domain method or port is missing, the agent MUST flag this as an architectural violation and design the appropriate Inbound Port/Domain Service rather than keeping inline math in the UI.
+
+#### Vector 2: Hard-Coded Values & Magic Numbers Audit
+* **The Invariant:** Domain parameters, business thresholds, statistical baselines, and database credentials must never be hardcoded in application logic or controllers.
+* **What to Inspect:**
+  - Verify that exchange commission rates, historical sample sizes ($N$), and inter-season decay factors ($\gamma$) are dynamically retrieved via `AppSettings` / `ManageSettingsUseCase` or user input, never hardcoded in service implementations.
+  - Verify that league parameters (such as Dixon-Coles $\rho$ or `home_advantage`) are dynamically loaded from the `Competition` database entity, using fallback defaults only when DB attributes are explicitly null.
+  - Ensure any mathematical fallbacks in Domain Core (`DEFAULT_LEAGUE_AVG_XG = 1.35`, `DEFAULT_HOME_ADVANTAGE = 1.20`, `DEFAULT_RHO = -0.1200`) are explicitly declared as named constants within domain classes, never scattered as raw literals.
+
+#### Vector 3: Runtime Stability, Concurrency & UI Thread Safety
+* **What to Inspect:**
+  - Verify that heavy asynchronous operations (such as pre-match inference evaluation across schedules or CSV parsing) run on Virtual Threads (`Thread.startVirtualThread`), and that all mutations to JavaFX Scene Graph controls are strictly wrapped in `Platform.runLater(...)`.
+  - Verify that all modal dialogs (`Alert`) invoke `initOwner(getWindow())` anchored to an active stage window to avoid modal detachment and focus traps on macOS / Linux.
+  - Verify null-safety on all optional statistical fields (scores, shots, red cards, odds) to eliminate any risk of unhandled `NullPointerException`.
+
+#### Vector 4: Data Layer, Overwrite Protection & Timezones
+* **What to Inspect:**
+  - Verify that the CSV re-import pipeline (`ImportCsvMatchesService`) strictly enforces the `is_manually_edited == true` overwrite protection barrier: scores, statistics, manual xG, and modifiers must never be overwritten on existing matches; only missing reference odds may be backfilled.
+  - Verify timestamp normalization: all timestamps must be stored in UTC (`Instant` / `DATETIME`) and presented in the local timezone (`Europe/Rome` / CET/CEST).
+  - Verify cascading rules: deleting a team or competition must cascade properly (`team_aliases`, `competition_teams`), while active fixtures in `matches` must enforce referential integrity.
+
+#### Vector 5: Compilation & Test Determinism
+* **What to Inspect:**
+  - The entire project must compile cleanly with `./mvnw clean test-compile`.
+  - The complete automated test suite (`./mvnw test`) must pass deterministically (0 failures, 0 errors, 0 skipped).
+  - Verify that the Domain Core unit tests (`src/test/java/org/nepe/*/domain/*`) contain **zero Mockito / ByteBuddy dynamic mocking dependencies**, relying exclusively on hand-crafted stubs, fakes, and value objects.
+
+### 7.3 Standard CLI Audit Command Sequence
+
+The clean-context agent should execute the following verification commands:
+
+```bash
+# Step 1: Clean build and compile verification
+./mvnw clean test-compile
+
+# Step 2: Full deterministic test suite execution
+./mvnw test
+
+# Step 3: Verify strict domain isolation (Zero framework imports in domain core)
+grep -rn "import org.springframework" src/main/java/org/nepe/*/domain/
+grep -rn "import jakarta.persistence" src/main/java/org/nepe/*/domain/
+grep -rn "import javafx" src/main/java/org/nepe/*/domain/
+
+# Step 4: Scan adapters for potential inline mathematical or logic leaks
+grep -rn "Math\." src/main/java/org/nepe/*/adapter/
+grep -rn "new Alert" src/main/java/org/nepe/*/adapter/
+
+# Step 5: Check for unhandled exceptions or empty catch blocks
+grep -rn "catch.*{}" src/main/java/org/nepe/
+```
+

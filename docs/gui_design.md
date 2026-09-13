@@ -85,6 +85,9 @@ Interfaccia di controllo in tempo reale durante lo svolgimento degli incontri.
     * Banner di allerta ad alto contrasto visivo che si attiva automaticamente al raggiungimento del target di profitto, suggerendo l'uscita a mercato per bloccare il guadagno.
   * **Quadro Generale Probabilità e Quote Eque (TitledPane Collassabile):**
     * Sezione informativa completa con tutte le 5 soglie Under/Over (0.5, 1.5, 2.5, 3.5, 4.5) e BTTS Sì/No, racchiusa in un componente collassabile (`TitledPane` con default compresso `expanded="false"`) per ottimizzare lo spazio verticale e prevenire il sovraccarico cognitivo durante il trading live.
+  * **Architettura di Caching In-Memory e Zero-Lag UI:**
+    * Al caricamento della partita (`loadMatchDetails`), i parametri invarianti pre-match ($\lambda_{\text{Pre}}$, $\mu_{\text{Pre}}$, modificatori, fattore campo dinamico di competizione e quote di riferimento salvate) vengono calcolati e memorizzati in cache una tantum in memoria volatile.
+    * Durante l'intero svolgimento del match (digitazione quote veloci, avanzamento minuti, eventi gol/rossi), il controller lavora al 100% in-memory delegando il calcolo istantaneo a `LiveInferenceService`, con zero query SQL bloccanti sul `JavaFX Application Thread` e garantendo una reattività impeccabile a 60 FPS.
 
 ---
 
