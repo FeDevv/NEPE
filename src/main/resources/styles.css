@@ -371,3 +371,37 @@
     -fx-text-fill: #ffffff;
     -fx-font-weight: bold;
 }
+
+/* --- TitledPane (Collapsible Panels) --- */
+
+.titled-pane {
+    -fx-text-fill: #f3f4f6;
+}
+
+.titled-pane > .title {
+    -fx-background-color: #1a1b20;
+    -fx-border-color: #272a34;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 10 14;
+}
+
+.titled-pane > .title > .text {
+    -fx-fill: #f3f4f6;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+.titled-pane > .title > .arrow-button > .arrow {
+    -fx-background-color: #9ca3af;
+}
+
+.titled-pane > .content {
+    -fx-background-color: #16171b;
+    -fx-border-color: #272a34;
+    -fx-border-width: 0 1 1 1;
+    -fx-border-radius: 0 0 6 6;
+    -fx-background-radius: 0 0 6 6;
+    -fx-padding: 14;
+}
+

@@ -3,14 +3,17 @@ package org.nepe.inference.domain;
 import org.nepe.shared.exception.DomainValidationException;
 
 /**
- * Pure mathematical utility for calculating Expected Value (EV) in Betting Exchange markets.
+ * Pure mathematical utility for calculating Expected Value (EV) and Green-Up hedging in Betting Exchange markets.
  * <p>
  * Implements net Expected Value calculations for Back (Punta) and Lay (Banca) positions,
- * incorporating exchange commissions and liability risk-adjustment:
+ * incorporating exchange commissions and liability risk-adjustment, as well as Cash Out
+ * hedging profit ratios:
  * <pre>
- *   EV_Back  = P * (K_Back - 1) * (1 - comm) - (1 - P)
- *   EV_Lay   = (1 - P) * (1 - comm) - P * (K_Lay - 1)
- *   EV_Risk  = EV_Lay / (K_Lay - 1)
+ *   EV_Back      = P * (K_Back - 1) * (1 - comm) - (1 - P)
+ *   EV_Lay       = (1 - P) * (1 - comm) - P * (K_Lay - 1)
+ *   EV_Risk      = EV_Lay / (K_Lay - 1)
+ *   GreenUp_Back = (K_Back_In - K_Lay_Out) / K_Lay_Out
+ *   GreenUp_Lay  = 1 - (K_Lay_In / K_Back_Out)
  * </pre>
  */
 public final class EvCalculator {
@@ -101,6 +104,44 @@ public final class EvCalculator {
         boolean hasLayVal = evLay != null && evLay > 0.0;
 
         return new EvEvaluation(evBack, evLay, evLayRisk, hasBackVal, hasLayVal);
+    }
+
+    /**
+     * Calculates the hedging profit ratio (Green-Up / Cash Out) for a position opened by backing (Punta)
+     * and closed by laying (Banca).
+     * <p>
+     * Formula:
+     * <pre>
+     *   ProfitRatio_Back = (K_Back_In - K_Lay_Out) / K_Lay_Out
+     * </pre>
+     *
+     * @param entryBackOdds the initial Back odds at position entry (must be > 1.0)
+     * @param currentLayOdds the current market Lay odds at position exit (must be > 1.0)
+     * @return net profit ratio relative to the initial back stake (e.g. +0.50 for +50%)
+     */
+    public static double calculateGreenUpProfitRatioBack(double entryBackOdds, double currentLayOdds) {
+        validateOdds("Entry Back", entryBackOdds);
+        validateOdds("Current Lay", currentLayOdds);
+        return (entryBackOdds - currentLayOdds) / currentLayOdds;
+    }
+
+    /**
+     * Calculates the hedging profit ratio (Green-Up / Cash Out) for a position opened by laying (Banca)
+     * and closed by backing (Punta).
+     * <p>
+     * Formula:
+     * <pre>
+     *   ProfitRatio_Lay = 1.0 - (K_Lay_In / K_Back_Out) = (K_Back_Out - K_Lay_In) / K_Back_Out
+     * </pre>
+     *
+     * @param entryLayOdds the initial Lay odds at position entry (must be > 1.0)
+     * @param currentBackOdds the current market Back odds at position exit (must be > 1.0)
+     * @return net profit ratio relative to the initial lay stake (e.g. +0.50 for +50%)
+     */
+    public static double calculateGreenUpProfitRatioLay(double entryLayOdds, double currentBackOdds) {
+        validateOdds("Entry Lay", entryLayOdds);
+        validateOdds("Current Back", currentBackOdds);
+        return 1.0 - (entryLayOdds / currentBackOdds);
     }
 
     // --- Invariant Validations ---

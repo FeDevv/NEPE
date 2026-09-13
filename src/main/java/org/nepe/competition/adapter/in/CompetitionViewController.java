@@ -679,7 +679,7 @@ public class CompetitionViewController {
         }
         Competition targetComp = (comboTeamCompetition != null) ? comboTeamCompetition.getValue() : null;
         if (targetComp == null) {
-            lblStatus.setText("Seleziona il campionato da cui rimuovere l'associazione.");
+            lblStatus.setText("Seleziona il campionato da cui disassociare la squadra.");
             return;
         }
 
@@ -690,11 +690,17 @@ public class CompetitionViewController {
                 return;
             }
             manageTeamUseCase.disassociateTeamFromCompetition(targetComp.getId(), selectedTeam.getId());
-            lblStatus.setText(String.format("Squadra '%s' rimossa da '%s' con successo!",
+            lblStatus.setText(String.format("Squadra '%s' disassociata da '%s' con successo!",
                     selectedTeam.getName(), targetComp.getName()));
             reloadTeams();
         } catch (NepeException e) {
+            log.warn("Cannot disassociate team {} from competition {}: {}", selectedTeam.getId(), targetComp.getId(), e.getMessage());
             lblStatus.setText("Errore: " + e.getMessage());
+            showErrorAlert("Impossibile disassociare la squadra", e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected error disassociating team {} from competition {}: {}", selectedTeam.getId(), targetComp.getId(), e.getMessage(), e);
+            lblStatus.setText("Errore imprevisto durante la disassociazione: " + e.getMessage());
+            showErrorAlert("Errore di sistema", "Impossibile disassociare la squadra: " + e.getMessage());
         }
     }
 

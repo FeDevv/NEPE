@@ -69,13 +69,22 @@ Interfaccia di controllo in tempo reale durante lo svolgimento degli incontri.
 
 * **Scopo:** Fornire uno strumento tattico per monitorare l'evoluzione delle probabilità mentre il tempo scorre e registrare gol/espulsioni.
 * **Componenti Visivi principali:**
-  * **Header del Match:** Nomi delle squadre, punteggio corrente a grandi cifre, e **Minuto Corrente (campo numerico editabile o pulsanti +1m, +5m)**.
+  * **Header del Match & Stepper Minuti:** Nomi delle squadre, punteggio a grandi cifre, e **Minuto Corrente (campo numerico editabile e pulsanti rapidi -1m, +1m, +5m)**.
   * **Pulsanti di Azione Rapida Eventi:**
     * Pulsante verde *"Gol Casa"* / *"Gol Ospite"*
     * Pulsante rosso *"Cartellino Rosso Casa"* / *"Cartellino Rosso Ospite"*
-    * Pulsante *"Annulla Ultimo Evento"*
-  * **Pannello Probabilità Residue (Real-Time Grid):** Grafici visivi e tabelle con le probabilità aggiornate per i gol rimanenti nel tempo residuo (tenendo conto di Time-Decay, Rossis e Must-Win nel 2° tempo).
-  * **Target di Uscita (Green Up / Cash Out):** Cella visiva che segnala quando le probabilità residue hanno raggiunto le soglie di profitto impostate per suggerire la chiusura della posizione in guadagno.
+    * Pulsante *"Annulla Ultimo Evento"* per ripristino istantaneo dello stato precedente.
+  * **Griglia Quote Rapide Exchange e Valutazione Live EV (In-Memory / Volatili):**
+    * Card operative disposte in layout a griglia simmetrica 50/50 per esiti 1X2 e Under/Over dinamico (con selettore soglia da 0.5 a 4.5).
+    * Micro-etichette semantiche superiori ad alta leggibilità: `PUNTA (BACK)` e `BANCA (LAY)`.
+    * Calcolo reattivo istantaneo dell'Expected Value (EV Punta ed EV Banca depurati da commissione exchange) e applicazione automatica del badge visuale verde per le quote a valore positivo ($\text{EV} > 0$).
+    * Pulsante *"Azzera Quote Live Inserite"* per pulizia immediata della memoria volatile.
+  * **Pannello Monitoraggio Posizione e Green-Up / Cash Out Reattivo:**
+    * Configurazione della posizione d'ingresso con selezione direzione (*PUNTA (Long)* o *BANCA (Short)*), esito scommesso e quota d'apertura.
+    * Stima in tempo reale della percentuale di profitto maturata rispetto al target configurato (`green_up_target`).
+    * Banner di allerta ad alto contrasto visivo che si attiva automaticamente al raggiungimento del target di profitto, suggerendo l'uscita a mercato per bloccare il guadagno.
+  * **Quadro Generale Probabilità e Quote Eque (TitledPane Collassabile):**
+    * Sezione informativa completa con tutte le 5 soglie Under/Over (0.5, 1.5, 2.5, 3.5, 4.5) e BTTS Sì/No, racchiusa in un componente collassabile (`TitledPane` con default compresso `expanded="false"`) per ottimizzare lo spazio verticale e prevenire il sovraccarico cognitivo durante il trading live.
 
 ---
 
@@ -144,3 +153,18 @@ Al contrario dei popup operativi, tutti i messaggi di sistema e i dialoghi modal
   * **Interruzione ad Alta Priorità:** Un `Alert` rappresenta una richiesta di attenzione straordinaria che interrompe temporaneamente il normale flusso di lavoro (es. *«Sei sicuro di voler eliminare le quote salvate per questo match?»*, *«Confermi l'eliminazione definitiva della competizione?»*, o segnalazioni di errore bloccante nell'elaborazione del motore di calcolo).
   * **Visual Pop-Out Effect:** Il forte contrasto cromatico tra la finestra bianca luminosa e l'ambiente desktop scuro sottostante cattura istantaneamente lo sguardo del trader. Questo riduce drasticamente il rischio di distrazioni o conferme accidentali (*misclicks*) su azioni irreversibili.
 * **Regola di Ancoraggio Desktop (`initOwner`):** Per garantire la stabilità modale su qualsiasi ambiente operativo (in particolare macOS e Linux), ogni istanza di `Alert` deve essere tassativamente ancorata allo stage/finestra genitore tramite `alert.initOwner(parentWindow)`. Ciò previene la perdita di focus e impedisce che la finestra modale scivoli inavvertitamente dietro l'interfaccia principale.
+
+### 3.4 Principio di Progettazione Interfacce: Azioni Reversibili vs Dialoghi di Conferma (Prevenzione della Modal Fatigue)
+NEPE adotta un rigoroso principio di ergonomia desktop per la gestione delle conferme utente (allineato alle *Apple Human Interface Guidelines* e ai principi di *Interaction Design*):
+
+1. **Quando Usare Dialoghi Modali di Conferma (`Alert.AlertType.CONFIRMATION`):**
+   * Esclusivamente per **azioni irreversibili, distruttive o ad alto impatto** che determinano l'eliminazione permanente di dati (es. *«Elimina Squadra Selezionata»*, *«Elimina Competizione»*, *«Elimina Partita»* o cancellazione massiva di quote).
+   * L'interruzione modale serve a forzare una pausa decisionale deliberata (*friction by design*).
+
+2. **Quando Evitare i Dialoghi Modali (Azioni Dirette e Reversibili):**
+   * Quando un'azione è **non distruttiva, a basso impatto e immediatamente reversibile** tramite un controllo visibile nella medesima schermata (es. la disassociazione di una squadra da un campionato tramite `btnDisassociateTeam`, prontamente ripristinabile in un singolo click con l'adiacente `btnAssociateTeam`).
+   * **Prevenzione della Modal Fatigue:** L'abuso di finestre modali di conferma per operazioni reversibili abitua l'utente a cliccare meccanicamente "OK", annullando l'efficacia protettiva dei dialoghi per le vere azioni distruttive.
+   * **Pattern Sostitutivo Applicato:**
+     * **Etichette Semantiche Chiare:** Utilizzo di verbi precisi ed espliciti (es. `"❌ Disassocia"` anziché un generico `"❌ Rimuovi"` che potrebbe essere scambiato per cancellazione anagrafica).
+     * **Auto-Documentazione via Tooltip:** Presenza di un `<tooltip>` descrittivo che rassicura il trader sulle conseguenze reali (es. chiarire che la disassociazione da una lega non cancella l'anagrafica né le partite storiche dal DB).
+     * **Feedback Non Bloccante:** Notifica visiva immediata dell'esito tramite etichette di stato contestuali (`lblStatus`), preservando la fluidità operativa nelle operazioni batch (es. aggiornamento delle leghe a fine stagione).

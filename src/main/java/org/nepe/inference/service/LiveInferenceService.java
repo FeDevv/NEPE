@@ -208,7 +208,7 @@ public class LiveInferenceService implements CalculateLiveInferenceUseCase {
         MarketOdds matchingOdds = oddsIndex.get(key);
         if (matchingOdds != null && matchingOdds.getLayOdds() != null && matchingOdds.getLayOdds() > 1.0) {
             // Hedging Profit Ratio = (Entry Back Odds - Current Lay Odds) / Current Lay Odds
-            double profitRatio = (entryOdds - matchingOdds.getLayOdds()) / matchingOdds.getLayOdds();
+            double profitRatio = EvCalculator.calculateGreenUpProfitRatioBack(entryOdds, matchingOdds.getLayOdds());
             return profitRatio >= profitTarget;
         }
         return false;

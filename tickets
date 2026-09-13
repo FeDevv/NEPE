@@ -75,14 +75,16 @@
 
 ---
 
-## Ticket 7: Chiarimento Etichetta e Azione Disassociazione Squadra da Campionato
+## Ticket 7: Chiarimento Etichetta e Azione Disassociazione Squadra da Campionato [COMPLETED]
 * **Gravità:** `MINOR` (Ambiguità terminologica tra disassociazione da lega ed eliminazione definitiva anagrafica)
-* **Effort Atteso:** `LOW` (Modifica immediata di etichetta FXML e testo dialog di conferma)
-* **File coinvolti:** `org.nepe.competition.adapter.in.CompetitionViewController`, `src/main/resources/views/competition_manager.fxml`
-* **Problema:** Nella scheda "Gestione Squadre", il pulsante per disaccoppiare una squadra dal campionato selezionato riporta il testo ambiguo `"❌ Rimuovi"` (`btnDisassociateTeam`), collocato a fianco di `"🔗 Associa a Campionato"` e sopra `"🗑️ Elimina Squadra Selezionata"` (`btnDeleteTeam`). L'utente può facilmente confondere la disassociazione della squadra da una specifica lega con l'eliminazione definitiva dell'anagrafica squadra dal database.
+* **Effort Atteso:** `LOW` (Modifica immediata di etichetta FXML, tooltip e messaggi controller)
+* **File coinvolti:** `org.nepe.competition.adapter.in.CompetitionViewController`, `src/main/resources/views/competition_manager.fxml`, `docs/gui_design.md`, `org.nepe.competition.adapter.in.CompetitionViewControllerTest`
+* **Problema:** Nella scheda "Gestione Squadre", il pulsante per disaccoppiare una squadra dal campionato selezionato riportava il testo ambiguo `"❌ Rimuovi"` (`btnDisassociateTeam`), collocato a fianco di `"🔗 Associa a Campionato"` e sopra `"🗑️ Elimina Squadra Selezionata"` (`btnDeleteTeam`). L'utente poteva confondere la disassociazione della squadra da una specifica lega con l'eliminazione definitiva dell'anagrafica squadra dal database.
 * **Soluzione:** 
-  1. Rinominare l'etichetta del pulsante in `"❌ Disassocia"` o `"❌ Disassocia da Campionato"` con tooltip esplicativo.
-  2. Aggiornare il messaggio del dialog di conferma specificando chiaramente che l'operazione rimuove solo l'associazione al campionato e non elimina la squadra né i suoi dati storici.
+  1. Rinominata l'etichetta del pulsante in `"❌ Disassocia"` in `competition_manager.fxml` e aggiunto un `<tooltip>` descrittivo che chiarisce la natura non distruttiva dell'azione (non elimina la squadra dal DB).
+  2. Adottato il principio di ergonomia desktop UX (documentato in `docs/gui_design.md` sezione 3.4) per azioni a basso impatto e immediatamente reversibili (tramite l'adiacente pulsante `"🔗 Associa a Campionato"`), evitando popup modali di conferma bloccanti che genererebbero "modal fatigue".
+  3. Aggiornati i messaggi contestuali su `lblStatus` in `CompetitionViewController.java` con terminologia precisa (`"disassociare"` e `"disassociata"` anziché `"rimuovere"` e `"rimossa"`) e rafforzata la gestione difensiva delle eccezioni con `showErrorAlert`.
+  4. Introdotti test unitari di regressione in `CompetitionViewControllerTest` a copertura completa di tutti i rami logici e delle guard conditions.
 
 ---
 
@@ -124,15 +126,19 @@
 
 ---
 
-## Ticket 11: Inserimento Quote Exchange Rapide e Valutazione Live EV/Green-Up Reattiva
+## Ticket 11: Inserimento Quote Exchange Rapide e Valutazione Live EV/Green-Up Reattiva [COMPLETED]
 * **Gravità:** `MAJOR` (Funzionalità core di trading incompleta in tempo reale)
 * **Effort Atteso:** `HIGH` (Layout compatto FXML, calcolo reattivo in memoria e integrazione query live)
-* **File coinvolti:** `org.nepe.match.adapter.in.LiveConsoleController`, `src/main/resources/views/live_console.fxml`, `org.nepe.inference.port.in.CalculateLiveInferenceUseCase`
-* **Problema:** Nella Console Live (`live_console.fxml`), l'interfaccia visualizza solo le "Fair Odds" matematiche calcolate dal modello, ma non offre alcun campo di input per inserire le quote exchange reali (Back e Lay) man mano che il bookmaker/mercato si muove durante il match. Un approccio ingenuo che replicasse l'intera matrice complessa del Pre-Match (con salvataggio sincrono su DB a ogni cifra) risulterebbe ingestibile e inutilizzabile per la rapidità richiesta durante una sessione live.
-* **Soluzione:** 
-  1. Introdurre nella GUI live una sezione compatta e mirata ("Quick Odds") focalizzata sui mercati attivi principali: esito 1X2 e linea Under/Over di riferimento per il minuto/punteggio corrente.
-  2. Implementare la reattività in memoria (`onKeyTyped` / listener sulle proprietà testo) per aggiornare istantaneamente il calcolo di Live EV e Green-Up/Cashout target a video senza attendere o bloccare su transazioni di scrittura nel database.
-  3. Prevedere un pulsante opzionale "Salva Snapshot Quote" se l'utente desidera rendere persistenti nel DB i valori registrati in quel momento della partita.
+* **File coinvolti:** `org.nepe.match.adapter.in.LiveConsoleController`, `src/main/resources/views/live_console.fxml`, `src/main/resources/styles.css`, `org.nepe.inference.domain.EvCalculator`, `org.nepe.inference.service.LiveInferenceService`, `src/test/java/org/nepe/match/adapter/in/LiveConsoleControllerTest.java`, `src/test/java/org/nepe/inference/domain/EvCalculatorTest.java`
+* **Problema:** Nella Console Live (`live_console.fxml`), l'interfaccia visualizzava originariamente solo le "Fair Odds" matematiche calcolate dal modello, senza offrire campi di input per inserire le quote exchange reali (Back e Lay) man mano che il bookmaker/mercato si muoveva durante il match. Inoltre, mancava il supporto al monitoraggio del Cash Out per posizioni in Short (Lay entry $\to$ Back exit) e l'interfaccia risultava eccessivamente estesa in verticale, spingendo verso il basso i controlli operativi chiave.
+* **Soluzione Realizzata:** 
+  1. **Layout Simmetrico Quick Odds (50/50):** Creata una sezione operativa snella per l'inserimento in tempo reale delle quote 1X2 e Under/Over (con selettore soglia da 0.5 a 4.5), strutturata con layout simmetrico 50/50 e micro-etichette semantiche superiori ad alta leggibilità: `PUNTA (BACK)` e `BANCA (LAY)`.
+  2. **Calcolo Reattivo In-Memory & Zero I/O su DB:** Implementato calcolo reattivo istantaneo sulle proprietà testo (con sanitizzazione `parseSafeDouble`), che calcola EV Back ed EV Lay (Risk-Adjusted su liability) applicando badge visivi verdi per $\text{EV} > 0$. Le quote live rimangono puramente volatili in memoria, preservando l'isolamento del DB (con pulsante rapido *"Azzera Quote Live Inserite"*).
+  3. **Valutazione Green-Up Dinamico (Long & Short):** Aggiunto supporto completo sia per posizioni **Long** (ingresso in Punta $\to$ liquidazione in Banca) che **Short** (ingresso in Banca $\to$ liquidazione in Punta), con banner di allerta ad alto contrasto che compare automaticamente al raggiungimento del target di profitto impostato (`green_up_target`).
+  4. **Centralizzazione Matematica nel Domain Core (`EvCalculator`):** Create le funzioni pure nel dominio `calculateGreenUpProfitRatioBack` e `calculateGreenUpProfitRatioLay` con validazione degli invarianti numerici ($K > 1.0$), riutilizzate sia dal controller JavaFX sia da `LiveInferenceService` (pieno rispetto di DRY e Architettura Esagonale).
+  5. **Ottimizzazione Ergonomica Spazio Verticale:** Racchiusa la Sezione 4 ("Quadro Generale Probabilità") in un `TitledPane` collassabile (`expanded="false"`) con styling Dark personalizzato in `styles.css`, massimizzando lo spazio a schermo per i controlli di trading durante il live.
+  6. **Risoluzione Bug UI & Uniformazione Messaggi:** Ampliata larghezza del ComboBox posizione d'ingresso a `prefWidth="150.0"` eliminando il troncamento del testo; uniformati i messaggi di attesa exchange alle costanti `MSG_WAITING_BANCA_ODDS` (*"In attesa quota Banca..."*) e `MSG_WAITING_PUNTA_ODDS` (*"In attesa quota Punta..."*).
+  7. **Copertura di Test Deterministica:** Introdotti test unitari dedicati in `EvCalculatorTest` e `LiveConsoleControllerTest` per tutti gli scenari operativi (Long/Short, profitto sopra/sotto target, profitto negativo, cambio match e reset memoria volatile).
 
 ---
 

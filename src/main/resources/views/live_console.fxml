@@ -95,98 +95,316 @@
                     <Label fx:id="lblGreenUpText" text="Target di Green Up (Cash Out) Raggiunto! Chiudi la posizione per bloccare il profitto." styleClass="live-green-up-text"/>
                 </HBox>
 
-                <!-- Section 4: Residual Real-Time Probabilities Grid -->
+                <!-- Section 3b: Quick Odds Exchange & Live EV Evaluation (In-Memory) -->
                 <VBox styleClass="card" spacing="14.0">
-                    <HBox alignment="CENTER_LEFT">
-                        <Label text="📈 Probabilità Finali Ricalcolate (Time-Decay &amp; Live Modifiers)" styleClass="card-title"/>
+                    <HBox alignment="CENTER_LEFT" spacing="12.0">
+                        <Label text="⚡ Quick Odds Exchange &amp; Valutazione Live EV" styleClass="card-title"/>
+                        <Label text="(Dati volatili in memoria, non persistiti a DB)" styleClass="label-muted"/>
                         <Region HBox.hgrow="ALWAYS"/>
-                        <Label fx:id="lblResidualRates" text="λ residuo: 0.00 | μ residuo: 0.00" styleClass="label-muted"/>
+                        <Button fx:id="btnClearLiveOdds" text="🧹 Pulisci Quote Live" styleClass="button, btn-sm" onAction="#handleClearLiveOdds"/>
                     </HBox>
 
-                    <!-- Match Odds (1X2) & BTTS Summary Grid -->
+                    <!-- 1X2 Quick Odds Row -->
+                    <Label text="Mercato 1X2 (Punta / Banca &amp; Valore Atteso):" styleClass="section-header"/>
                     <GridPane hgap="16.0" vgap="8.0">
                         <columnConstraints>
-                            <ColumnConstraints prefWidth="240.0"/>
-                            <ColumnConstraints prefWidth="240.0"/>
-                            <ColumnConstraints prefWidth="240.0"/>
-                            <ColumnConstraints prefWidth="240.0"/>
+                            <ColumnConstraints prefWidth="320.0" hgrow="ALWAYS"/>
+                            <ColumnConstraints prefWidth="320.0" hgrow="ALWAYS"/>
+                            <ColumnConstraints prefWidth="320.0" hgrow="ALWAYS"/>
                         </columnConstraints>
 
-                        <!-- Headers -->
-                        <Label text="1 (Vittoria Casa)" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                        <Label text="X (Pareggio)" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-                        <Label text="2 (Vittoria Ospite)" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
-                        <Label text="BTTS (Goal Sì)" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+                        <!-- Column 0: 1 (Casa) -->
+                        <VBox spacing="8.0" GridPane.columnIndex="0" style="-fx-background-color: #1a1b20; -fx-padding: 10; -fx-background-radius: 6; -fx-border-color: #272a34; -fx-border-radius: 6;">
+                            <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                <Label text="1 (Casa)" styleClass="label-strong"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="lblQuickFairOdds1" text="Equa: -" styleClass="label-muted"/>
+                            </HBox>
+                            <GridPane hgap="10.0" vgap="4.0">
+                                <columnConstraints>
+                                    <ColumnConstraints percentWidth="50.0" hgrow="ALWAYS"/>
+                                    <ColumnConstraints percentWidth="50.0" hgrow="ALWAYS"/>
+                                </columnConstraints>
+                                <!-- Left: Punta (Back) -->
+                                <VBox spacing="4.0" GridPane.columnIndex="0">
+                                    <Label text="PUNTA (BACK)" styleClass="label-muted" style="-fx-font-size: 10px; -fx-font-weight: bold;"/>
+                                    <TextField fx:id="txtLiveBack1" promptText="es. 2.10" maxWidth="Infinity"/>
+                                    <HBox spacing="4.0" alignment="CENTER_LEFT">
+                                        <Label text="EV:" styleClass="label-muted" style="-fx-font-size: 11px;"/>
+                                        <Label fx:id="lblLiveEvBack1" text="-" styleClass="label-strong"/>
+                                    </HBox>
+                                </VBox>
+                                <!-- Right: Banca (Lay) -->
+                                <VBox spacing="4.0" GridPane.columnIndex="1">
+                                    <Label text="BANCA (LAY)" styleClass="label-muted" style="-fx-font-size: 10px; -fx-font-weight: bold;"/>
+                                    <TextField fx:id="txtLiveLay1" promptText="es. 2.14" maxWidth="Infinity"/>
+                                    <HBox spacing="4.0" alignment="CENTER_LEFT">
+                                        <Label text="EV:" styleClass="label-muted" style="-fx-font-size: 11px;"/>
+                                        <Label fx:id="lblLiveEvLay1" text="-" styleClass="label-strong"/>
+                                    </HBox>
+                                </VBox>
+                            </GridPane>
+                        </VBox>
 
-                        <!-- Probabilities -->
-                        <Label fx:id="lblLiveProb1" text="-" styleClass="prob-text" style="-fx-font-size: 16px;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                        <Label fx:id="lblLiveProbX" text="-" styleClass="prob-text" style="-fx-font-size: 16px;" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-                        <Label fx:id="lblLiveProb2" text="-" styleClass="prob-text" style="-fx-font-size: 16px;" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
-                        <Label fx:id="lblLiveProbBtts" text="-" styleClass="prob-text" style="-fx-font-size: 16px;" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+                        <!-- Column 1: X (Pareggio) -->
+                        <VBox spacing="8.0" GridPane.columnIndex="1" style="-fx-background-color: #1a1b20; -fx-padding: 10; -fx-background-radius: 6; -fx-border-color: #272a34; -fx-border-radius: 6;">
+                            <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                <Label text="X (Pareggio)" styleClass="label-strong"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="lblQuickFairOddsX" text="Equa: -" styleClass="label-muted"/>
+                            </HBox>
+                            <GridPane hgap="10.0" vgap="4.0">
+                                <columnConstraints>
+                                    <ColumnConstraints percentWidth="50.0" hgrow="ALWAYS"/>
+                                    <ColumnConstraints percentWidth="50.0" hgrow="ALWAYS"/>
+                                </columnConstraints>
+                                <!-- Left: Punta (Back) -->
+                                <VBox spacing="4.0" GridPane.columnIndex="0">
+                                    <Label text="PUNTA (BACK)" styleClass="label-muted" style="-fx-font-size: 10px; -fx-font-weight: bold;"/>
+                                    <TextField fx:id="txtLiveBackX" promptText="es. 3.40" maxWidth="Infinity"/>
+                                    <HBox spacing="4.0" alignment="CENTER_LEFT">
+                                        <Label text="EV:" styleClass="label-muted" style="-fx-font-size: 11px;"/>
+                                        <Label fx:id="lblLiveEvBackX" text="-" styleClass="label-strong"/>
+                                    </HBox>
+                                </VBox>
+                                <!-- Right: Banca (Lay) -->
+                                <VBox spacing="4.0" GridPane.columnIndex="1">
+                                    <Label text="BANCA (LAY)" styleClass="label-muted" style="-fx-font-size: 10px; -fx-font-weight: bold;"/>
+                                    <TextField fx:id="txtLiveLayX" promptText="es. 3.50" maxWidth="Infinity"/>
+                                    <HBox spacing="4.0" alignment="CENTER_LEFT">
+                                        <Label text="EV:" styleClass="label-muted" style="-fx-font-size: 11px;"/>
+                                        <Label fx:id="lblLiveEvLayX" text="-" styleClass="label-strong"/>
+                                    </HBox>
+                                </VBox>
+                            </GridPane>
+                        </VBox>
 
-                        <!-- Fair Odds -->
-                        <Label fx:id="lblLiveFairOdds1" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                        <Label fx:id="lblLiveFairOddsX" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-                        <Label fx:id="lblLiveFairOdds2" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
-                        <Label fx:id="lblLiveFairOddsBtts" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
+                        <!-- Column 2: 2 (Trasferta) -->
+                        <VBox spacing="8.0" GridPane.columnIndex="2" style="-fx-background-color: #1a1b20; -fx-padding: 10; -fx-background-radius: 6; -fx-border-color: #272a34; -fx-border-radius: 6;">
+                            <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                <Label text="2 (Trasferta)" styleClass="label-strong"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="lblQuickFairOdds2" text="Equa: -" styleClass="label-muted"/>
+                            </HBox>
+                            <GridPane hgap="10.0" vgap="4.0">
+                                <columnConstraints>
+                                    <ColumnConstraints percentWidth="50.0" hgrow="ALWAYS"/>
+                                    <ColumnConstraints percentWidth="50.0" hgrow="ALWAYS"/>
+                                </columnConstraints>
+                                <!-- Left: Punta (Back) -->
+                                <VBox spacing="4.0" GridPane.columnIndex="0">
+                                    <Label text="PUNTA (BACK)" styleClass="label-muted" style="-fx-font-size: 10px; -fx-font-weight: bold;"/>
+                                    <TextField fx:id="txtLiveBack2" promptText="es. 3.80" maxWidth="Infinity"/>
+                                    <HBox spacing="4.0" alignment="CENTER_LEFT">
+                                        <Label text="EV:" styleClass="label-muted" style="-fx-font-size: 11px;"/>
+                                        <Label fx:id="lblLiveEvBack2" text="-" styleClass="label-strong"/>
+                                    </HBox>
+                                </VBox>
+                                <!-- Right: Banca (Lay) -->
+                                <VBox spacing="4.0" GridPane.columnIndex="1">
+                                    <Label text="BANCA (LAY)" styleClass="label-muted" style="-fx-font-size: 10px; -fx-font-weight: bold;"/>
+                                    <TextField fx:id="txtLiveLay2" promptText="es. 3.90" maxWidth="Infinity"/>
+                                    <HBox spacing="4.0" alignment="CENTER_LEFT">
+                                        <Label text="EV:" styleClass="label-muted" style="-fx-font-size: 11px;"/>
+                                        <Label fx:id="lblLiveEvLay2" text="-" styleClass="label-strong"/>
+                                    </HBox>
+                                </VBox>
+                            </GridPane>
+                        </VBox>
                     </GridPane>
 
                     <Separator opacity="0.3"/>
 
-                    <!-- Under / Over Goal Lines (0.5 to 4.5) Grid -->
-                    <Label text="⚽ Mercati Under / Over Residui (0.5 - 4.5 Gol)" styleClass="section-header"/>
+                    <!-- Under / Over Target Line Quick Odds -->
+                    <HBox alignment="CENTER_LEFT" spacing="12.0">
+                        <Label text="Linea Under / Over Target:" styleClass="section-header"/>
+                        <ComboBox fx:id="comboLiveUoLine" prefWidth="130.0"/>
+                    </HBox>
+
                     <GridPane hgap="16.0" vgap="8.0">
                         <columnConstraints>
-                            <ColumnConstraints prefWidth="120.0"/>
-                            <ColumnConstraints prefWidth="180.0"/>
-                            <ColumnConstraints prefWidth="180.0"/>
-                            <ColumnConstraints prefWidth="180.0"/>
-                            <ColumnConstraints prefWidth="180.0"/>
+                            <ColumnConstraints prefWidth="480.0" hgrow="ALWAYS"/>
+                            <ColumnConstraints prefWidth="480.0" hgrow="ALWAYS"/>
                         </columnConstraints>
 
-                        <!-- Headers -->
-                        <Label text="Soglia Gol" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                        <Label text="Prob. Under" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-                        <Label text="Quota Equa Under" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
-                        <Label text="Prob. Over" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
-                        <Label text="Quota Equa Over" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="4"/>
+                        <!-- Under Column -->
+                        <VBox spacing="8.0" GridPane.columnIndex="0" style="-fx-background-color: #1a1b20; -fx-padding: 10; -fx-background-radius: 6; -fx-border-color: #272a34; -fx-border-radius: 6;">
+                            <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                <Label fx:id="lblQuickTitleUnder" text="Under 2.5" styleClass="label-strong"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="lblQuickFairOddsUnder" text="Equa: -" styleClass="label-muted"/>
+                            </HBox>
+                            <GridPane hgap="10.0" vgap="4.0">
+                                <columnConstraints>
+                                    <ColumnConstraints percentWidth="50.0" hgrow="ALWAYS"/>
+                                    <ColumnConstraints percentWidth="50.0" hgrow="ALWAYS"/>
+                                </columnConstraints>
+                                <!-- Left: Punta (Back) -->
+                                <VBox spacing="4.0" GridPane.columnIndex="0">
+                                    <Label text="PUNTA (BACK)" styleClass="label-muted" style="-fx-font-size: 10px; -fx-font-weight: bold;"/>
+                                    <TextField fx:id="txtLiveBackUnder" promptText="es. 1.85" maxWidth="Infinity"/>
+                                    <HBox spacing="4.0" alignment="CENTER_LEFT">
+                                        <Label text="EV:" styleClass="label-muted" style="-fx-font-size: 11px;"/>
+                                        <Label fx:id="lblLiveEvBackUnder" text="-" styleClass="label-strong"/>
+                                    </HBox>
+                                </VBox>
+                                <!-- Right: Banca (Lay) -->
+                                <VBox spacing="4.0" GridPane.columnIndex="1">
+                                    <Label text="BANCA (LAY)" styleClass="label-muted" style="-fx-font-size: 10px; -fx-font-weight: bold;"/>
+                                    <TextField fx:id="txtLiveLayUnder" promptText="es. 1.90" maxWidth="Infinity"/>
+                                    <HBox spacing="4.0" alignment="CENTER_LEFT">
+                                        <Label text="EV:" styleClass="label-muted" style="-fx-font-size: 11px;"/>
+                                        <Label fx:id="lblLiveEvLayUnder" text="-" styleClass="label-strong"/>
+                                    </HBox>
+                                </VBox>
+                            </GridPane>
+                        </VBox>
 
-                        <!-- 0.5 -->
-                        <Label text="Under/Over 0.5" styleClass="label-strong" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                        <Label fx:id="lblLiveProbUnder05" text="-" styleClass="prob-text" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-                        <Label fx:id="lblLiveFairOddsUnder05" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
-                        <Label fx:id="lblLiveProbOver05" text="-" styleClass="prob-text" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
-                        <Label fx:id="lblLiveFairOddsOver05" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="1" GridPane.columnIndex="4"/>
-
-                        <!-- 1.5 -->
-                        <Label text="Under/Over 1.5" styleClass="label-strong" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                        <Label fx:id="lblLiveProbUnder15" text="-" styleClass="prob-text" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-                        <Label fx:id="lblLiveFairOddsUnder15" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
-                        <Label fx:id="lblLiveProbOver15" text="-" styleClass="prob-text" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
-                        <Label fx:id="lblLiveFairOddsOver15" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="4"/>
-
-                        <!-- 2.5 -->
-                        <Label text="Under/Over 2.5" styleClass="label-strong" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-                        <Label fx:id="lblLiveProbUnder25" text="-" styleClass="prob-text" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
-                        <Label fx:id="lblLiveFairOddsUnder25" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="3" GridPane.columnIndex="2"/>
-                        <Label fx:id="lblLiveProbOver25" text="-" styleClass="prob-text" GridPane.rowIndex="3" GridPane.columnIndex="3"/>
-                        <Label fx:id="lblLiveFairOddsOver25" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="3" GridPane.columnIndex="4"/>
-
-                        <!-- 3.5 -->
-                        <Label text="Under/Over 3.5" styleClass="label-strong" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
-                        <Label fx:id="lblLiveProbUnder35" text="-" styleClass="prob-text" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
-                        <Label fx:id="lblLiveFairOddsUnder35" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="4" GridPane.columnIndex="2"/>
-                        <Label fx:id="lblLiveProbOver35" text="-" styleClass="prob-text" GridPane.rowIndex="4" GridPane.columnIndex="3"/>
-                        <Label fx:id="lblLiveFairOddsOver35" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="4" GridPane.columnIndex="4"/>
-
-                        <!-- 4.5 -->
-                        <Label text="Under/Over 4.5" styleClass="label-strong" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
-                        <Label fx:id="lblLiveProbUnder45" text="-" styleClass="prob-text" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
-                        <Label fx:id="lblLiveFairOddsUnder45" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="5" GridPane.columnIndex="2"/>
-                        <Label fx:id="lblLiveProbOver45" text="-" styleClass="prob-text" GridPane.rowIndex="5" GridPane.columnIndex="3"/>
-                        <Label fx:id="lblLiveFairOddsOver45" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="5" GridPane.columnIndex="4"/>
+                        <!-- Over Column -->
+                        <VBox spacing="8.0" GridPane.columnIndex="1" style="-fx-background-color: #1a1b20; -fx-padding: 10; -fx-background-radius: 6; -fx-border-color: #272a34; -fx-border-radius: 6;">
+                            <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                <Label fx:id="lblQuickTitleOver" text="Over 2.5" styleClass="label-strong"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="lblQuickFairOddsOver" text="Equa: -" styleClass="label-muted"/>
+                            </HBox>
+                            <GridPane hgap="10.0" vgap="4.0">
+                                <columnConstraints>
+                                    <ColumnConstraints percentWidth="50.0" hgrow="ALWAYS"/>
+                                    <ColumnConstraints percentWidth="50.0" hgrow="ALWAYS"/>
+                                </columnConstraints>
+                                <!-- Left: Punta (Back) -->
+                                <VBox spacing="4.0" GridPane.columnIndex="0">
+                                    <Label text="PUNTA (BACK)" styleClass="label-muted" style="-fx-font-size: 10px; -fx-font-weight: bold;"/>
+                                    <TextField fx:id="txtLiveBackOver" promptText="es. 2.05" maxWidth="Infinity"/>
+                                    <HBox spacing="4.0" alignment="CENTER_LEFT">
+                                        <Label text="EV:" styleClass="label-muted" style="-fx-font-size: 11px;"/>
+                                        <Label fx:id="lblLiveEvBackOver" text="-" styleClass="label-strong"/>
+                                    </HBox>
+                                </VBox>
+                                <!-- Right: Banca (Lay) -->
+                                <VBox spacing="4.0" GridPane.columnIndex="1">
+                                    <Label text="BANCA (LAY)" styleClass="label-muted" style="-fx-font-size: 10px; -fx-font-weight: bold;"/>
+                                    <TextField fx:id="txtLiveLayOver" promptText="es. 2.12" maxWidth="Infinity"/>
+                                    <HBox spacing="4.0" alignment="CENTER_LEFT">
+                                        <Label text="EV:" styleClass="label-muted" style="-fx-font-size: 11px;"/>
+                                        <Label fx:id="lblLiveEvLayOver" text="-" styleClass="label-strong"/>
+                                    </HBox>
+                                </VBox>
+                            </GridPane>
+                        </VBox>
                     </GridPane>
+
+                    <Separator opacity="0.3"/>
+
+                    <!-- Green-Up Position Tracking Controls -->
+                    <HBox alignment="CENTER_LEFT" spacing="12.0" style="-fx-background-color: #141518; -fx-padding: 8 12; -fx-background-radius: 6; -fx-border-color: #22252c; -fx-border-radius: 6;">
+                        <Label text="Posizione Ingresso (Cash Out):" styleClass="label-strong"/>
+                        <ComboBox fx:id="comboEntryType" prefWidth="150.0"/>
+                        <ComboBox fx:id="comboEntryOutcome" prefWidth="140.0" promptText="Seleziona esito..."/>
+                        <Label text="Quota Ingresso:" styleClass="label-muted"/>
+                        <TextField fx:id="txtEntryOdds" promptText="es. 2.40" prefWidth="85.0"/>
+                        <Separator orientation="VERTICAL"/>
+                        <Label text="Rendimento Attuale:" styleClass="label-muted"/>
+                        <Label fx:id="lblLiveGreenUpProfit" text="N/A" styleClass="label-strong" style="-fx-font-size: 13px;"/>
+                    </HBox>
                 </VBox>
+
+                <!-- Section 4: Residual Real-Time Probabilities Grid (Collapsible) -->
+                <TitledPane text="📊 Quadro Generale Probabilità (Tutte le soglie Under/Over &amp; BTTS)" expanded="false">
+                    <content>
+                        <VBox spacing="14.0">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="📈 Probabilità Finali Ricalcolate (Time-Decay &amp; Live Modifiers)" styleClass="card-title"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="lblResidualRates" text="λ residuo: 0.00 | μ residuo: 0.00" styleClass="label-muted"/>
+                            </HBox>
+
+                            <!-- Match Odds (1X2) & BTTS Summary Grid -->
+                            <GridPane hgap="16.0" vgap="8.0">
+                                <columnConstraints>
+                                    <ColumnConstraints prefWidth="240.0"/>
+                                    <ColumnConstraints prefWidth="240.0"/>
+                                    <ColumnConstraints prefWidth="240.0"/>
+                                    <ColumnConstraints prefWidth="240.0"/>
+                                </columnConstraints>
+
+                                <!-- Headers -->
+                                <Label text="1 (Vittoria Casa)" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                <Label text="X (Pareggio)" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                                <Label text="2 (Vittoria Ospite)" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+                                <Label text="BTTS (Goal Sì)" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+
+                                <!-- Probabilities -->
+                                <Label fx:id="lblLiveProb1" text="-" styleClass="prob-text" style="-fx-font-size: 16px;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                <Label fx:id="lblLiveProbX" text="-" styleClass="prob-text" style="-fx-font-size: 16px;" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                                <Label fx:id="lblLiveProb2" text="-" styleClass="prob-text" style="-fx-font-size: 16px;" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                                <Label fx:id="lblLiveProbBtts" text="-" styleClass="prob-text" style="-fx-font-size: 16px;" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+
+                                <!-- Fair Odds -->
+                                <Label fx:id="lblLiveFairOdds1" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                                <Label fx:id="lblLiveFairOddsX" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                                <Label fx:id="lblLiveFairOdds2" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+                                <Label fx:id="lblLiveFairOddsBtts" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
+                            </GridPane>
+
+                            <Separator opacity="0.3"/>
+
+                            <!-- Under / Over Goal Lines (0.5 to 4.5) Grid -->
+                            <Label text="⚽ Mercati Under / Over Residui (0.5 - 4.5 Gol)" styleClass="section-header"/>
+                            <GridPane hgap="16.0" vgap="8.0">
+                                <columnConstraints>
+                                    <ColumnConstraints prefWidth="120.0"/>
+                                    <ColumnConstraints prefWidth="180.0"/>
+                                    <ColumnConstraints prefWidth="180.0"/>
+                                    <ColumnConstraints prefWidth="180.0"/>
+                                    <ColumnConstraints prefWidth="180.0"/>
+                                </columnConstraints>
+
+                                <!-- Headers -->
+                                <Label text="Soglia Gol" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                <Label text="Prob. Under" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                                <Label text="Quota Equa Under" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+                                <Label text="Prob. Over" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+                                <Label text="Quota Equa Over" styleClass="section-header" GridPane.rowIndex="0" GridPane.columnIndex="4"/>
+
+                                <!-- 0.5 -->
+                                <Label text="Under/Over 0.5" styleClass="label-strong" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                <Label fx:id="lblLiveProbUnder05" text="-" styleClass="prob-text" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                                <Label fx:id="lblLiveFairOddsUnder05" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                                <Label fx:id="lblLiveProbOver05" text="-" styleClass="prob-text" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+                                <Label fx:id="lblLiveFairOddsOver05" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="1" GridPane.columnIndex="4"/>
+
+                                <!-- 1.5 -->
+                                <Label text="Under/Over 1.5" styleClass="label-strong" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                                <Label fx:id="lblLiveProbUnder15" text="-" styleClass="prob-text" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                                <Label fx:id="lblLiveFairOddsUnder15" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+                                <Label fx:id="lblLiveProbOver15" text="-" styleClass="prob-text" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
+                                <Label fx:id="lblLiveFairOddsOver15" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="2" GridPane.columnIndex="4"/>
+
+                                <!-- 2.5 -->
+                                <Label text="Under/Over 2.5" styleClass="label-strong" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                                <Label fx:id="lblLiveProbUnder25" text="-" styleClass="prob-text" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                                <Label fx:id="lblLiveFairOddsUnder25" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="3" GridPane.columnIndex="2"/>
+                                <Label fx:id="lblLiveProbOver25" text="-" styleClass="prob-text" GridPane.rowIndex="3" GridPane.columnIndex="3"/>
+                                <Label fx:id="lblLiveFairOddsOver25" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="3" GridPane.columnIndex="4"/>
+
+                                <!-- 3.5 -->
+                                <Label text="Under/Over 3.5" styleClass="label-strong" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                                <Label fx:id="lblLiveProbUnder35" text="-" styleClass="prob-text" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+                                <Label fx:id="lblLiveFairOddsUnder35" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="4" GridPane.columnIndex="2"/>
+                                <Label fx:id="lblLiveProbOver35" text="-" styleClass="prob-text" GridPane.rowIndex="4" GridPane.columnIndex="3"/>
+                                <Label fx:id="lblLiveFairOddsOver35" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="4" GridPane.columnIndex="4"/>
+
+                                <!-- 4.5 -->
+                                <Label text="Under/Over 4.5" styleClass="label-strong" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                                <Label fx:id="lblLiveProbUnder45" text="-" styleClass="prob-text" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+                                <Label fx:id="lblLiveFairOddsUnder45" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="5" GridPane.columnIndex="2"/>
+                                <Label fx:id="lblLiveProbOver45" text="-" styleClass="prob-text" GridPane.rowIndex="5" GridPane.columnIndex="3"/>
+                                <Label fx:id="lblLiveFairOddsOver45" text="Quota: -" styleClass="label-muted" GridPane.rowIndex="5" GridPane.columnIndex="4"/>
+                            </GridPane>
+                        </VBox>
+                    </content>
+                </TitledPane>
 
                 <!-- Section 5: Match Events Chronology Log -->
                 <VBox styleClass="card" spacing="8.0">

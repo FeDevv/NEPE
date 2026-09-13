@@ -10,6 +10,7 @@ import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
 import org.nepe.bootstrap.SpringFXMLLoader;
+import org.nepe.inference.domain.EvCalculator;
 import org.nepe.inference.port.in.CalculateLiveInferenceUseCase;
 import org.nepe.inference.port.in.LiveAnalysisResult;
 import org.nepe.inference.port.in.LiveInferenceQuery;
@@ -31,9 +32,7 @@ import org.springframework.stereotype.Controller;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * Driving Inbound Adapter (JavaFX Controller) for the Real-Time In-Game Trading Console.
@@ -54,6 +53,11 @@ public class LiveConsoleController {
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
             .withZone(ZoneId.of("Europe/Rome"));
+
+    public static final String ENTRY_TYPE_LONG = "PUNTA (Long)";
+    public static final String ENTRY_TYPE_SHORT = "BANCA (Short)";
+    public static final String MSG_WAITING_BANCA_ODDS = "In attesa quota Banca...";
+    public static final String MSG_WAITING_PUNTA_ODDS = "In attesa quota Punta...";
 
     private final LiveMatchTradingUseCase liveMatchTradingUseCase;
     private final CalculateLiveInferenceUseCase calculateLiveInferenceUseCase;
@@ -93,6 +97,46 @@ public class LiveConsoleController {
     // --- FXML Green-Up Banner ---
     @FXML private HBox boxGreenUpBanner;
     @FXML private Label lblGreenUpText;
+
+    // --- FXML Quick Odds Exchange & Live EV ---
+    @FXML private Button btnClearLiveOdds;
+    @FXML private Label lblQuickFairOdds1;
+    @FXML private TextField txtLiveBack1;
+    @FXML private TextField txtLiveLay1;
+    @FXML private Label lblLiveEvBack1;
+    @FXML private Label lblLiveEvLay1;
+
+    @FXML private Label lblQuickFairOddsX;
+    @FXML private TextField txtLiveBackX;
+    @FXML private TextField txtLiveLayX;
+    @FXML private Label lblLiveEvBackX;
+    @FXML private Label lblLiveEvLayX;
+
+    @FXML private Label lblQuickFairOdds2;
+    @FXML private TextField txtLiveBack2;
+    @FXML private TextField txtLiveLay2;
+    @FXML private Label lblLiveEvBack2;
+    @FXML private Label lblLiveEvLay2;
+
+    @FXML private ComboBox<String> comboLiveUoLine;
+    @FXML private Label lblQuickTitleUnder;
+    @FXML private Label lblQuickFairOddsUnder;
+    @FXML private TextField txtLiveBackUnder;
+    @FXML private TextField txtLiveLayUnder;
+    @FXML private Label lblLiveEvBackUnder;
+    @FXML private Label lblLiveEvLayUnder;
+
+    @FXML private Label lblQuickTitleOver;
+    @FXML private Label lblQuickFairOddsOver;
+    @FXML private TextField txtLiveBackOver;
+    @FXML private TextField txtLiveLayOver;
+    @FXML private Label lblLiveEvBackOver;
+    @FXML private Label lblLiveEvLayOver;
+
+    @FXML private ComboBox<String> comboEntryType;
+    @FXML private ComboBox<String> comboEntryOutcome;
+    @FXML private TextField txtEntryOdds;
+    @FXML private Label lblLiveGreenUpProfit;
 
     // --- FXML Residual Probability Grid: 1X2 & BTTS ---
     @FXML private Label lblResidualRates;
@@ -146,6 +190,7 @@ public class LiveConsoleController {
     private int currentAwayRedCards = 0;
     private int currentMinute = 0;
     private AppSettings currentSettings;
+    private boolean isUpdatingQuickOdds = false;
 
     public LiveConsoleController(LiveMatchTradingUseCase liveMatchTradingUseCase,
                                  CalculateLiveInferenceUseCase calculateLiveInferenceUseCase,
@@ -166,6 +211,7 @@ public class LiveConsoleController {
         this.currentSettings = manageSettingsUseCase.getSettings();
         configureMatchDropdown();
         configureMinuteInput();
+        configureQuickOddsInputs();
         loadAvailableLiveMatches();
         updateControlStates();
     }
@@ -207,6 +253,63 @@ public class LiveConsoleController {
                 }
             }
         });
+    }
+
+    private void configureQuickOddsInputs() {
+        if (comboLiveUoLine != null) {
+            comboLiveUoLine.setItems(FXCollections.observableArrayList("0.5", "1.5", "2.5", "3.5", "4.5"));
+            comboLiveUoLine.setValue("2.5");
+            comboLiveUoLine.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+                String line = (newVal != null) ? newVal : "2.5";
+                if (lblQuickTitleUnder != null) lblQuickTitleUnder.setText("Under " + line);
+                if (lblQuickTitleOver != null) lblQuickTitleOver.setText("Over " + line);
+                if (!isUpdatingQuickOdds) {
+                    recalculateLiveInference();
+                }
+            });
+        }
+
+        if (comboEntryType != null) {
+            comboEntryType.setItems(FXCollections.observableArrayList(ENTRY_TYPE_LONG, ENTRY_TYPE_SHORT));
+            comboEntryType.setValue(ENTRY_TYPE_LONG);
+            comboEntryType.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+                if (!isUpdatingQuickOdds) {
+                    recalculateLiveInference();
+                }
+            });
+        }
+
+        if (comboEntryOutcome != null) {
+            comboEntryOutcome.setItems(FXCollections.observableArrayList("1", "X", "2", "UNDER", "OVER"));
+            comboEntryOutcome.setValue("1");
+            comboEntryOutcome.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+                if (!isUpdatingQuickOdds) {
+                    recalculateLiveInference();
+                }
+            });
+        }
+
+        attachOddsFieldListener(txtLiveBack1);
+        attachOddsFieldListener(txtLiveLay1);
+        attachOddsFieldListener(txtLiveBackX);
+        attachOddsFieldListener(txtLiveLayX);
+        attachOddsFieldListener(txtLiveBack2);
+        attachOddsFieldListener(txtLiveLay2);
+        attachOddsFieldListener(txtLiveBackUnder);
+        attachOddsFieldListener(txtLiveLayUnder);
+        attachOddsFieldListener(txtLiveBackOver);
+        attachOddsFieldListener(txtLiveLayOver);
+        attachOddsFieldListener(txtEntryOdds);
+    }
+
+    private void attachOddsFieldListener(TextField tf) {
+        if (tf != null) {
+            tf.textProperty().addListener((obs, oldVal, newVal) -> {
+                if (!isUpdatingQuickOdds) {
+                    recalculateLiveInference();
+                }
+            });
+        }
     }
 
     private void loadAvailableLiveMatches() {
@@ -274,6 +377,23 @@ public class LiveConsoleController {
                 match.competitionName(),
                 formatDateTime(match.matchDateTime()),
                 match.matchState().name()));
+
+        // Pre-populate entry position with pre-match oddsHome if available and reset volatile live inputs
+        isUpdatingQuickOdds = true;
+        try {
+            clearAllQuickOddsFields();
+            if (txtEntryOdds != null && match.oddsHome() != null) {
+                txtEntryOdds.setText(String.format(Locale.US, "%.2f", match.oddsHome()));
+            }
+            if (comboEntryType != null) {
+                comboEntryType.setValue(ENTRY_TYPE_LONG);
+            }
+            if (comboEntryOutcome != null) {
+                comboEntryOutcome.setValue("1");
+            }
+        } finally {
+            isUpdatingQuickOdds = false;
+        }
 
         reloadEventsHistory();
         recalculateLiveInference();
@@ -356,7 +476,48 @@ public class LiveConsoleController {
             double commission = (currentSettings != null) ? currentSettings.getCommissionRate() : 0.05;
             double profitTarget = (currentSettings != null) ? currentSettings.getGreenUpProfitTarget() : 0.10;
 
-            List<MarketOdds> liveOdds = manageMarketOddsUseCase.getOddsForMatch(currentMatch.matchId());
+            // 4. Assemble market odds: preload stored baseline odds and overlay with in-memory quick live odds
+            List<MarketOdds> storedOdds = manageMarketOddsUseCase.getOddsForMatch(currentMatch.matchId());
+            Map<String, MarketOdds> liveOddsMap = new HashMap<>();
+            if (storedOdds != null) {
+                for (MarketOdds o : storedOdds) {
+                    if (o != null && o.getMarketType() != null && o.getOutcome() != null) {
+                        liveOddsMap.put(o.getMarketType().name() + ":" + o.getOutcome().trim().toUpperCase(), o);
+                    }
+                }
+            }
+
+            // Overlay in-memory quick live odds (1X2)
+            addQuickOddsIfPresent(liveOddsMap, currentMatch.matchId(), MarketType.MATCH_ODDS, "1", txtLiveBack1, txtLiveLay1);
+            addQuickOddsIfPresent(liveOddsMap, currentMatch.matchId(), MarketType.MATCH_ODDS, "X", txtLiveBackX, txtLiveLayX);
+            addQuickOddsIfPresent(liveOddsMap, currentMatch.matchId(), MarketType.MATCH_ODDS, "2", txtLiveBack2, txtLiveLay2);
+
+            // Overlay in-memory quick live odds (active Under/Over line)
+            String activeLine = (comboLiveUoLine != null && comboLiveUoLine.getValue() != null) ? comboLiveUoLine.getValue() : "2.5";
+            MarketType activeUoMarket = getMarketTypeForLine(activeLine);
+            addQuickOddsIfPresent(liveOddsMap, currentMatch.matchId(), activeUoMarket, "UNDER", txtLiveBackUnder, txtLiveLayUnder);
+            addQuickOddsIfPresent(liveOddsMap, currentMatch.matchId(), activeUoMarket, "OVER", txtLiveBackOver, txtLiveLayOver);
+
+            List<MarketOdds> liveOddsList = new ArrayList<>(liveOddsMap.values());
+
+            // 5. Resolve entry position parameters for Green-Up evaluation
+            String selectedOutcome = (comboEntryOutcome != null && comboEntryOutcome.getValue() != null)
+                    ? comboEntryOutcome.getValue() : "1";
+            MarketType entryMarket;
+            String entryOutcomeKey;
+            if ("UNDER".equalsIgnoreCase(selectedOutcome) || "OVER".equalsIgnoreCase(selectedOutcome)) {
+                entryMarket = activeUoMarket;
+                entryOutcomeKey = selectedOutcome.toUpperCase();
+            } else {
+                entryMarket = MarketType.MATCH_ODDS;
+                entryOutcomeKey = selectedOutcome;
+            }
+
+            Double entryOdds = parseSafeDouble(txtEntryOdds);
+            boolean isShort = (comboEntryType != null && ENTRY_TYPE_SHORT.equals(comboEntryType.getValue()));
+            if (entryOdds == null && !isShort && "1".equals(entryOutcomeKey) && currentMatch.oddsHome() != null) {
+                entryOdds = currentMatch.oddsHome();
+            }
 
             LiveInferenceQuery query = new LiveInferenceQuery(
                     lambdaPre,
@@ -370,8 +531,10 @@ public class LiveConsoleController {
                     currentMatch.dixonColesRho(),
                     commission,
                     profitTarget,
-                    liveOdds,
-                    currentMatch.oddsHome()
+                    liveOddsList,
+                    entryOdds,
+                    entryMarket,
+                    entryOutcomeKey
             );
 
             LiveAnalysisResult result = calculateLiveInferenceUseCase.calculate(query);
@@ -380,7 +543,7 @@ public class LiveConsoleController {
             lblResidualRates.setText(String.format("λ residuo: %.2f | μ residuo: %.2f (Minuto: %d')",
                     result.lambdaHomeResidual(), result.muAwayResidual(), result.currentMinute()));
 
-            // Update Probabilities and Fair Odds
+            // Update Probabilities and Fair Odds (Reference Grid)
             updateLivePrediction(result.finalHomeWin(), lblLiveProb1, lblLiveFairOdds1);
             updateLivePrediction(result.finalDraw(), lblLiveProbX, lblLiveFairOddsX);
             updateLivePrediction(result.finalAwayWin(), lblLiveProb2, lblLiveFairOdds2);
@@ -400,10 +563,11 @@ public class LiveConsoleController {
 
             updateLivePrediction(result.bttsYes(), lblLiveProbBtts, lblLiveFairOddsBtts);
 
-            // Update Green-Up Alert Banner
-            boolean greenUpActive = result.greenUpTargetMet();
-            boxGreenUpBanner.setVisible(greenUpActive);
-            boxGreenUpBanner.setManaged(greenUpActive);
+            // Update Quick Odds Exchange UI (EV Back & EV Lay Risk-Adjusted)
+            updateQuickOddsDisplay(result, activeLine);
+
+            // Update Green-Up display and banner
+            updateGreenUpDisplay(result, entryOdds, entryMarket, entryOutcomeKey, liveOddsMap, profitTarget);
 
             lblStatus.setText("");
         } catch (Exception e) {
@@ -414,8 +578,204 @@ public class LiveConsoleController {
 
     private void updateLivePrediction(MarketPrediction pred, Label lblProb, Label lblFair) {
         if (pred == null) return;
-        lblProb.setText(String.format("%.1f%%", pred.probability() * 100.0));
-        lblFair.setText(String.format("Quota: %.2f", pred.fairOdds()));
+        if (lblProb != null) lblProb.setText(String.format("%.1f%%", pred.probability() * 100.0));
+        if (lblFair != null) lblFair.setText(String.format("Quota: %.2f", pred.fairOdds()));
+    }
+
+    private void updateQuickOddsDisplay(LiveAnalysisResult result, String activeLine) {
+        if (result == null) return;
+
+        // 1X2 Quick Outcomes
+        updateQuickOutcomeUi(result.finalHomeWin(), txtLiveBack1, txtLiveLay1, lblQuickFairOdds1, lblLiveEvBack1, lblLiveEvLay1);
+        updateQuickOutcomeUi(result.finalDraw(), txtLiveBackX, txtLiveLayX, lblQuickFairOddsX, lblLiveEvBackX, lblLiveEvLayX);
+        updateQuickOutcomeUi(result.finalAwayWin(), txtLiveBack2, txtLiveLay2, lblQuickFairOdds2, lblLiveEvBack2, lblLiveEvLay2);
+
+        // Active Under / Over Line
+        int uoIndex = getUnderIndexForLine(activeLine);
+        if (result.underOverPredictions().size() > uoIndex + 1) {
+            MarketPrediction underPred = result.underOverPredictions().get(uoIndex);
+            MarketPrediction overPred = result.underOverPredictions().get(uoIndex + 1);
+            updateQuickOutcomeUi(underPred, txtLiveBackUnder, txtLiveLayUnder, lblQuickFairOddsUnder, lblLiveEvBackUnder, lblLiveEvLayUnder);
+            updateQuickOutcomeUi(overPred, txtLiveBackOver, txtLiveLayOver, lblQuickFairOddsOver, lblLiveEvBackOver, lblLiveEvLayOver);
+        }
+    }
+
+    private void updateQuickOutcomeUi(MarketPrediction pred, TextField txtBack, TextField txtLay,
+                                      Label lblFair, Label lblEvBack, Label lblEvLay) {
+        if (pred == null) return;
+        if (lblFair != null) {
+            lblFair.setText(String.format(Locale.US, "Equa: %.2f", pred.fairOdds()));
+        }
+
+        Double enteredBack = parseSafeDouble(txtBack);
+        if (enteredBack != null && pred.evEvaluation() != null && pred.evEvaluation().evBack() != null) {
+            double evBack = pred.evEvaluation().evBack();
+            if (lblEvBack != null) {
+                lblEvBack.setText(String.format(Locale.US, "%+.1f%%", evBack * 100.0));
+                applyEvStyling(lblEvBack, evBack);
+            }
+        } else if (lblEvBack != null) {
+            lblEvBack.setText("-");
+            lblEvBack.getStyleClass().removeAll("badge", "badge-ev-positive");
+        }
+
+        Double enteredLay = parseSafeDouble(txtLay);
+        if (enteredLay != null && pred.evEvaluation() != null && pred.evEvaluation().evLayRiskAdjusted() != null) {
+            double evLay = pred.evEvaluation().evLayRiskAdjusted();
+            if (lblEvLay != null) {
+                lblEvLay.setText(String.format(Locale.US, "%+.1f%%", evLay * 100.0));
+                applyEvStyling(lblEvLay, evLay);
+            }
+        } else if (lblEvLay != null) {
+            lblEvLay.setText("-");
+            lblEvLay.getStyleClass().removeAll("badge", "badge-ev-positive");
+        }
+    }
+
+    private void updateGreenUpDisplay(LiveAnalysisResult result, Double entryOdds, MarketType entryMarket,
+                                      String entryOutcome, Map<String, MarketOdds> liveOddsMap, double profitTarget) {
+        boolean isShort = (comboEntryType != null && ENTRY_TYPE_SHORT.equals(comboEntryType.getValue()));
+
+        boolean greenUpActive = false;
+        double profitRatio = 0.0;
+        boolean hasValidOdds = false;
+
+        if (entryOdds != null && entryOdds > 1.0) {
+            String key = entryMarket.name() + ":" + entryOutcome.trim().toUpperCase();
+            MarketOdds matching = liveOddsMap.get(key);
+
+            if (isShort) {
+                // Short position (Lay entry): liquidated by buying back at current Back odds
+                if (matching != null && matching.getBackOdds() != null && matching.getBackOdds() > 1.0) {
+                    double currentBack = matching.getBackOdds();
+                    profitRatio = EvCalculator.calculateGreenUpProfitRatioLay(entryOdds, currentBack);
+                    hasValidOdds = true;
+                    greenUpActive = (profitRatio >= profitTarget);
+                } else if (lblLiveGreenUpProfit != null) {
+                    lblLiveGreenUpProfit.setText(MSG_WAITING_PUNTA_ODDS);
+                    lblLiveGreenUpProfit.setStyle("-fx-text-fill: #9ca3af;");
+                }
+            } else {
+                // Long position (Back entry): liquidated by laying at current Lay odds
+                if (matching != null && matching.getLayOdds() != null && matching.getLayOdds() > 1.0) {
+                    double currentLay = matching.getLayOdds();
+                    profitRatio = EvCalculator.calculateGreenUpProfitRatioBack(entryOdds, currentLay);
+                    hasValidOdds = true;
+                    greenUpActive = (profitRatio >= profitTarget);
+                } else if (lblLiveGreenUpProfit != null) {
+                    lblLiveGreenUpProfit.setText(MSG_WAITING_BANCA_ODDS);
+                    lblLiveGreenUpProfit.setStyle("-fx-text-fill: #9ca3af;");
+                }
+            }
+
+            if (hasValidOdds) {
+                if (lblLiveGreenUpProfit != null) {
+                    lblLiveGreenUpProfit.setText(String.format(Locale.US, "%+.1f%% (Target: %.0f%%)",
+                            profitRatio * 100.0, profitTarget * 100.0));
+                    if (profitRatio >= profitTarget) {
+                        lblLiveGreenUpProfit.setStyle("-fx-text-fill: #34d399; -fx-font-weight: bold;");
+                    } else if (profitRatio >= 0.0) {
+                        lblLiveGreenUpProfit.setStyle("-fx-text-fill: #93c5fd; -fx-font-weight: bold;");
+                    } else {
+                        lblLiveGreenUpProfit.setStyle("-fx-text-fill: #f87171; -fx-font-weight: bold;");
+                    }
+                }
+                if (greenUpActive && lblGreenUpText != null) {
+                    String direction = isShort ? "Banca → Punta" : "Punta → Banca";
+                    lblGreenUpText.setText(String.format(Locale.US,
+                            "Target di Green Up (Cash Out %s) Raggiunto! Profitto stimato: %+.1f%% (Target: %.0f%%). Chiudi la posizione per bloccare il profitto.",
+                            direction, profitRatio * 100.0, profitTarget * 100.0));
+                }
+            }
+        } else if (lblLiveGreenUpProfit != null) {
+            lblLiveGreenUpProfit.setText("N/A");
+            lblLiveGreenUpProfit.setStyle("-fx-text-fill: #9ca3af;");
+        }
+
+        if (boxGreenUpBanner != null) {
+            boxGreenUpBanner.setVisible(greenUpActive);
+            boxGreenUpBanner.setManaged(greenUpActive);
+        }
+    }
+
+    private void addQuickOddsIfPresent(Map<String, MarketOdds> map, int matchId, MarketType type, String outcome,
+                                       TextField txtBack, TextField txtLay) {
+        Double back = parseSafeDouble(txtBack);
+        Double lay = parseSafeDouble(txtLay);
+        if (back != null || lay != null) {
+            String key = type.name() + ":" + outcome.trim().toUpperCase();
+            map.put(key, MarketOdds.create(matchId, type, outcome, back, lay));
+        }
+    }
+
+    private Double parseSafeDouble(TextField tf) {
+        if (tf == null || tf.getText() == null || tf.getText().isBlank()) {
+            return null;
+        }
+        try {
+            double val = Double.parseDouble(tf.getText().trim().replace(',', '.'));
+            return (val > 1.0) ? val : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private MarketType getMarketTypeForLine(String line) {
+        if (line == null) return MarketType.UNDER_OVER_25;
+        return switch (line.trim()) {
+            case "0.5" -> MarketType.UNDER_OVER_05;
+            case "1.5" -> MarketType.UNDER_OVER_15;
+            case "2.5" -> MarketType.UNDER_OVER_25;
+            case "3.5" -> MarketType.UNDER_OVER_35;
+            case "4.5" -> MarketType.UNDER_OVER_45;
+            default -> MarketType.UNDER_OVER_25;
+        };
+    }
+
+    private int getUnderIndexForLine(String line) {
+        if (line == null) return 4;
+        return switch (line.trim()) {
+            case "0.5" -> 0;
+            case "1.5" -> 2;
+            case "2.5" -> 4;
+            case "3.5" -> 6;
+            case "4.5" -> 8;
+            default -> 4;
+        };
+    }
+
+    private void applyEvStyling(Label label, double ev) {
+        label.getStyleClass().removeAll("badge", "badge-ev-positive");
+        if (ev > 0.0) {
+            label.getStyleClass().addAll("badge", "badge-ev-positive");
+        }
+    }
+
+    @FXML
+    public void handleClearLiveOdds(ActionEvent event) {
+        clearAllQuickOddsFields();
+        recalculateLiveInference();
+        if (lblStatus != null) {
+            lblStatus.setText("Quote live in memoria azzerate.");
+        }
+    }
+
+    private void clearAllQuickOddsFields() {
+        isUpdatingQuickOdds = true;
+        try {
+            if (txtLiveBack1 != null) txtLiveBack1.clear();
+            if (txtLiveLay1 != null) txtLiveLay1.clear();
+            if (txtLiveBackX != null) txtLiveBackX.clear();
+            if (txtLiveLayX != null) txtLiveLayX.clear();
+            if (txtLiveBack2 != null) txtLiveBack2.clear();
+            if (txtLiveLay2 != null) txtLiveLay2.clear();
+            if (txtLiveBackUnder != null) txtLiveBackUnder.clear();
+            if (txtLiveLayUnder != null) txtLiveLayUnder.clear();
+            if (txtLiveBackOver != null) txtLiveBackOver.clear();
+            if (txtLiveLayOver != null) txtLiveLayOver.clear();
+        } finally {
+            isUpdatingQuickOdds = false;
+        }
     }
 
     // --- Minute Stepper Handlers ---
@@ -548,6 +908,7 @@ public class LiveConsoleController {
             if (btnFinishMatch != null) btnFinishMatch.setDisable(true);
             setEventButtonsDisable(true);
             setMinuteControlsDisable(true);
+            setQuickOddsControlsDisable(true);
             return;
         }
 
@@ -559,6 +920,25 @@ public class LiveConsoleController {
         if (btnFinishMatch != null) btnFinishMatch.setDisable(!isLive);
         setEventButtonsDisable(!isLive);
         setMinuteControlsDisable(!isLive);
+        setQuickOddsControlsDisable(!isLive && !isScheduled);
+    }
+
+    private void setQuickOddsControlsDisable(boolean disable) {
+        if (btnClearLiveOdds != null) btnClearLiveOdds.setDisable(disable);
+        if (txtLiveBack1 != null) txtLiveBack1.setDisable(disable);
+        if (txtLiveLay1 != null) txtLiveLay1.setDisable(disable);
+        if (txtLiveBackX != null) txtLiveBackX.setDisable(disable);
+        if (txtLiveLayX != null) txtLiveLayX.setDisable(disable);
+        if (txtLiveBack2 != null) txtLiveBack2.setDisable(disable);
+        if (txtLiveLay2 != null) txtLiveLay2.setDisable(disable);
+        if (comboLiveUoLine != null) comboLiveUoLine.setDisable(disable);
+        if (txtLiveBackUnder != null) txtLiveBackUnder.setDisable(disable);
+        if (txtLiveLayUnder != null) txtLiveLayUnder.setDisable(disable);
+        if (txtLiveBackOver != null) txtLiveBackOver.setDisable(disable);
+        if (txtLiveLayOver != null) txtLiveLayOver.setDisable(disable);
+        if (comboEntryType != null) comboEntryType.setDisable(disable);
+        if (comboEntryOutcome != null) comboEntryOutcome.setDisable(disable);
+        if (txtEntryOdds != null) txtEntryOdds.setDisable(disable);
     }
 
     private void setEventButtonsDisable(boolean disable) {

@@ -132,6 +132,25 @@ Nel Banca (Lay), si agisce come il bookmaker, bancando l'esito. Se l'evento NON 
 
   Questo indice esprime il **Rendimento sul Capitale Investito (ROI%)** per la posizione di bancata.
 
+### 4.4 Strategie di Hedging: Green-Up / Cash Out (Posizioni Long e Short)
+Il **Green-Up** (o Cash Out bilanciato) consiste nel chiudere una scommessa prima del termine della partita assumendo una posizione di segno opposto sull'exchange, in modo tale da distribuire un profitto costante su tutti i possibili esiti finali indipendentemente dal risultato.
+
+NEPE supporta entrambe le direzioni di trading:
+
+1. **Posizione Long (Punta $\to$ Banca / Back entry $\to$ Lay exit):**
+   Si acquista una quota Punta ($K_{\text{Back, in}}$) e si liquida la posizione rivendendola a una quota Banca inferiore ($K_{\text{Lay, out}}$).
+   Il rapporto di profitto normalizzato sullo stake d'ingresso è:
+
+   $$\text{Profit Ratio}_{\text{Long}} = \frac{K_{\text{Back, in}} - K_{\text{Lay, out}}}{K_{\text{Lay, out}}}$$
+
+2. **Posizione Short (Banca $\to$ Punta / Lay entry $\to$ Back exit):**
+   Si apre una posizione vendendo a quota Banca ($K_{\text{Lay, in}}$) e si copre la posizione riacquistando a quota Punta superiore ($K_{\text{Back, out}}$).
+   Il rapporto di profitto normalizzato sulla responsabilità iniziale è:
+
+   $$\text{Profit Ratio}_{\text{Short}} = 1.0 - \frac{K_{\text{Lay, in}}}{K_{\text{Back, out}}} = \frac{K_{\text{Back, out}} - K_{\text{Lay, in}}}{K_{\text{Back, out}}}$$
+
+Quando il profitto stimato supera la soglia configurata nelle impostazioni ($\text{Profit Ratio} \ge \text{Profit Target}$, default $+20\%$), l'applicazione attiva automaticamente un banner visuale di allerta indicando al trader l'opportunità di bloccare il guadagno.
+
 ---
 
 ## 5. Dinamica Temporale e Modificatori Live (Live Engine)
