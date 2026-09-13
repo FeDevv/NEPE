@@ -1,0 +1,140 @@
+name: Release Packages (macOS DMG & Windows EXE)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Version tag for release (e.g. v1.0.0)'
+        required: false
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-package:
+    name: Package for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            artifact_name: nepe-macos-dmg
+            artifact_pattern: dist/*.dmg
+          - os: windows-latest
+            artifact_name: nepe-windows-exe
+            artifact_pattern: dist/*.exe
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'zulu'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build JAR with Maven (Unix)
+        if: runner.os != 'Windows'
+        run: ./mvnw clean package -DskipTests
+
+      - name: Build JAR with Maven (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: mvnw.cmd clean package -DskipTests
+
+      - name: Package macOS DMG
+        if: runner.os == 'macOS'
+        run: |
+          TAG_VAL="${{ github.ref_name }}"
+          if [ -z "$TAG_VAL" ] || [ "$TAG_VAL" = "main" ]; then
+            TAG_VAL="${{ inputs.tag_name }}"
+          fi
+          RAW_VER="${TAG_VAL#v}"
+          if [[ ! "$RAW_VER" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+            RAW_VER="1.0.0"
+          fi
+          echo "Packaging macOS DMG version: $RAW_VER"
+          jpackage --input target/ \
+                   --name NEPE \
+                   --main-jar nepe.jar \
+                   --main-class org.springframework.boot.loader.launch.JarLauncher \
+                   --type dmg \
+                   --app-version "$RAW_VER" \
+                   --dest dist/
+
+      - name: Package Windows EXE
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          TAG_VAL="${{ github.ref_name }}"
+          if [ -z "$TAG_VAL" ] || [ "$TAG_VAL" = "main" ]; then
+            TAG_VAL="${{ inputs.tag_name }}"
+          fi
+          RAW_VER="${TAG_VAL#v}"
+          if [[ ! "$RAW_VER" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+            RAW_VER="1.0.0"
+          fi
+          echo "Packaging Windows EXE version: $RAW_VER"
+          jpackage --input target/ \
+                   --name NEPE \
+                   --main-jar nepe.jar \
+                   --main-class org.springframework.boot.loader.launch.JarLauncher \
+                   --type exe \
+                   --app-version "$RAW_VER" \
+                   --win-shortcut \
+                   --win-menu \
+                   --dest dist/
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_pattern }}
+          if-no-files-found: error
+
+  create-github-release:
+    name: Create GitHub Release
+    needs: build-and-package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all installer artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Determine Release Tag
+        id: release_info
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          else
+            TAG_NAME="${{ inputs.tag_name }}"
+          fi
+          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "Target tag: $TAG_NAME"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_info.outputs.tag }}
+          name: NEPE ${{ steps.release_info.outputs.tag }}
+          generate_release_notes: true
+          files: release-assets/*

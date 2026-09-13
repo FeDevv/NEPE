@@ -79,7 +79,7 @@ Per le partite seguite in diretta, il programma si trasforma in una console di c
 ```
 
 ### 🚢 Continuous Delivery: Rilascio Automatico su GitHub (macOS DMG & Windows EXE)
-Il progetto integra una pipeline di rilascio multipiattaforma automatica in [`.github/workflows/release.yml`](../.github/workflows/release.yml).
+Il progetto integra una pipeline di rilascio multipiattaforma automatica in [`.github/workflows/release.yml`](.github/workflows/release.yml).
 
 Per pubblicare una nuova versione con i relativi installer standalone (con runtime Java 25 embedded, senza necessità che l'utente installi Java):
 1. **Creare e inviare un tag Git:**
