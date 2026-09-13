@@ -6,6 +6,7 @@ import javafx.fxml.FXML;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import javafx.util.StringConverter;
 import org.nepe.bootstrap.SpringFXMLLoader;
 import org.nepe.competition.port.in.ManageCompetitionUseCase;
@@ -770,6 +771,10 @@ public class PreMatchAnalysisController {
         lblStatus.setText("");
 
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        Window owner = getWindow();
+        if (owner != null) {
+            confirmAlert.initOwner(owner);
+        }
         confirmAlert.setTitle("Conferma Reset Quote Exchange");
         confirmAlert.setHeaderText("Eliminazione quote exchange salvate");
         confirmAlert.setContentText(String.format("Vuoi eliminare tutte le quote exchange salvate per la partita '%s vs %s'?",
@@ -839,6 +844,19 @@ public class PreMatchAnalysisController {
 
     public Integer getScopeSeasonId() {
         return scopeSeasonId;
+    }
+
+    private Window getWindow() {
+        if (btnDeleteOdds != null && btnDeleteOdds.getScene() != null) {
+            return btnDeleteOdds.getScene().getWindow();
+        }
+        if (btnBackToDashboard != null && btnBackToDashboard.getScene() != null) {
+            return btnBackToDashboard.getScene().getWindow();
+        }
+        if (lblStatus != null && lblStatus.getScene() != null) {
+            return lblStatus.getScene().getWindow();
+        }
+        return null;
     }
 
     // --- Package-private test helpers for state verification ---

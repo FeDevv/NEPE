@@ -14,6 +14,7 @@ import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import javafx.util.StringConverter;
 import org.nepe.bootstrap.SpringFXMLLoader;
 import org.nepe.competition.domain.Competition;
@@ -1071,8 +1072,9 @@ public class DashboardController {
         lblMessage.setText("");
 
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
-        if (tblMatches != null && tblMatches.getScene() != null && tblMatches.getScene().getWindow() != null) {
-            confirmAlert.initOwner(tblMatches.getScene().getWindow());
+        Window owner = getWindow();
+        if (owner != null) {
+            confirmAlert.initOwner(owner);
         }
         confirmAlert.setTitle("Conferma Conclusione Partita");
         confirmAlert.setHeaderText("Conclusione partita");
@@ -1099,6 +1101,10 @@ public class DashboardController {
         lblMessage.setText("");
 
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        Window owner = getWindow();
+        if (owner != null) {
+            confirmAlert.initOwner(owner);
+        }
         confirmAlert.setTitle("Conferma Rinvio Partita");
         confirmAlert.setHeaderText("Rinvio partita");
         confirmAlert.setContentText(String.format("Vuoi contrassegnare la partita '%s' come RINVIATA (POSTPONED)?",
@@ -1124,6 +1130,10 @@ public class DashboardController {
         lblMessage.setText("");
 
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        Window owner = getWindow();
+        if (owner != null) {
+            confirmAlert.initOwner(owner);
+        }
         confirmAlert.setTitle("Conferma Annullamento Partita");
         confirmAlert.setHeaderText("Annullamento partita");
         confirmAlert.setContentText(String.format("Vuoi contrassegnare la partita '%s' come ANNULLATA (CANCELLED)?",
@@ -1149,6 +1159,10 @@ public class DashboardController {
         lblMessage.setText("");
 
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        Window owner = getWindow();
+        if (owner != null) {
+            confirmAlert.initOwner(owner);
+        }
         confirmAlert.setTitle("Conferma Eliminazione Partita");
         confirmAlert.setHeaderText("Eliminazione definitiva partita");
         confirmAlert.setContentText(String.format("Sei sicuro di voler eliminare definitivamente la partita '%s' (%s)? L'operazione non è reversibile.",
@@ -1174,6 +1188,10 @@ public class DashboardController {
         lblMessage.setText("");
 
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        Window owner = getWindow();
+        if (owner != null) {
+            confirmAlert.initOwner(owner);
+        }
         confirmAlert.setTitle("Conferma Avvio Live");
         confirmAlert.setHeaderText("Avvio partita in modalità LIVE");
         confirmAlert.setContentText(String.format("Vuoi avviare la partita '%s' (%s) in modalità LIVE?",
@@ -1217,6 +1235,10 @@ public class DashboardController {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(content);
+        Window owner = getWindow();
+        if (owner != null) {
+            alert.initOwner(owner);
+        }
         alert.showAndWait();
     }
 
@@ -1225,7 +1247,18 @@ public class DashboardController {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(content);
+        Window owner = getWindow();
+        if (owner != null) {
+            alert.initOwner(owner);
+        }
         alert.showAndWait();
+    }
+
+    private Window getWindow() {
+        if (tblMatches != null && tblMatches.getScene() != null) {
+            return tblMatches.getScene().getWindow();
+        }
+        return null;
     }
 
     public Integer getSelectedMatchIdForNavigation() {

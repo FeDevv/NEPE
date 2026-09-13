@@ -63,15 +63,18 @@
 
 ---
 
-## Ticket 6: Allineamento Documentazione Tecnica (Recency Weighting e Schema Database)
+## Ticket 6: Allineamento Documentazione Tecnica (Recency Weighting e Schema Database) [COMPLETED]
 * **Gravità:** `MAJOR` (Contraddizione tra documentazione tecnica, codice sorgente e AGENTS.md)
 * **Effort Atteso:** `MEDIUM`
 * **File coinvolti:** `docs/theoretical_foundations.md`, `docs/database_design.md`, `docs/gui_design.md`
 * **Problema:** 
-  1. `theoretical_foundations.md` cita come esempio una formula esponenziale di decadimento, mentre l'algoritmo deterministico approvato in `AGENTS.md` e implementato nel codice è lineare rank-based.
-  2. `database_design.md` omette la tabella Many-to-Many `competition_teams` e la colonna `home_advantage` presenti in `schema.sql`.
-  3. `gui_design.md` non include i popup modali `create_match_popup.fxml` ed `edit_match_stats_popup.fxml`.
-* **Soluzione:** Sincronizzare la documentazione con il codice sorgente e con `AGENTS.md`.
+  1. `theoretical_foundations.md` citava come esempio una formula esponenziale di decadimento, mentre l'algoritmo deterministico approvato in `AGENTS.md` e implementato nel codice è lineare rank-based.
+  2. `database_design.md` ometteva la tabella Many-to-Many `competition_teams` e la colonna `home_advantage` presenti in `schema.sql`.
+  3. `gui_design.md` necessitava di verifica di allineamento sui popup modali `create_match_popup.fxml` ed `edit_match_stats_popup.fxml`.
+* **Soluzione:** 
+  1. Sostituita in `docs/theoretical_foundations.md` la formula esponenziale con l'esatta equazione lineare rank-based implementata in `TeamStrengthCalculator.java` e formalizzata in `AGENTS.md`, dettagliando inoltre le formule dei tassi $\lambda_{\text{Home}}$ e $\mu_{\text{Away}}$ con `EffectiveHomeAdvantage` e regola di Mutual Low-Urgency.
+  2. Aggiunta in `docs/database_design.md` la colonna `home_advantage` nella tabella `competitions` e inserita l'anagrafica completa della tabella Many-to-Many `competition_teams` sia nello schema logico 3NF sia nello script DDL SQL.
+  3. Verificata la piena coerenza di `docs/gui_design.md` con i layout e le terminologie ergonomiche correnti.
 
 ---
 
@@ -88,12 +91,12 @@
 
 ---
 
-## Ticket 8: Rimozione o Riformulazione Banner Tecnico in Modifica Statistiche
+## Ticket 8: Rimozione o Riformulazione Banner Tecnico in Modifica Statistiche [COMPLETED]
 * **Gravità:** `IMPROVEMENT` (Esposizione all'utente di dettagli tecnici interni di implementazione/debug)
 * **Effort Atteso:** `LOW` (Modifica immediata del markup FXML nel popup)
 * **File coinvolti:** `src/main/resources/views/edit_match_stats_popup.fxml`
 * **Problema:** Nel popup modale di modifica statistiche partita (`edit_match_stats_popup.fxml`), il banner informativo espone dettagli implementativi interni del database rivolti allo sviluppatore: `"Il salvataggio attiverà la protezione sovrascrittura (is_manually_edited=1), preservando i dati inseriti da futuri re-import CSV."`.
-* **Soluzione:** Sostituire la stringa di debug con un messaggio chiaro e orientato all'utente (es. `"Le modifiche manuali verranno salvate e protette da future re-importazioni di dati."`) oppure rimuovere il banner se ritenuto superfluo per l'utente finale.
+* **Soluzione:** Riformulata la stringa informativa nel banner con un testo chiaro, pulito e user-facing: `"Le modifiche manuali verranno salvate e protette da future re-importazioni di dati CSV."`, eliminando la leaky abstraction del flag DB `is_manually_edited=1` e preservando la rassicurazione ergonomica all'utente sulla persistenza dei dati rispetto alle re-importazioni automatiche.
 
 ---
 
@@ -158,12 +161,12 @@
 
 ---
 
-## Ticket 13: Stile Visivo Chiaro (Light/White) per Dialoghi di Notifica e Conferma (Alerts)
+## Ticket 13: Stile Visivo Chiaro (Light/White) per Dialoghi di Notifica e Conferma (Alerts) [COMPLETED]
 * **Gravità:** `IMPROVEMENT` (Design System & Contrasto Visivo UI)
 * **Effort Atteso:** `LOW`
 * **File coinvolti:** `src/main/resources/styles.css`, Controller JavaFX che istanziano `Alert` (`PreMatchAnalysisController`, `DashboardController`, `CompetitionViewController`, `LiveConsoleController`)
 * **Problema:** L'applicazione adotta una palette scura (Dark Theme: background `#121316` / `#16171b` / `#1a1b20`). I popup operativi complessi (come la modifica statistiche `edit_match_stats_popup.fxml`, la creazione match `create_match_popup.fxml` e la mappatura alias `alias_mapping_popup.fxml`) mantengono correttamente il tema scuro dell'applicazione per coerenza di interfaccia. Al contrario, tutti i dialoghi di sistema di tipo **`Alert`** (finestre di conferma eliminazione quote, conferma cancellazione competizione/squadra, finalizzazione match, avvisi ed errori) devono presentarsi con il **tema chiaro/bianco** nativo (come quello visibile nella conferma di eliminazione quote in Pre-Match), garantendo un forte stacco visivo e attirando immediatamente l'attenzione del trader sullo sfondo scuro dell'app.
 * **Soluzione:** 
-  1. Verificare e garantire che tutti i dialoghi `Alert` (conferma, errore, warning, informativi) mantengano il rendering chiaro/bianco nativo, evitando l'iniezione forzata o non voluta del foglio di stile scuro (`styles.css`) sul `DialogPane`.
-  2. Preservare il tema scuro principale dell'applicazione per tutti i popup modali operativi complessi (`edit_match_stats_popup.fxml`, `create_match_popup.fxml`, `alias_mapping_popup.fxml`), assicurando la coerenza estetica tra viste primarie e secondarie.
-  3. Assicurarsi che i testi, le icone e i pulsanti all'interno degli Alert chiari abbiano contrasto ottimale e che `initOwner(...)` sia sempre configurato su tutti gli Alert dell'applicazione per una corretta gestione del focus desktop.
+  1. Verificato che tutti gli 11 dialoghi `Alert` presenti nell'applicazione mantengano il rendering chiaro/bianco nativo del sistema operativo (sfondo bianco, testo scuro ad alto contrasto), evitando qualsiasi iniezione forzata del tema scuro sul `DialogPane`.
+  2. Preservato il Dark Theme per i popup operativi complessi (`create_match_popup.fxml`, `edit_match_stats_popup.fxml`, `alias_mapping_popup.fxml`).
+  3. Configurato sistematicamente il metodo helper `getWindow()` e `initOwner(owner)` su tutte le istanze di `Alert` in `DashboardController.java` (`handleFinishMatch`, `handlePostponeMatch`, `handleCancelMatch`, `handleDeleteMatch`, `handleStartLiveMatch`, `showInformationAlert`, `showErrorAlert`), `PreMatchAnalysisController.java` (`handleDeleteOdds`) e `CompetitionViewController.java` (`handleDeleteCompetition`, `handleDeleteTeam`, `showErrorAlert`), garantendo stabilità di focus e ancoraggio modale desktop impeccabile su tutti i sistemi operativi.

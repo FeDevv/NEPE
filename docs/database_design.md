@@ -51,6 +51,7 @@ Durante il parsing del CSV, per ogni riga:
 * **`name`** (VARCHAR(100)): Nome descrittivo (es. "Serie A").
 * **`country`** (VARCHAR(50)): Nazione.
 * **`dixon_coles_rho`** (DECIMAL(5,4), Default -0.12): Parametro di correzione dei punteggi bassi.
+* **`home_advantage`** (DECIMAL(4,2), Nullable): Vantaggio fattore campo storico per la competizione (default fallback a 1.20).
 
 ### 3.2 Tabella `teams`
 * **`id`** (INT, PK, Auto-Increment)
@@ -60,6 +61,12 @@ Durante il parsing del CSV, per ogni riga:
 * **`id`** (INT, PK, Auto-Increment)
 * **`alias_name`** (VARCHAR(100), Unique): Nome alternativo (es. "Man City" per "Manchester City").
 * **`team_id`** (INT, FK -> `teams.id` ON DELETE CASCADE)
+
+### 3.3b Tabella `competition_teams` (Relazione Many-to-Many)
+* **`competition_id`** (INT, FK -> `competitions.id` ON DELETE CASCADE)
+* **`team_id`** (INT, FK -> `teams.id` ON DELETE CASCADE)
+* **Primary Key:** `(competition_id, team_id)`
+* **Indice:** `idx_comp_teams_team (team_id)` per interrogazione rapida delle squadre appartenenti a una lega.
 
 ### 3.4 Tabella `seasons`
 * **`id`** (INT, PK, Auto-Increment)
@@ -156,6 +163,7 @@ DROP TABLE IF EXISTS settings;
 DROP TABLE IF EXISTS market_odds;
 DROP TABLE IF EXISTS match_events;
 DROP TABLE IF EXISTS matches;
+DROP TABLE IF EXISTS competition_teams;
 DROP TABLE IF EXISTS team_aliases;
 DROP TABLE IF EXISTS seasons;
 DROP TABLE IF EXISTS teams;
@@ -169,7 +177,8 @@ CREATE TABLE competitions (
     code VARCHAR(10) NOT NULL UNIQUE,
     name VARCHAR(100) NOT NULL,
     country VARCHAR(50) NOT NULL,
-    dixon_coles_rho DECIMAL(5,4) NOT NULL DEFAULT -0.1200
+    dixon_coles_rho DECIMAL(5,4) NOT NULL DEFAULT -0.1200,
+    home_advantage DECIMAL(4,2) NULL DEFAULT NULL
 ) ENGINE=InnoDB;
 
 -- 2. Tabella Squadre
@@ -184,6 +193,16 @@ CREATE TABLE team_aliases (
     alias_name VARCHAR(100) NOT NULL UNIQUE,
     team_id INT NOT NULL,
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- 3b. Tabella Associazione Competizioni - Squadre (Relazione Many-to-Many)
+CREATE TABLE competition_teams (
+    competition_id INT NOT NULL,
+    team_id INT NOT NULL,
+    PRIMARY KEY (competition_id, team_id),
+    FOREIGN KEY (competition_id) REFERENCES competitions(id) ON DELETE CASCADE,
+    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+    INDEX idx_comp_teams_team (team_id)
 ) ENGINE=InnoDB;
 
 -- 4. Tabella Stagioni

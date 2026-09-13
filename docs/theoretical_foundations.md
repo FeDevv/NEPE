@@ -41,16 +41,19 @@ Le metriche di xG non vengono calcolate con una semplice media aritmetica, ma co
 
 $$\bar{xG}_{\text{segnati}, i} = \frac{\sum_{k=1}^K w_k \cdot \text{xG}_{\text{segnati}, k}}{\sum_{k=1}^K w_k}, \quad \bar{xG}_{\text{subiti}, i} = \frac{\sum_{k=1}^K w_k \cdot \text{xG}_{\text{subiti}, k}}{\sum_{k=1}^K w_k}$$
 
-* **Peso di Recency $w_k$:** Assegna valore massimo alle partite più recenti e valore decrescente man mano che ci si allontana nel tempo (es. decadimento esponenziale $w_k = e^{-\lambda_{\text{decay}} \cdot t_k}$).
-* **Sconto Inter-Stagionale $\gamma$:** Per eventuali partite recuperate dalla stagione precedente, il peso viene ulteriormente moltiplicato per $\gamma = 0.70$ per riflettere le discontinuità di rosa e guida tecnica tra due annate.
+* **Peso di Recency Lineare Rank-Based $w_k$:** Assegna peso massimo alla partita più recente ($i = 0$) e peso linearmente decrescente alle partite più lontane nel tempo:
+  $$w_k = \frac{\text{count} - i}{\text{count}} \times (\text{isPreviousSeason} \mathbin{?} \gamma : 1.0), \quad \text{con } i \in [0, \text{count}-1]$$
+* **Sconto Inter-Stagionale $\gamma$:** Per le partite storiche appartenenti alla stagione precedente (usate come buffer se $M < 10$), al peso lineare viene applicato il fattore di decadimento stagionale $\gamma = 0.70$ (configurabile) per riflettere le discontinuità di rosa e guida tecnica tra due annate.
 
 #### Formule delle Forze:
 $$\alpha_i = \frac{\bar{xG}_{\text{segnati}, i}}{\bar{xG}_{\text{campionato}}}, \quad \beta_i = \frac{\bar{xG}_{\text{subiti}, i}}{\bar{xG}_{\text{campionato}}}$$
 
-$$\lambda_H = \alpha_H \times \beta_A \times \text{Home Advantage}$$
-$$\mu_A = \alpha_A \times \beta_H \times \text{Away Disadvantage}$$
+#### Formule dei Goal Attesi Pre-Match ($\lambda_{\text{Home}}$ e $\mu_{\text{Away}}$):
+$$\lambda_{\text{Home}} = \alpha_{\text{Home}} \times \beta_{\text{Away}} \times \bar{xG}_{\text{campionato}} \times \text{EffectiveHomeAdvantage} \times \text{mod}_{\text{att,Home}} \times \text{mod}_{\text{def,Away}}$$
+$$\mu_{\text{Away}} = \alpha_{\text{Away}} \times \beta_{\text{Home}} \times \bar{xG}_{\text{campionato}} \times \frac{1}{\text{EffectiveHomeAdvantage}} \times \text{mod}_{\text{att,Away}} \times \text{mod}_{\text{def,Home}}$$
 
-* **Home Advantage:** Rapporto tra i gol segnati in casa e in trasferta nell'intero campionato.
+* **EffectiveHomeAdvantage:** Pari a $1.00$ se `is_neutral_venue == true`, altrimenti pari al fattore campo della competizione (default $1.20$ o valore calcolato/configurato in `competitions.home_advantage`).
+* **Regola Mutual Low-Urgency:** Se entrambe le formazioni hanno il flag `low_urgency` attivo, a entrambi i tassi $\lambda_{\text{Home}}$ e $\mu_{\text{Away}}$ viene applicato il moltiplicatore riduttivo di prudenza pari a $0.65$.
 
 ---
 

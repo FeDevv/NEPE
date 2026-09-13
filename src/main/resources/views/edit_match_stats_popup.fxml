@@ -27,7 +27,7 @@
     <!-- Overwrite Protection Informative Banner -->
     <HBox spacing="8.0" style="-fx-background-color: #1e293b; -fx-padding: 8 12; -fx-background-radius: 6; -fx-border-color: #334155; -fx-border-radius: 6; -fx-border-width: 1;">
         <Label text="ℹ️" style="-fx-font-size: 13px;"/>
-        <Label text="Il salvataggio attiverà la protezione sovrascrittura (is_manually_edited=1), preservando i dati inseriti da futuri re-import CSV."
+        <Label text="Le modifiche manuali verranno salvate e protette da future re-importazioni di dati CSV."
                styleClass="label-muted" style="-fx-text-fill: #94a3b8; -fx-font-size: 11px;" wrapText="true"/>
     </HBox>
 
